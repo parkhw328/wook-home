@@ -66,12 +66,14 @@ let modalTrigger = null;
 let sceneSignature = '';
 let sessionsSignature = '';
 let providersSignature = '';
+let programsSignature = '';
 const commandDeliveries = new Map();
 const commandDrafts = new Map();
 const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
 let motionEnabled = !motionPreference.matches;
 const modal = $('#modal');
 const body = $('#modal-body');
+$('#sidebar-programs').open = !window.matchMedia('(max-width: 900px)').matches;
 const cliDialog = new CliConversationDialog({ request: apiRequest, getState: () => ({ state, connected }), onCommand: openSession, onAgent: openAgent });
 const workspace = new OfficeWorkspace($('#office-workspace'), {
   onSession: (id) => cliDialog.open(id),
@@ -258,13 +260,17 @@ function renderHandoff() {
 }
 
 function renderPrograms() {
-  const titles = { wShell: '서버 접속과 파일 전송을 한곳에서', wPost: 'API 요청과 응답을 간편하게', wText: '문서 편집과 차이 비교를 한곳에서', 'StackQueue Blog': 'StackQueue 네이버 블로그' };
+  const programs = state.programs.filter((program) => programUrl(program));
+  const signature = JSON.stringify(programs);
+  if (signature === programsSignature) return;
+  programsSignature = signature;
+  const summaries = { wShell: 'SSH 접속 · 파일 전송', wPost: 'API 요청 · 응답 확인', wText: '문서 편집 · 차이 비교', 'StackQueue Blog': '네이버 블로그' };
   const icons = { wShell: '/program-icons/wshell.png', wPost: '/program-icons/wpost.png', wText: '/program-icons/wtext.png' };
-  $('#program-list').innerHTML = state.programs.filter((program) => programUrl(program)).map((program) => {
+  $('#program-list').innerHTML = programs.map((program) => {
     const isBlog = program.name === 'StackQueue Blog';
     const icon = icons[program.name];
     const artwork = icon ? `<img src="${icon}" alt="" width="56" height="56" loading="lazy" decoding="async">` : 'SQ';
-    return `<a class="program-card ${isBlog ? 'blog-card' : ''}" href="${programUrl(program)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(program.name)} ${isBlog ? '네이버 블로그' : 'GitHub 저장소'} (새 탭)"><header><span class="program-icon${icon ? ' program-icon--app' : ''}" aria-hidden="true">${artwork}</span><h3>${esc(program.name)}</h3><span class="external-arrow" aria-hidden="true">↗</span></header><strong>${titles[program.name]}</strong><p>${esc(program.description)}</p><span class="program-link-label">${isBlog ? '블로그에서' : 'GitHub에서'} 살펴보기 <span aria-hidden="true">→</span></span></a>`;
+    return `<a class="program-card ${isBlog ? 'blog-card' : ''}" href="${programUrl(program)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(program.name)} ${isBlog ? '네이버 블로그' : 'GitHub 저장소'} (새 탭)"><span class="program-icon${icon ? ' program-icon--app' : ''}" aria-hidden="true">${artwork}</span><div class="program-copy"><h3>${esc(program.name)}</h3><span class="program-summary">${summaries[program.name]}</span></div></a>`;
   }).join('');
 }
 

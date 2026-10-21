@@ -1,0 +1,53 @@
+@charset "UTF-8";
+
+/* Supplementary links live with navigation, leaving the workspace for work. */
+.sidebar > * { flex-shrink: 0; }
+.workspace-identity .connection-pill {
+  margin: 8px 0 0;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.workspace-identity .connection-pill i { margin-top: 0; }
+.sidebar-programs { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 8px; }
+.sidebar-programs > summary {
+  padding: 10px 8px;
+  min-height: 44px;
+  color: var(--ink);
+  font-size: var(--font-control);
+  font-weight: 600;
+  cursor: pointer;
+}
+.sidebar-programs .program-grid { grid-template-columns: minmax(0, 1fr); gap: 6px; padding-top: 4px; }
+.sidebar-programs .program-card {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 6px;
+  border-color: transparent;
+  border-radius: 8px;
+  background: transparent;
+}
+.sidebar-programs .program-card:hover { background: var(--accent-soft); border-color: var(--line); }
+.sidebar-programs .program-copy { min-width: 0; }
+.sidebar-programs .program-card h3 { font-size: var(--font-emphasis); line-height: 1.6; overflow-wrap: anywhere; }
+.sidebar-programs .program-summary { display: block; color: var(--muted); font-size: var(--font-small); line-height: 1.75; }
+.sidebar-programs .blog-card { grid-template-columns: 2.5rem minmax(0, 1fr); padding-left: 14px; }
+.sidebar-programs .blog-card .program-icon { width: 2.5rem; height: 2.5rem; }
+.sidebar-programs summary:focus-visible, .sidebar-programs a:focus-visible {
+  outline: 3px solid #246cb0;
+  outline-offset: 2px;
+}
+.sidebar .sidebar-bottom { margin-top: 20px; padding-top: 16px; }
+.sidebar-footer { display: flex; flex-direction: column; gap: 6px; margin-top: 16px; color: var(--muted); font-size: var(--font-caption); line-height: 1.7; }
+.sidebar-footer #app-version { overflow-wrap: anywhere; }
+
+@media (max-width: 900px) {
+  .sidebar-programs { margin-top: 14px; padding-top: 4px; }
+  .sidebar-programs .program-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; }
+  .sidebar-footer { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; }
+}
+@media (max-width: 600px) {
+  .sidebar-programs .program-grid { grid-template-columns: minmax(0, 1fr); }
+}
