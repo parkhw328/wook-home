@@ -1,6 +1,7 @@
 import { open, readdir, stat } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { collectConversation } from './codex-conversations.mjs';
+import { collectActivity, connectActivities } from './codex-activity.mjs';
 
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const windowBytes = 1024 * 1024;
@@ -30,7 +31,7 @@ export function summarizeRecords(records, workspace) {
   return lastActivityAt ? { id: metadata.id, status, lastActivityAt } : null;
 }
 
-async function readSummary(file, workspace, includeConversations = false) {
+async function readSummary(file, workspace, includeConversations = false, clock = Date.now) {
   let handle;
   try {
     handle = await open(file, 'r');
@@ -53,6 +54,8 @@ async function readSummary(file, workspace, includeConversations = false) {
     }
     const records = [metadata, ...lines.map(parse)];
     const summary = summarizeRecords(records, workspace);
+    const activity = summary && collectActivity(records, clock);
+    if (activity) summary.activity = activity;
     if (summary && includeConversations) summary.conversation = collectConversation(records, info.size > windowBytes);
     return summary;
   } catch {
@@ -85,9 +88,9 @@ export async function collectSessions({ sessionsDir, workspace, clock = Date.now
   candidates.sort((a, b) => b.modified - a.modified);
   const sessions = [];
   for (const candidate of candidates.slice(0, 200)) {
-    const session = await readSummary(candidate.file, workspace, includeConversations);
+    const session = await readSummary(candidate.file, workspace, includeConversations, clock);
     if (session && !sessions.some((item) => item.id === session.id)) sessions.push(session);
     if (sessions.length === 24) break;
   }
-  return { schemaVersion: 1, generatedAt: new Date(current).toISOString(), workspace: basename(resolve(workspace)), sessions };
+  return { schemaVersion: 1, generatedAt: new Date(current).toISOString(), workspace: basename(resolve(workspace)), activities: { enabled: true }, sessions: connectActivities(sessions) };
 }
