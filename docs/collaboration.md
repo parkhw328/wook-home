@@ -7,13 +7,13 @@
 | 담당 | 소유 경로 | 현재 작업 |
 | --- | --- | --- |
 | 서버 세션 | server/, scripts/, tests/server/, package.json, package-lock.json, Dockerfile, compose.yaml, .dockerignore, .gitignore, .env.example | API·SQLite·Docker 및 Codex 관찰·지시 전달 구현·검증 |
-| 웹 세션 | public/, tests/ui/, docs/wiki/UI.md | 의존성 없는 HTML/CSS/JS 사무실 GUI 구현 |
+| 웹 세션 | public/, tests/ui/, docs/wiki/UI.md | HTML/CSS/JS 사무실 GUI와 자체 제공 Three.js 입체 화면 구현 |
 | 서버 세션 통합 | README.md, CHANGELOG.md, docs/wiki/Home.md, rules/ 문서, docs/api.md | 실행 검증 후 실제 구현 범위 반영 |
 
 - 이 문서의 서버 항목은 서버 세션이 갱신한다. 웹 세션은 아래 웹 진행 메모를 갱신해 소통한다.
 - Git index는 공유된다. 서버 세션이 commit/push를 전담한다. 웹 세션은 완료 파일 목록과 검증 결과를 전달하며 서버 세션이 검토 후 커밋한다.
 - Docker 기본 주소는 http://localhost:8080 이다. 웹 개발 서버는 /api 요청을 http://localhost:8080 으로 프록시한다.
-- 서버는 public/을 정적으로 제공한다. 웹 빌드 단계나 외부 의존성은 필요 없다. 루트 npm 스크립트는 서버 세션이 관리한다.
+- 서버는 public/을 정적으로 제공한다. 웹 앱 빌드 단계는 없으며 Three.js 배포 파일과 라이선스를 저장소에서 자체 제공한다. 의존성 갱신 절차는 [개발 안내](development.md)를 따른다.
 - 기존 Codex는 호스트 연결 프로그램의 명령 허용 모드에서 공식 큐로 지시한다. 신규 실제 AI 실행·다른 공급자 제어는 미구현이다. 데모는 별도 공급자 demo로 표시하고 실제 모델 추론으로 표현하지 않는다.
 - API 계약은 [api.md](api.md)를 기준으로 한다. 화면은 응답에 없는 기능을 추정하지 않는다.
 
@@ -38,4 +38,4 @@
 
 공간별 업무와 CLI 대화기록, Windows CLI 실행·종료 감지, 브라우저 AI 탭 감지, 연결 점검을 통합했다. 전체 96개 자동 검증과 기본 Docker 실행을 확인했으며 기능별 실제 검증 범위는 [검증 기록](validation.md)을 따른다. 공유 파일은 통합 담당이 관련 변경을 검토한 후 명시적으로 스테이징했다.
 
-평면도 기반 공간 표현은 사용자 추가 요구에 따라 다층 입체 구조로 재작업한다. 이미 검증된 대화·보고·연결 기능과 신규 시각 구현의 완료 여부를 구분한다.
+다층 입체 구조 재작업을 완료했다(`d5e0fea`). 1층 휴게실·다과실, 2층 사무실, 3층 회의실·대표이사실과 전체 층·층별 보기, 엘리베이터 이동, 실제 직원·세션 캐릭터의 보행을 제공한다. 검증용 별도 트리에서 테스트 99개와 업무 지시→회의실 답변→대표이사실 승인 흐름을 확인하고 기본 Docker에 반영했다. CLI 대화기록·지시 전송을 유지하며 상세 검증 범위는 검증 기록을 따른다. Wiki UI·OfficeGuide도 게시했다(`96d1531`).
