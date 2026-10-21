@@ -65,6 +65,8 @@ test('cross-origin and non-local Host requests cannot reach state or mutations',
     }).on('error', reject);
   });
   assert.equal(hostStatus, 403);
+  const navigation = await fetch(base, { headers: { 'Sec-Fetch-Site': 'cross-site' } });
+  assert.equal(navigation.status, 200);
   assert.equal((await (await fetch(base + '/api/state')).json()).agents.length, 0);
 });
 

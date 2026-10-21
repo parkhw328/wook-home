@@ -44,9 +44,10 @@ export function createHttpServer(office, { publicDir = resolve('public') } = {})
       const host = request.headers.host;
       if (!host || !/^(localhost|127\.0\.0\.1|\[::1\])(?::\d{1,5})?$/i.test(host)) throw new ApiError(403, 'LOCAL_ONLY', '이 버전은 로컬 주소로만 접속할 수 있습니다.');
       const url = new URL(request.url, `http://${host}`);
-      if (request.headers['sec-fetch-site'] === 'cross-site' || (request.headers.origin && request.headers.origin !== `http://${host}`)) throw new ApiError(403, 'ORIGIN_REJECTED', '사무실 화면에서 다시 요청해 주세요.');
       const path = url.pathname;
       const method = request.method;
+      const protectedRequest = path.startsWith('/api/') || !['GET', 'HEAD'].includes(method);
+      if (protectedRequest && (request.headers['sec-fetch-site'] === 'cross-site' || (request.headers.origin && request.headers.origin !== `http://${host}`))) throw new ApiError(403, 'ORIGIN_REJECTED', '사무실 화면에서 다시 요청해 주세요.');
       if (method === 'GET' && path === '/api/health') return json(response, 200, { status: 'ok', version: VERSION });
       if (method === 'GET' && path === '/api/state') return json(response, 200, office.snapshot());
       if (method === 'GET' && path === '/api/providers') return json(response, 200, providers);
