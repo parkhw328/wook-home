@@ -5,6 +5,7 @@
 - `server/`: Node.js HTTP API, 업무 상태 전환, SQLite 저장.
 - `public/`: 빌드 단계 없는 HTML/CSS/JS 사무실 GUI. `rooms.mjs`는 문·복도 경로, `workspace.mjs`는 공간별 업무 패널, `conversation.mjs`는 터미널과 세션 전환, `floor-plan.svg`는 자체 제작 평면도다.
 - `public/fonts/`: 자체 호스팅 폰트와 라이선스. 출처는 해당 폴더 README에 기록한다.
+- `public/readability.css`: 마지막에 적용하는 공통 글자 크기와 반응형 가독성 규칙. 새 화면도 이 파일의 `--font-*` rem 토큰과 requirements 4.3의 최소 크기를 사용한다.
 - `extensions/browser-observer/`: 브라우저의 지원 AI 탭 감지 확장. 설치 절차는 Wiki Detection 참조.
 - `scripts/`: 호스트 Codex 관찰·CLI 설치/프로세스 점검·대화 수집과 명시적으로 활성화하는 공식 큐 전달. Docker 이미지에 포함하지 않는다.
 - `tests/server/`, `tests/ui/`, `tests/extension/`: Node.js 기본 테스트 러너를 사용하는 API·화면 로직·브라우저 확장 자동 검증. 파일 이름은 `*.test.js` 또는 `*.test.mjs`다.

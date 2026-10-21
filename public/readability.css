@@ -1,0 +1,218 @@
+@charset "UTF-8";
+
+/* Shared text scale, loaded after layout styles. Keep these sizes on small
+   screens too: reflow the layout instead of shrinking labels or controls. */
+:root {
+  font-size: 100%;
+  --font-caption: .875rem;
+  --font-small: .9375rem;
+  --font-control: 1rem;
+  --font-body: 1.0625rem;
+  --font-emphasis: 1.125rem;
+  --font-heading: 1.375rem;
+  --muted: #62565b;
+  --sidebar-width: 288px;
+}
+body { font-size: var(--font-body); line-height: 1.75; }
+small { font-size: var(--font-caption); }
+h2, .floor-panel h2, .workbench-header h2 { font-size: var(--font-heading); line-height: 1.5; letter-spacing: -.025em; }
+h3 { font-size: var(--font-emphasis); line-height: 1.6; }
+.page-heading h1 { font-size: clamp(1.75rem, 1.2rem + 1.3vw, 2.125rem); line-height: 1.45; letter-spacing: -.035em; }
+.page-description { font-size: var(--font-body); line-height: 1.8; }
+.modal-header h2, .handoff-panel > h2, .room-panel-header h2 { font-size: 1.5rem; line-height: 1.5; }
+
+/* Navigation and small headings remain legible in both Korean and English. */
+.brand { font-size: var(--font-control); letter-spacing: -.02em; }
+.sidebar { overflow-y: auto; }
+.brand small { font-size: var(--font-caption); letter-spacing: .025em; line-height: 1.6; white-space: normal; }
+.workspace-card strong, .sidebar-bottom strong, .sidebar-note strong { font-size: var(--font-control); }
+.workspace-card div span, .sidebar-bottom div span { font-size: var(--font-caption); }
+.sidebar-note p { max-width: none; color: var(--muted); font-size: var(--font-small); line-height: 1.8; }
+.nav-link { min-height: 48px; font-size: var(--font-control); color: #625459; }
+.nav-label, .eyebrow, .page-heading .eyebrow, .modal-header .eyebrow,
+.workbench-header .eyebrow, .floor-panel .eyebrow, .room-panel-header .eyebrow {
+  font-size: var(--font-caption);
+  letter-spacing: .06em;
+  font-weight: 600;
+  line-height: 1.65;
+  color: #77564f;
+}
+.nav-count, .inbox-count, .breadcrumb, .connection-pill, .local-label { font-size: var(--font-caption); }
+.local-label { letter-spacing: .04em; }
+.breadcrumb { flex-wrap: wrap; gap: 5px 12px; }
+.topbar { gap: 12px 20px; }
+
+/* Controls and prose use a full-size text face, including dialog actions. */
+.button, .button-small, .provider-actions .button, .detail-actions .button,
+.form-actions .button, .task-command-row .button, input, select, textarea,
+.terminal input, .terminal select {
+  font-size: var(--font-control);
+  line-height: 1.6;
+  min-height: 44px;
+}
+.button { padding: 11px 17px; }
+.button-small, .provider-actions .button { padding: 9px 13px; }
+.icon-button { width: 44px; height: 44px; }
+.button:disabled { opacity: .7; }
+input::placeholder, textarea::placeholder { color: #796b70; opacity: 1; }
+.text-link, .inline-link, .provider-actions .inline-link, .inbox-footer, .footer-help,
+.program-link-label { font-size: var(--font-small); line-height: 1.7; }
+.text-link { min-height: 44px; }
+button.text-link, .inbox-footer { font-size: var(--font-control); }
+.task-filters select { min-height: 44px; }
+.notice strong, .inbox-item strong, .handoff-steps strong, .command-status strong,
+.task-result h3, .form-field label { font-size: var(--font-control); }
+.notice p, .panel-intro, .panel-footnote, .session-scope, .field-help,
+.info-box, .form-error, .detail-heading p, .handoff-steps p, .command-status p,
+.task-completion, .message.system { font-size: var(--font-small); line-height: 1.8; }
+.handoff-panel > p, .task-description, .message, .task-result p, dd { font-size: var(--font-body); line-height: 1.85; }
+dt, .task-filters { font-size: var(--font-control); }
+.detail-facts dd { font-size: var(--font-control); }
+.info-box { color: #705339; }
+.task-description { color: #62534e; }
+.task-completion { color: #6c5744; }
+.message.system { color: #68594e; }
+.task-result h3 { color: #53623f; }
+.toast { font-size: var(--font-control); }
+.handoff-steps li > span { font-size: var(--font-small); color: #79573e; }
+
+/* Summaries, status chips, lists and metadata. */
+.stat-card { padding: 18px 20px; }
+.stat-card > div { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.stat-card div > span { font-size: var(--font-small); white-space: normal; }
+.stat-card strong { font-size: 1.875rem; line-height: 1.4; }
+.stat-card strong small { font-size: var(--font-caption); }
+.muted, .section-heading > .muted, .section-heading h2 span,
+.subtle-tag, .status, .capability-tag, .office-meta,
+.agent-info small, .session-info small, .task-row-info small,
+.provider-item small, .inbox-item small, .task-modal-meta, .message small,
+.page-footer, .event-item time { font-size: var(--font-caption); line-height: 1.7; }
+.subtle-tag, .status, .capability-tag { padding: 4px 9px; font-weight: 600; }
+.subtle-tag { color: #74554d; }
+.status { color: #64534e; }
+.status.idle, .status.completed { color: #4e6842; }
+.status.working, .status.running, .status.queued { color: #8b3c32; }
+.status.waiting_input, .status.waiting_approval { color: #765613; }
+.status.failed, .status.disconnected { color: #953b34; }
+.capability-tag { color: #715c50; }
+.capability-tag.supported { color: #52653a; }
+.agent-info strong, .session-info strong, .task-row-info strong,
+.provider-item strong, .empty-state strong, .inbox-empty strong { font-size: var(--font-control); line-height: 1.65; }
+.agent-info strong, .session-info strong, .task-row-info strong { white-space: normal; }
+.inbox-item > div { flex-wrap: wrap; justify-content: flex-start; }
+.inbox-item > div > small { white-space: normal; overflow-wrap: anywhere; }
+.provider-item small { white-space: normal; }
+.empty-state p, .inbox-empty p, .event-empty, .mode-note p { font-size: var(--font-small); line-height: 1.8; }
+.event-item, .mode-note strong { font-size: var(--font-small); color: #70574a; }
+.event-item time, .mode-note p, .page-footer { color: var(--muted); }
+.program-card h3 { font-size: var(--font-emphasis); white-space: normal; }
+.program-card strong { font-size: var(--font-control); }
+.program-card p { font-size: var(--font-small); line-height: 1.85; }
+.program-card { padding: 24px; }
+.program-icon { width: 40px; height: 40px; }
+.program-link-label { padding-top: 20px; }
+.session-card { grid-template-columns: 38px minmax(0, 1fr); gap: 5px 14px; padding-block: 18px; }
+.session-card .session-symbol { grid-row: 1 / 3; }
+.session-card > .status { grid-column: 2; justify-self: start; }
+.agent-info small, .session-info small, .task-row-info small { white-space: normal; }
+
+/* Room controls and dialogue are shared by the floor and dimensional views. */
+.room-nav-button { font-size: var(--font-control); min-height: 44px; padding: 10px 13px; }
+.room-nav-button > span, .room-hotspot small, .room-count, .corridor-label,
+.commander-marker small, .office-character .character-label strong,
+.floor-footer, .motion-toggle, .room-section-label, .room-section-label span,
+.room-entry small, .room-news time, .leave-room kbd,
+.report-demo, .report-detail dt, .terminal-toolbar > strong,
+.terminal-filters label, .terminal-notice, .terminal-role, .terminal-message time,
+.terminal-limit, .terminal-footer, .office-management > summary span {
+  font-size: var(--font-caption);
+  line-height: 1.75;
+}
+.commander-marker > span { font-size: var(--font-control); }
+.commander-marker small { white-space: nowrap; }
+.room-hotspot strong, .room-entry strong, .room-panel-header > p:last-child,
+.room-welcome p, .room-empty, .room-news, .leave-room, .workbench-empty p,
+.terminal-empty { font-size: var(--font-control); line-height: 1.8; }
+.room-panel-header > p:last-child, .room-welcome p, .room-empty, .room-news,
+.room-news time, .workbench-empty p, .room-section-label, .room-section-label span,
+.report-demo, .report-detail dt { color: var(--muted); }
+.room-welcome strong, .workbench-empty strong { font-size: var(--font-emphasis); line-height: 1.75; }
+.room-hotspot { padding: 8px 40px 8px 11px; }
+.room-hotspot small { white-space: normal; color: #685548; }
+.room-count, .room-nav-button > span, .corridor-label { color: #775949; }
+.corridor-label, .terminal-toolbar > strong { letter-spacing: .06em; }
+.office-character .character-label { min-width: 56px; max-width: 90px; padding: 3px 6px; }
+.office-character .character-label strong { max-width: 76px; }
+.character-label small, .character-indicator, .office-character .character-indicator { font-size: var(--font-caption); }
+.office-character .character-indicator { min-width: 24px; height: 24px; }
+.room-entry { flex-wrap: wrap; gap: 8px 12px; padding: 14px 10px; }
+.room-entry strong, .room-entry small { white-space: normal; }
+.entry-symbol { font-size: var(--font-caption); width: 36px; height: 38px; }
+.room-content { max-height: 32rem; }
+.floor-footer { flex-wrap: wrap; gap: 12px 18px; }
+.floor-invite { font-size: var(--font-control); }
+.motion-toggle, .leave-room { min-height: 44px; }
+.motion-toggle { font-size: var(--font-control); padding: 8px 12px; }
+.leave-room kbd { color: #766553; }
+.office-management > summary { font-size: var(--font-control); line-height: 1.75; }
+.report-detail dd, .terminal-message pre { font-size: var(--font-body); line-height: 1.85; }
+.terminal-toolbar { flex-wrap: wrap; gap: 10px 16px; }
+.terminal-toolbar > button { font-size: var(--font-control); min-height: 44px; padding: 8px; }
+.terminal-filters { flex-wrap: wrap; gap: 12px; }
+.terminal-filters label { flex-wrap: wrap; gap: 7px; }
+.terminal-filters .search-field { min-width: min(100%, 210px); }
+.terminal input::placeholder { color: #c4b2b3; }
+.terminal-log { height: 28rem; }
+.terminal-message { padding-block: 18px 22px; }
+.terminal-notice, .terminal-footer { line-height: 1.8; }
+
+/* Connection checks need room for complete names and actionable explanations. */
+.discovery-card p, .discovery-card small { font-size: var(--font-small); line-height: 1.8; }
+.discovery-card strong { font-size: var(--font-control); line-height: 1.7; }
+.discovery-toolbar label, .discovery-toolbar select { font-size: var(--font-control); }
+.discovery-toolbar select { min-height: 44px; }
+.discovery-list { grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 16px; }
+.discovery-card { flex-wrap: wrap; gap: 12px; padding: 20px; }
+.discovery-card > div { min-width: 0; flex: 1 1 230px; }
+.discovery-card .subtle-tag { white-space: normal; }
+.discovery-empty { font-size: var(--font-control); }
+
+@media (max-width: 1450px) {
+  .program-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+  .main-nav { flex-wrap: wrap; }
+  .workbench-columns:has(#report-detail:not([hidden])) { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .main-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .nav-link { justify-content: flex-start; padding: 10px 12px; }
+  .topbar { flex-wrap: wrap; padding: 14px 16px; }
+  .page-heading { gap: 18px; }
+  .page-heading > .button { width: 100%; }
+  .stat-card { padding: 14px; }
+  .stat-card > div { gap: 4px; }
+  .stat-card div > span { white-space: normal; }
+  .stat-card strong { font-size: 1.75rem; }
+  .office-meta { white-space: normal; }
+  .room-nav-button { padding: 9px 11px; }
+  .room-content { max-height: 26rem; }
+  .workbench-header > div { flex-basis: 100%; }
+  .workbench-empty { align-items: flex-start; }
+  .workbench-empty > span { display: none; }
+  .terminal-dots { display: none; }
+  .terminal-filters label { flex: 1 1 100%; }
+  .terminal-filters input, .terminal-filters select { width: 100%; }
+  .terminal-log { height: 24rem; }
+  .discovery-card { padding: 18px; }
+  .program-grid { grid-template-columns: minmax(0, 1fr); }
+  .agent-card { grid-template-columns: 40px minmax(0, 1fr); }
+  .agent-card .avatar { grid-row: 1 / 3; }
+  .agent-card > .status { grid-column: 2; }
+  .modal { padding: 22px 18px; }
+  .form-actions { align-items: stretch; }
+  .form-actions .button { flex: 1 1 auto; }
+  .detail-facts > div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .detail-facts dd { font-size: var(--font-control); }
+}
