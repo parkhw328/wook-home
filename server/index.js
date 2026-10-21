@@ -9,6 +9,7 @@ const office = createOffice(store, { name: process.env.OFFICE_NAME || 'StackQueu
 const server = createHttpServer(office, {
   publicDir: fileURLToPath(new URL('../public/', import.meta.url)),
   bridgeFile: process.env.CODEX_BRIDGE_FILE || resolve('data/bridge/codex.json'),
+  commandsDir: process.env.CODEX_COMMANDS_DIR || resolve('data/bridge/commands'),
 });
 const port = Number(process.env.PORT || 8080);
 const host = process.env.HOST || '127.0.0.1';

@@ -1,6 +1,6 @@
 import { closeSync, fstatSync, openSync, readSync } from 'node:fs';
 
-const empty = (status = 'not_connected') => ({ status, updatedAt: null, workspace: '', sessions: [] });
+const empty = (status = 'not_connected') => ({ status, updatedAt: null, workspace: '', sessions: [], control: { enabled: false, reason: 'disconnected' } });
 const states = new Set(['working', 'idle', 'interrupted', 'unknown']);
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const validTime = (value) => typeof value === 'string' && Number.isFinite(Date.parse(value));
@@ -34,7 +34,13 @@ export function createSessionObserver({ file, clock = Date.now } = {}) {
           });
         }
         const workspace = typeof data.workspace === 'string' && data.workspace.length <= 80 && !/[\x00-\x1f/\\]/.test(data.workspace) ? data.workspace : '';
-        return { status: connected ? 'connected' : 'disconnected', updatedAt: new Date(data.generatedAt).toISOString(), workspace, sessions };
+        const enabled = connected && data.control?.enabled === true && uuid.test(data.control.bridgeId);
+        const control = {
+          enabled: Boolean(enabled),
+          reason: !connected ? 'disconnected' : enabled ? 'ready' : data.control?.reason === 'cli_unavailable' ? 'cli_unavailable' : 'not_enabled',
+          ...(enabled ? { bridgeId: data.control.bridgeId } : {}),
+        };
+        return { status: connected ? 'connected' : 'disconnected', updatedAt: new Date(data.generatedAt).toISOString(), workspace, sessions, control };
       } catch (error) {
         return empty(error.code === 'ENOENT' ? 'not_connected' : 'disconnected');
       } finally {

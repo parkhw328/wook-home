@@ -5,7 +5,7 @@
 - `server/`: Node.js HTTP API, 업무 상태 전환, SQLite 저장.
 - `public/`: 빌드 단계 없는 HTML/CSS/JS 사무실 GUI.
 - `public/fonts/`: 자체 호스팅 폰트와 라이선스. 출처는 해당 폴더 README에 기록한다.
-- `scripts/`: 호스트에서 실행하는 읽기 전용 Codex 관찰 프로그램. Docker 이미지에 포함하지 않는다.
+- `scripts/`: 호스트 Codex 관찰과 명시적으로 활성화하는 공식 큐 전달. Docker 이미지에 포함하지 않는다.
 - `tests/server/`, `tests/ui/`: Node.js 기본 테스트 러너를 사용하는 자동 검증.
 - `docs/`: API 계약, 협업 현황, 사용자 Wiki, 릴리스 관리.
 - `data/`: 로컬 개발 실행 데이터. Git 제외 대상.
@@ -24,7 +24,7 @@ npm test
 
 환경 변수는 `HOST`(기본 127.0.0.1), `PORT`(기본 8080), `DATA_DIR`(기본 ./data), `OFFICE_NAME`(기본 StackQueue Office), `CODEX_BRIDGE_FILE`(기본 ./data/bridge/codex.json)이다. Docker Compose의 외부 포트는 `WOOK_PORT`로 지정한다. 로컬 서버와 컨테이너를 동시에 사용할 때는 포트를 구분한다. Node 직접 실행은 `.env`를 자동으로 읽지 않으므로 셸 환경 변수로 지정한다.
 
-`npm run bridge:codex -- --workspace .`는 현재 프로젝트의 최근 Codex 세션을 관찰한다. 다른 프로젝트의 전체 기록이나 인증 파일을 컨테이너에 연결하지 않는다. [CLI 연결 안내](wiki/CLI.md)에 조건과 상태의 의미를 기록한다.
+`npm run bridge:codex -- --workspace .`는 현재 프로젝트의 최근 Codex 세션을 관찰한다. `--allow-commands`를 붙이면 공식 `codex queue`로 기존 세션에 지시를 전달한다. 다른 프로젝트의 전체 기록이나 인증 파일을 컨테이너에 연결하지 않는다. [CLI 연결 안내](wiki/CLI.md)에 조건과 상태의 의미를 기록한다. 명령 폴더는 `CODEX_COMMANDS_DIR`(기본 ./data/bridge/commands)로 지정한다.
 
 ## Docker
 
@@ -35,7 +35,7 @@ docker compose ps
 docker compose stop
 ```
 
-컨테이너는 비루트 사용자로 실행하며, 정적 파일과 서버 코드만 이미지에 복사한다. 파일시스템은 데이터 볼륨과 임시 디렉터리를 제외하고 읽기 전용이다. 호스트의 `data/bridge`는 `/app/bridge`에 읽기 전용으로 마운트하며 대화 본문을 포함하지 않는 상태만 전달한다. Compose 포트는 127.0.0.1에만 바인딩한다. 현재 외부 접속용 인증 기능은 없다.
+컨테이너는 비루트 사용자로 실행하며 정적 파일과 서버 코드만 이미지에 복사한다. 데이터 볼륨·지시 폴더·임시 디렉터리만 쓰기를 허용한다. 호스트의 `data/bridge`는 `/app/bridge`에 읽기 전용으로, `data/bridge/commands`는 `/app/commands`에 읽기·쓰기로 마운트한다. 지시 본문은 CLI 호출 전에 제거한다. Compose 포트는 127.0.0.1에만 바인딩한다. 현재 외부 접속용 인증 기능은 없다.
 
 ## 테스트와 완료 기준
 

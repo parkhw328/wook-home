@@ -11,7 +11,7 @@
 | 사무실 중지·재개, 재시작 후 상태 보존 | 초기 실행 기반 |
 | 인계 JSON 내보내기 | 검토용. 가져오기·GitHub 자동 전송은 미구현 |
 | 외부 공급자 직원 | 정보 등록만 제공. 모델 설정·실제 실행·세션 제어는 미구현 |
-| 기존 로컬 Codex 세션 | 호스트 연결 프로그램으로 선택한 프로젝트의 최근 기록을 읽기 전용 관찰. 대화 전송·명령·중단은 미지원 |
+| 기존 로컬 Codex 세션 | 선택한 프로젝트의 최근 활동 관찰, 명시적으로 활성화한 호스트 연결 프로그램의 공식 `codex queue` 지시 전송. 답변·승인·중단·모델 변경은 원래 Codex에서 처리 |
 | 원격 접속·클라우드 인증 | 후속 범위 |
 
 ## 1. 목표와 사용 시나리오
@@ -42,6 +42,8 @@
 | FR-16 | 핵심 | 레드 계열 테마와 입체감 있는 사무실을 구성하고, 실제 상태에 연결되는 캐릭터 동작 및 동작 줄이기를 제공한다. |
 | FR-17 | 핵심 | 사무실 이름을 실행 설정으로 지정한다. 현재 기본값은 StackQueue Office다. |
 | FR-18 | 핵심 | StackQueue Blog 소개 배너에 네이버 블로그 링크를 제공한다. |
+| FR-19 | 핵심 | 팀 업무 구역·회의실·라운지로 회사 공간을 표현하고, 이름·상태·버튼·메뉴의 어색한 두 줄 표시를 정리한다. 긴 본문과 모바일 가독성은 유지한다. |
+| FR-20 | 핵심 | 지원되는 로컬 Codex 세션에 실제 지시를 전송하고 접수 상태를 확인한다. 연결이 필요한 경우 Wiki에 실행·직접 연결·문제 해결 절차를 제공한다. |
 
 ## 3. 연결 방식과 한계
 
@@ -144,6 +146,8 @@
 다음은 대화 중 확인한 공식 문서이며, 실제 구현 시 지원 범위를 다시 확인한다.
 
 - [Codex App Server](https://learn.chatgpt.com/docs/app-server)
+- [Codex CLI 명령](https://learn.chatgpt.com/docs/developer-commands)
+- [공개 구현 비교와 적용 결정](../docs/references.md)
 - [Claude Code 프로그램 실행](https://code.claude.com/docs/en/headless)
 - [Gemini CLI 세션 관리](https://geminicli.com/docs/cli/session-management/)
 - [Meta Model API 에이전트 프레임워크](https://dev.meta.ai/docs/agent-frameworks)

@@ -4,6 +4,7 @@ import { extname, resolve, sep } from 'node:path';
 import { ApiError } from './office.js';
 import { VERSION, providers } from './catalog.js';
 import { createSessionObserver } from './sessions.js';
+import { createLocalCommands } from './local-commands.js';
 
 const contentTypes = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
@@ -38,9 +39,10 @@ async function bodyOf(request) {
   catch { throw new ApiError(400, 'INVALID_JSON', '올바른 JSON을 입력해 주세요.'); }
 }
 
-export function createHttpServer(office, { publicDir = resolve('public'), bridgeFile, clock } = {}) {
+export function createHttpServer(office, { publicDir = resolve('public'), bridgeFile, commandsDir, clock } = {}) {
   const root = resolve(publicDir);
   const observer = createSessionObserver({ file: bridgeFile, clock });
+  const commands = createLocalCommands({ directory: commandsDir, observer, office, clock });
   return createServer({ requestTimeout: 15000, headersTimeout: 10000 }, async (request, response) => {
     try {
       const host = request.headers.host;
@@ -56,6 +58,10 @@ export function createHttpServer(office, { publicDir = resolve('public'), bridge
       if (method === 'GET' && path === '/api/handoff') return json(response, 200, office.handoff(), { 'Content-Disposition': 'attachment; filename="wook-home-handoff.json"' });
       if (method === 'POST' && path === '/api/agents') return json(response, 201, office.hire(await bodyOf(request)));
       if (method === 'POST' && path === '/api/tasks') return json(response, 201, office.assign(await bodyOf(request)));
+      const sessionCommand = /^\/api\/local-sessions\/([a-f0-9-]{36})\/commands$/.exec(path);
+      if (method === 'POST' && sessionCommand) return json(response, 202, commands.submit(sessionCommand[1], await bodyOf(request)));
+      const commandMatch = /^\/api\/local-commands\/([a-f0-9-]{36})$/.exec(path);
+      if (method === 'GET' && commandMatch) return json(response, 200, commands.get(commandMatch[1]));
       const agentMatch = /^\/api\/agents\/([a-f0-9-]{36})$/.exec(path);
       if (method === 'PATCH' && agentMatch) return json(response, 200, office.editAgent(agentMatch[1], await bodyOf(request)));
       const taskMatch = /^\/api\/tasks\/([a-f0-9-]{36})\/(messages|approve|cancel)$/.exec(path);

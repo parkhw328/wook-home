@@ -4,7 +4,7 @@
 
 직원을 등록하고 업무를 맡겨 보세요. 질문에 답하고 결과를 승인하는 Commander의 작업 공간, **StackQueue Office**를 로컬 브라우저에서 만날 수 있습니다.
 
-현재는 **0.1.0-dev 로컬 체험 버전**입니다. 체험 직원은 실제 AI를 호출하지 않습니다. 기존 Codex 세션은 호스트 연결 프로그램으로 최근 활동을 관찰할 수 있습니다. 실제 AI에 대한 업무 지시·모델 변경과 다른 공급자 실행 연결은 준비 중입니다.
+현재는 **0.1.0-dev 개발 버전**입니다. 기존 Codex의 활동을 보고 선택한 세션에 실제 지시를 보낼 수 있습니다. 체험 직원으로 업무·질문·승인 흐름도 경험할 수 있습니다. 새 AI 세션 채용·모델 변경과 다른 공급자 연결은 준비 중입니다.
 
 ## 빠른 시작
 
@@ -18,14 +18,14 @@ docker compose up --build -d
 
 사무실 이름은 `.env`의 `OFFICE_NAME=StackQueue Office`로 바꿀 수 있습니다. `.env.example`을 참고하고 변경 후 `docker compose up -d`로 적용하세요.
 
-이미 실행 중인 Codex도 보고 싶다면 호스트에 Node.js 24.14 이상(27 미만)을 준비하고 별도 터미널에서 실행하세요. [Wiki의 관찰 범위와 사용법](https://github.com/parkhw328/wook-home/wiki/CLI)을 확인할 수 있습니다.
+이미 실행 중인 Codex에 지시하려면 호스트에 Node.js 24.14 이상(27 미만)과 `codex queue`를 지원하는 CLI를 준비하고 별도 터미널에서 실행하세요. [Wiki의 연결·명령 안내](https://github.com/parkhw328/wook-home/wiki/CLI)를 확인할 수 있습니다.
 
 ```powershell
-npm run bridge:codex -- --workspace .
+npm run bridge:codex -- --workspace . --allow-commands
 ```
 
 ```powershell
-docker compose stop    # 상태를 저장하고 중지
+docker compose stop    # 체험 상태를 저장하고 중지 (외부 Codex는 별도 종료)
 docker compose up -d   # 다시 실행한 뒤 화면에서 업무 재개
 ```
 

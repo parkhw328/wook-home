@@ -59,9 +59,19 @@
 - `sessions`: `{ id, name, provider: "openai", status, lastActivityAt }` 배열. ID는 Codex 세션 UUID, 이름은 ID 일부로 만든 중립적인 별칭이다. 사용자 대화 제목·내용·인증 정보·절대 경로는 전달하지 않는다.
 - 세션 상태: working(최근 활동 기록), idle(턴 종료 기록), interrupted(중단 기록), unknown(확인 필요), disconnected(연결 프로그램 갱신 중단).
 - 5초마다 수집한다. 연결 프로그램의 스냅샷이 20초 이상 갱신되지 않으면 disconnected, working 기록이 120초 이상 오래되면 unknown으로 표시한다. 프로세스 생존이나 프로젝트 완료를 판정하지 않는다.
-- 직원·업무 집계, SQLite 저장과 인계 JSON에는 관찰 세션을 넣지 않는다. 세션에 업무를 지시하거나 중단하는 API는 없다. 사무실 pause/resume도 호스트 CLI를 제어하지 않는다.
-- Docker는 상태 JSON 전용 폴더만 읽기 전용으로 연결한다. 상세 실행법과 관찰 범위는 [CLI 연결 안내](wiki/CLI.md)를 따른다.
+- 직원·업무 집계, SQLite 저장과 인계 JSON에는 관찰 세션을 넣지 않는다. 사무실 pause는 새 지시 접수를 막지만 이미 전달된 지시나 호스트 CLI를 중단하지 않는다.
+- Docker는 상태 JSON 폴더를 읽기 전용으로, 지시 폴더를 별도 읽기·쓰기로 연결한다. 상세 실행법은 [CLI 연결 안내](wiki/CLI.md)를 따른다.
+
+## 로컬 Codex 지시
+
+- `localSessions.control`: `{ enabled, reason, bridgeId? }`. reason은 ready / not_enabled / cli_unavailable / disconnected. 최신 연결 프로그램이 `--allow-commands`로 실행되고 공식 CLI의 큐 지원이 확인된 경우 활성화된다. 개별 전달 성공은 접수 결과로 확인한다.
+- `POST /api/local-sessions/:sessionId/commands`: `{ id, content }`. 클라이언트가 생성한 UUID와 1~4000자의 지시. 현재 프로젝트의 관찰 세션만 대상이다. 사무실 중지·관찰 연결 끊김·제어 미활성화는 409, 없는 세션은 404.
+- HTTP 202: `{ id, sessionId, status, createdAt, updatedAt, code? }`. 새 요청은 pending. 같은 ID·내용을 다시 보내면 기존 상태를 반환하며 다른 내용은 409 COMMAND_ID_CONFLICT. 응답 유실 시 같은 ID로 조회·재시도한다.
+- `GET /api/local-commands/:id`: 위 접수 객체. 지시 원문은 반환하지 않는다. 기록 없음은 404 COMMAND_NOT_FOUND.
+- status: pending(전달 대기), sending(CLI 호출 중), accepted(공식 큐 접수), failed(거절), unknown(전달 여부 불명), expired(만료). **accepted는 업무 완료가 아니다.** 결과·승인·중단은 원래 Codex에서 처리한다.
+- code: QUEUED / CLI_REJECTED / DELIVERY_UNCERTAIN / REQUEST_EXPIRED / SESSION_UNAVAILABLE / BRIDGE_RESTARTED. 원시 CLI 오류 출력은 전달하지 않는다.
+- 요청 유효 시간 60초, CLI 호출 제한 15초. 전달 전 원문을 지우며 중단된 sending 요청은 자동 재실행하지 않는다. 연결 프로그램 재시작 전 요청은 만료 처리한다. 접수 기록은 연결 프로그램 실행 중 7일 보관, 최대 1000개다.
 
 ## 현재 범위
 
-외부 AI 호출·제어, 토큰·비용 측정, 임의 호스트 프로세스 감지, GitHub 자동 인계, 클라우드 인증은 지원하지 않는다. Codex 로컬 기록 관찰과 공급자 실행 연결을 구분한다.
+기존 Codex에 대한 큐 지시 외에 신규 AI 세션 실행, 답변·승인·중단·모델 변경, 다른 공급자 제어, 토큰·비용 측정, 임의 프로세스 감지, GitHub 자동 인계와 클라우드 인증은 지원하지 않는다.

@@ -20,15 +20,15 @@ http://localhost:8080 에 접속합니다. 기본 사무실 이름은 StackQueue
 
 체험 직원은 실제 AI를 호출하지 않습니다. 외부 공급자 직원을 등록해도 실제 실행·모델 변경은 아직 지원하지 않습니다.
 
-## 3. 기존 Codex 보기
+## 3. 기존 Codex에 지시하기
 
 호스트에 Node.js 24.14 이상(27 미만)을 준비한 뒤 별도 터미널에서 실행합니다.
 
 ```powershell
-npm run bridge:codex -- --workspace .
+npm run bridge:codex -- --workspace . --allow-commands
 ```
 
-이 프로젝트의 최근 Codex 활동이 사무실 캐릭터와 **이 PC의 CLI 세션**에 나타납니다. 현재는 관찰 전용이며 지시와 중단은 원래 터미널에서 합니다. [연결 범위와 상태의 의미](CLI.md)를 확인하세요.
+이 프로젝트의 최근 Codex 활동이 사무실 캐릭터와 **이 PC의 CLI 세션**에 나타납니다. 세션을 선택해 지시를 보내고 접수 상태를 확인하세요. `codex queue`를 지원하는 CLI가 필요하며 답변·승인·중단은 원래 Codex에서 확인합니다. [연결 절차와 문제 해결](CLI.md)을 참고하세요.
 
 ## 4. 일을 마칠 때
 
