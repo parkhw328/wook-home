@@ -26,13 +26,15 @@ export const providers = [
     },
   },
   ...[
-    ['openai', 'OpenAI'],
-    ['claude', 'Claude'],
-    ['gemini', 'Google Gemini'],
-    ['meta', 'Meta Muse'],
-  ].map(([id, name]) => ({
+    ['openai', 'OpenAI', 'https://chatgpt.com/'],
+    ['claude', 'Claude', 'https://claude.ai/'],
+    ['gemini', 'Google Gemini', 'https://gemini.google.com/'],
+    ['meta', 'Meta Muse', 'https://www.meta.ai/'],
+  ].map(([id, name, webUrl]) => ({
     id,
     name,
+    webUrl,
+    guideUrl: 'https://github.com/parkhw328/wook-home/wiki/Providers',
     available: false,
     kind: 'external',
     reason: '연결 기능 준비 중입니다. 직원 정보만 등록할 수 있습니다.',

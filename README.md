@@ -35,6 +35,7 @@ docker compose up -d   # 다시 실행한 뒤 화면에서 업무 재개
 
 - [사용설명서 Wiki](https://github.com/parkhw328/wook-home/wiki)
 - [기존 Codex 연결](https://github.com/parkhw328/wook-home/wiki/CLI) · [StackQueue Blog](https://blog.naver.com/stack-queue)
+- [공급자 서비스 접속·연결 준비](https://github.com/parkhw328/wook-home/wiki/Providers)
 - [변경 이력](CHANGELOG.md) · [버전·릴리스 관리](docs/releases.md)
 - [요구사항](rules/requirements.md) · [프로젝트 규칙](rules/rules.md)
 - [개발·테스트 안내](docs/development.md) · [API 계약](docs/api.md)

@@ -65,6 +65,7 @@ docker compose up -d
 - [빠른 사무실 사용 안내](OfficeGuide.md)
 - [사무실 화면 사용법](UI.md)
 - [기존 Codex 관찰 연결](CLI.md)
+- [공급자 서비스 접속·연결 준비](Providers.md)
 - [프로젝트 소개](../../README.md)
 - [기능 요구사항](../../rules/requirements.md)
 - [변경 이력](../../CHANGELOG.md)

@@ -5,7 +5,7 @@ import {
 } from './commands.mjs';
 import {
   escapeHtml as esc, statusLabel, statusClass, isOpenTask, needsAttention,
-  officeCounts, taskUnavailableReason, filterTasks, displayTime, normalizeState, programUrl,
+  officeCounts, taskUnavailableReason, filterTasks, displayTime, normalizeState, programUrl, providerLinks,
   officeName, observedSessionStatus, sessionStatusLabel, characterMotion, orderedLocalSessions,
 } from './model.mjs';
 
@@ -60,6 +60,7 @@ let modalContext = null;
 let modalTrigger = null;
 let sceneSignature = '';
 let sessionsSignature = '';
+let providersSignature = '';
 const commandDeliveries = new Map();
 const commandDrafts = new Map();
 const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -169,8 +170,14 @@ function renderAgents() {
   renderCharacters();
   $('#agent-list').innerHTML = state.agents.length ? state.agents.map((agent) => `<button type="button" class="agent-card" data-agent="${esc(agent.id)}">${avatar(agent)}<span class="agent-info"><strong>${esc(agent.name)}</strong><small>${esc(agent.role)}</small></span>${badge(agent.status)}</button>`).join('')
     : emptyState('첫 동료를 기다리고 있어요', '체험용 직원을 채용해 업무 흐름을 시작해 보세요.', 'people');
+  const signature = JSON.stringify(state.providers);
+  if (signature === providersSignature) return;
+  providersSignature = signature;
   const symbols = { openai: '◎', claude: '✳', gemini: '✧', meta: '∞' };
-  $('#provider-list').innerHTML = state.providers.filter((provider) => provider.kind === 'external').map((provider) => `<div class="provider-item" title="${esc(provider.reason)}"><span class="provider-symbol" aria-hidden="true">${symbols[provider.id] || '◇'}</span><strong>${esc(provider.name)}</strong><small>${provider.available ? '연결 가능' : '연동 준비 중'}</small></div>`).join('');
+  $('#provider-list').innerHTML = state.providers.filter((provider) => provider.kind === 'external').map((provider) => {
+    const links = providerLinks(provider);
+    return `<div class="provider-item"><div class="provider-heading"><span class="provider-symbol" aria-hidden="true">${symbols[provider.id] || '◇'}</span><strong>${esc(provider.name)}</strong></div><small>${provider.available ? '사무실 연결 가능' : '사무실 연동 준비 중'}</small>${links.webUrl || links.guideUrl ? `<div class="provider-actions">${links.webUrl ? `<a class="button button-small" href="${links.webUrl}" target="_blank" rel="noopener noreferrer" aria-label="${esc(links.label)} 공식 서비스 (새 탭)">${esc(links.label)} 열기 <span aria-hidden="true">↗</span></a>` : ''}${links.guideUrl ? `<a class="inline-link" href="${links.guideUrl}" target="_blank" rel="noopener noreferrer" aria-label="${esc(provider.name)} 연결 안내 (새 탭)">연결 안내 ↗</a>` : ''}</div>` : ''}</div>`;
+  }).join('');
 }
 
 function renderSessions() {

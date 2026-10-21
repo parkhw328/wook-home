@@ -4,4 +4,5 @@
 - [빠른 사무실 사용 안내](OfficeGuide.md)
 - [화면 사용법](UI.md)
 - [기존 Codex 연결](CLI.md)
+- [공급자 접속·연결 준비](Providers.md)
 - [프로젝트 저장소](https://github.com/parkhw328/wook-home)

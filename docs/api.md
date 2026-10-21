@@ -25,7 +25,8 @@
 ## 공급자와 직원
 
 - `GET /api/providers`: 공급자 객체 배열.
-- 공급자: `{ id, name, available, kind, reason, models, reasoningEfforts, capabilities }`. kind는 demo 또는 external. capabilities는 `{ createSession, observeSession, resumeSession, interrupt, changeModel }` 불리언 객체.
+- 공급자: `{ id, name, available, kind, reason, models, reasoningEfforts, capabilities, webUrl?, guideUrl? }`. kind는 demo 또는 external. capabilities는 `{ createSession, observeSession, resumeSession, interrupt, changeModel }` 불리언 객체.
+- 외부 공급자의 `webUrl`은 공식 서비스 접속 주소, `guideUrl`은 공급자 연결 안내 Wiki다. 고정 HTTPS 링크이며 인증·연동 상태를 의미하지 않는다. 링크를 열어도 `available`이나 capabilities는 바뀌지 않는다.
 - 공급자 ID: demo, openai, claude, gemini, meta. 초기에는 demo만 available=true. 외부 공급자는 아직 미구현이며 인증됨으로 표시하지 않는다.
 - demo의 모델은 `local-demo`, 추론 강도는 `none`. 외부 공급자 models/ reasoningEfforts는 빈 배열. 미확인 모델 목록을 만들어 내지 않는다.
 - `POST /api/agents`: `{ name, role, provider, model?, reasoningEffort? }`. 이름 1~40자, 역할 1~120자. 외부 공급자는 model과 reasoningEffort를 비워 등록만 가능하다.

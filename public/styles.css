@@ -184,11 +184,16 @@ main { max-width: 1640px; padding: 36px; margin: 0 auto; }
 .session-card { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; padding: 15px 0; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line); }
 .session-card:last-child { border-bottom: 0; }
 .session-symbol { display: grid; place-items: center; width: 38px; height: 38px; flex: none; border: 1px solid #e7c4ba; border-radius: 9px; color: #a54a47; background: #fff4ec; }
-.provider-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 20px; padding: 0 22px 18px; }
-.provider-item { display: grid; grid-template-columns: 24px minmax(0, 1fr); column-gap: 8px; align-items: center; }
-.provider-symbol { font-size: 22px; color: #9a7e76; grid-row: 1 / 3; }
+.provider-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 22px 18px; }
+.provider-item { min-width: 0; padding: 15px; border: 1px solid var(--line); border-radius: 10px; background: #fdfaf7; }
+.provider-heading { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.provider-symbol { font-size: 22px; color: #9a7e76; flex: none; line-height: 1.5; }
 .provider-item strong { font-size: 12px; font-weight: 550; white-space: nowrap; }
-.provider-item small { font-size: 10px; color: var(--muted); white-space: nowrap; }
+.provider-item small { display: block; margin-top: 4px; font-size: 10px; color: var(--muted); white-space: nowrap; }
+.provider-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 13px; }
+.provider-actions a { white-space: nowrap; }
+.provider-actions .button { min-height: 35px; font-size: 11px; padding: 7px 10px; }
+.provider-actions .inline-link { font-size: 11px; }
 .empty-state { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; padding: 28px 18px; text-align: center; border: 1px dashed #e2d5cd; border-radius: 12px; background: #fcf9f5; }
 .empty-icon { display: grid; place-items: center; width: 38px; height: 38px; color: #a29b8d; margin-bottom: 10px; }
 .empty-icon .icon { width: 24px; height: 24px; }
@@ -628,8 +633,8 @@ select { padding-right: 30px; text-overflow: ellipsis; }
   .session-card > .status { grid-column: 2; justify-self: start; margin-top: 4px; }
   .session-info strong { font-size: 12px; }
   .session-info small { font-size: 10px; }
-  .provider-list { column-gap: 12px; }
-  .provider-item strong { font-size: 11px; }
+  .provider-list { grid-template-columns: minmax(0, 1fr); }
+  .provider-item strong { font-size: 12px; }
   .notice { flex-wrap: wrap; padding: 14px; }
   .notice > .button { margin-left: 33px; }
   .program-section { margin-top: 28px; }

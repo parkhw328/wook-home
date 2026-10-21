@@ -99,6 +99,24 @@ export function programUrl(program) {
   return program?.url === PROGRAM_URLS[program?.name] ? program.url : null;
 }
 
+const PROVIDER_DESTINATIONS = Object.freeze({
+  openai: { label: 'ChatGPT', webUrl: 'https://chatgpt.com/' },
+  claude: { label: 'Claude', webUrl: 'https://claude.ai/' },
+  gemini: { label: 'Gemini', webUrl: 'https://gemini.google.com/' },
+  meta: { label: 'Meta AI', webUrl: 'https://www.meta.ai/' },
+});
+const PROVIDER_GUIDE = 'https://github.com/parkhw328/wook-home/wiki/Providers';
+
+export function providerLinks(provider) {
+  if (!Object.hasOwn(PROVIDER_DESTINATIONS, provider?.id)) return {};
+  const destination = PROVIDER_DESTINATIONS[provider.id];
+  return {
+    label: destination.label,
+    webUrl: provider.webUrl === destination.webUrl ? destination.webUrl : null,
+    guideUrl: provider.guideUrl === PROVIDER_GUIDE ? PROVIDER_GUIDE : null,
+  };
+}
+
 export function officeName(office) {
   return typeof office?.name === 'string' && office.name.trim() ? office.name.trim() : 'StackQueue Office';
 }

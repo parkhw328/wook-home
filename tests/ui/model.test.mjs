@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   escapeHtml, statusLabel, statusClass, officeCounts, taskUnavailableReason,
-  filterTasks, normalizeState, programUrl,
+  filterTasks, normalizeState, programUrl, providerLinks,
   officeName, observedSessionStatus, sessionStatusLabel, characterMotion, orderedLocalSessions,
 } from '../../public/model.mjs';
 
@@ -120,4 +120,26 @@ test('new CLI activity does not move the session a user is about to select', () 
   assert.deepEqual(orderedLocalSessions({ sessions: first }).map((session) => session.id), orderedLocalSessions({ sessions: next }).map((session) => session.id));
   assert.equal(first[0].id, 'session-b');
   assert.deepEqual(orderedLocalSessions(undefined), []);
+});
+
+test('provider cards only open each agreed service and the published connection guide', () => {
+  const guideUrl = 'https://github.com/parkhw328/wook-home/wiki/Providers';
+  const sources = [
+    ['openai', 'ChatGPT', 'https://chatgpt.com/'],
+    ['claude', 'Claude', 'https://claude.ai/'],
+    ['gemini', 'Gemini', 'https://gemini.google.com/'],
+    ['meta', 'Meta AI', 'https://www.meta.ai/'],
+  ];
+  for (const [id, label, webUrl] of sources) {
+    const provider = { id, webUrl, guideUrl, available: false };
+    assert.deepEqual(providerLinks(provider), { label, webUrl, guideUrl });
+    assert.equal(provider.available, false);
+    for (const invalid of ['javascript:alert(1)', 'https://chatgpt.com.example.com/', `${webUrl}unverified`]) {
+      assert.equal(providerLinks({ ...provider, webUrl: invalid }).webUrl, null);
+    }
+    assert.equal(providerLinks({ ...provider, guideUrl: `${guideUrl}-unverified` }).guideUrl, null);
+  }
+  assert.equal(providerLinks({ id: 'openai', webUrl: 'https://claude.ai/' }).webUrl, null);
+  assert.deepEqual(providerLinks({ id: 'constructor', webUrl: 'https://chatgpt.com/' }), {});
+  assert.equal(providerLinks({ id: 'openai' }).webUrl, null);
 });
