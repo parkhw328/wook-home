@@ -1,5 +1,6 @@
 import { ROOMS, FLOORS, roomById, routeBetween, roomTasks, taskRoom, occupantRoom, isHall, hallForFloor } from './rooms.mjs';
 import { OfficeScene } from './office-3d.mjs';
+import { OfficeViewControls } from './office-view.mjs';
 import { ConversationReader, conversationMarkup } from './conversation.mjs';
 import { escapeHtml as esc, statusLabel, statusClass, displayTime, orderedLocalSessions, unassignedLocalSessions, observedSessionStatus, sessionStatusLabel, taskUnavailableReason } from './model.mjs';
 
@@ -18,6 +19,7 @@ export class OfficeWorkspace {
     this.find('#floor-navigation').innerHTML = '<button type="button" data-floor="0" class="floor-tab is-current" aria-pressed="true"><strong>전체 층</strong><span>사무실 둘러보기</span></button>' + FLOORS.map((floor) => `<button type="button" data-floor="${floor.id}" class="floor-tab" aria-pressed="false"><strong>${floor.id}F <span>${floor.title}</span></strong><span>${floor.description}</span></button>`).join('');
     this.find('#room-hotspots').innerHTML = ROOMS.map((room) => `<button type="button" class="room-hotspot room-${room.id}" data-room="${room.id}" aria-label="${room.floor}층 ${room.name} 입장"><span>${room.number}</span><strong>${room.name}</strong><span class="room-count" data-room-count="${room.id}">0</span></button>`).join('');
     this.scene = new OfficeScene(this.find('#office-scene'));
+    this.viewControls = new OfficeViewControls(root, this.scene);
     this.find('#terminal-search').addEventListener('input', () => this.renderConversation(true));
     this.find('#terminal-role').addEventListener('change', () => this.renderConversation(true));
     this.find('#terminal-latest').addEventListener('click', () => { const log = this.find('#terminal-log'); log.scrollTop = log.scrollHeight; });
@@ -62,6 +64,7 @@ export class OfficeWorkspace {
 
   focusFloor(floor) {
     this.scene.focusFloor(floor);
+    this.viewControls.refresh();
     for (const button of this.root.querySelectorAll('[data-floor]')) {
       const active = Number(button.dataset.floor) === floor;
       button.classList.toggle('is-current', active); button.setAttribute('aria-pressed', String(active));

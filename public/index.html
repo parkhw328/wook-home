@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/workspace.css">
     <script type="module" src="/app.js"></script>
     <link rel="stylesheet" href="/discovery.css">
+    <link rel="stylesheet" href="/office-view.css">
     <link rel="stylesheet" href="/readability.css">
     <script type="module" src="/discovery.mjs"></script>
   </head>
@@ -49,7 +50,17 @@
                 <section class="panel floor-panel" aria-labelledby="floor-view-title">
                   <div class="panel-heading"><div><p class="eyebrow">STACKQUEUE / THE OFFICE</p><h2 id="floor-view-title">세 개의 층, 하나의 팀</h2></div><span class="office-meta" id="office-meta">사무실을 여는 중</span></div>
                   <nav id="floor-navigation" class="floor-navigation" aria-label="층별 보기"></nav>
-                  <nav id="room-navigation" class="room-navigation" aria-label="방 선택"></nav>
+                  <div class="scene-toolbar">
+                    <nav id="room-navigation" class="room-navigation" aria-label="방 선택"></nav>
+                    <div class="scene-controls" role="group" aria-label="사무실 보기 조절">
+                      <button type="button" class="scene-control zoom-button" data-scene-action="out" aria-label="사무실 축소">−</button><output id="office-zoom" aria-label="사무실 확대율">100%</output><button type="button" class="scene-control zoom-button" data-scene-action="in" aria-label="사무실 확대">+</button>
+                      <button type="button" class="scene-control" data-scene-action="fit">화면 맞춤</button>
+                      <button type="button" class="scene-control" data-scene-action="paths" aria-pressed="true">동선 표시</button>
+                      <button type="button" class="scene-control" data-scene-action="work">업무 패널 ↓</button>
+                      <button type="button" class="scene-control fullscreen-button" id="office-fullscreen" data-scene-action="fullscreen" aria-pressed="false"><span>전체화면</span> ⛶</button>
+                    </div>
+                    <p id="office-view-status" class="sr-only" role="status"></p>
+                  </div>
                   <div class="floor-scroll" tabindex="0" aria-label="입체 사무실. 좁은 화면에서는 좌우로 이동할 수 있습니다.">
                     <div class="office-scene" id="office-scene">
                       <div id="office-canvas" class="office-canvas"></div>
@@ -60,7 +71,7 @@
                       <span class="floor-label" data-floor-label="3">3F</span><span class="floor-label" data-floor-label="2">2F</span><span class="floor-label" data-floor-label="1">1F</span>
                     </div>
                   </div>
-                  <div class="floor-footer"><p id="room-location" role="status">현재 위치 · 복도</p><button class="motion-toggle" id="motion-toggle" type="button" aria-pressed="true" aria-label="캐릭터 움직임">움직임 켜짐</button></div>
+                  <div class="floor-footer"><p id="room-location" role="status">현재 위치 · 복도</p><div id="scene-legend" class="scene-legend"><span><i aria-hidden="true"></i>복도 동선</span><span><i class="active-route" aria-hidden="true"></i>현재 이동 경로</span></div><button class="motion-toggle" id="motion-toggle" type="button" aria-pressed="true" aria-label="캐릭터 움직임">움직임 켜짐</button></div>
                   <p class="scene-caption">보행은 공간 표현입니다. 실제 업무 상태는 동료를 선택해 확인하세요.</p>
                   <div id="scene-empty" class="floor-invite"><span>첫 동료와 업무를 시작하세요.</span><button type="button" id="scene-hire-button" class="text-link">체험 직원 채용 ↗</button></div>
                 </section>

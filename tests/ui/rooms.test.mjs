@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ROOMS, HALL, routeBetween, roomTasks, taskRoom, worldPoint, isHall, roomById, hallForFloor, CORRIDOR_Z, LIFT_X } from '../../public/rooms.mjs';
+import { ROOMS, HALL, routeBetween, roomTasks, taskRoom, worldPoint, isHall, roomById, hallForFloor, CORRIDOR_Z, LIFT_X, DESK_X, occupantPosition, pathToDoor } from '../../public/rooms.mjs';
 import { ConversationReader, conversationMarkup, filterMessages } from '../../public/conversation.mjs';
 
 test('every floor and room route uses doors, corridors and the open lift shaft without crossing walls or slabs', () => {
@@ -27,6 +27,24 @@ test('leaving a room stays on the same floor and each mandatory space is assigne
     const hall = hallForFloor(room.floor);
     assert.equal(roomById(hall.id).floor, room.floor);
     assert.ok(routeBetween(room.id, hall.id).every((point) => point.y === worldPoint(room).y));
+  }
+});
+
+test('both desk rows reach the door through clear aisles without crossing a desk', () => {
+  for (let seat = 0; seat < DESK_X.length * 2; seat += 1) {
+    const home = occupantPosition('office', seat);
+    const route = pathToDoor('office', home);
+    assert.deepEqual(route[0], home);
+    assert.deepEqual(route.at(-1), worldPoint(roomById('office')));
+    for (let i = 1; i < route.length; i += 1) {
+      const [a, b] = [route[i - 1], route[i]];
+      assert.equal(['x', 'y', 'z'].filter((axis) => a[axis] !== b[axis]).length, 1);
+      for (const x of DESK_X) for (const z of [-4.8, -.5]) {
+        const crosses = Math.max(a.x, b.x) > x - 1.075 && Math.min(a.x, b.x) < x + 1.075
+          && Math.max(a.z, b.z) > z - .525 && Math.min(a.z, b.z) < z + .525;
+        assert.equal(crosses, false, `seat ${seat} crosses desk ${x}, ${z}`);
+      }
+    }
   }
 });
 

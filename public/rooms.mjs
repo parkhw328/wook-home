@@ -1,18 +1,20 @@
 // World coordinates: x = across a floor, y = elevation, z = toward the corridor.
-export const FLOOR_HEIGHT = 4.4;
-export const CORRIDOR_Z = 2.35;
-export const LIFT_X = -5.9;
+export const FLOOR_HEIGHT = 3.6;
+export const CORRIDOR_Z = 2.8;
+export const LIFT_X = -15.1;
+export const BUILDING = Object.freeze({ left: -16.2, right: 16, back: -7.5, front: 4.05, roomsLeft: -14, split: 1 });
+export const DESK_X = Object.freeze([-12.3, -9.5, -6.7, -3.9, -1.1, 3.7, 6.5, 9.3, 12.1]);
 export const FLOORS = Object.freeze([
   { id: 3, title: '리더십', description: '회의실 · 대표이사실' },
   { id: 2, title: '워크스페이스', description: '사무실 · 동료의 데스크' },
   { id: 1, title: '라운지', description: '휴게실 · 다과실 · 로비' },
 ]);
 export const ROOMS = Object.freeze([
-  { id: 'office', name: '사무실', number: '201', floor: 2, subtitle: '업무 · CLI 세션', description: '동료의 책상에서 업무를 맡기고, CLI 대화를 이어서 확인하세요.', x: 1.1, z: .8, doorZ: 1.25, left: -4.8, right: 6.6 },
-  { id: 'meeting', name: '회의실', number: '301', floor: 3, subtitle: '질문 · 논의', description: '답변을 기다리는 업무를 열고 동료의 질문에 답하세요.', x: -2.35, z: .7, doorZ: 1.25, left: -4.8, right: .15 },
-  { id: 'executive', name: '대표이사실', number: '302', floor: 3, subtitle: '업무보고 · 승인', description: '진행 상황과 결과를 보고받고, 검토한 결과를 승인하세요.', x: 3.4, z: .95, doorZ: 1.25, left: .35, right: 6.6 },
-  { id: 'lounge', name: '휴게실', number: '101', floor: 1, subtitle: '휴식 · 대기', description: '업무를 기다리는 동료가 모이는 공간입니다. 입장과 퇴실은 실제 실행을 바꾸지 않습니다.', x: -2.35, z: .7, doorZ: 1.25, left: -4.8, right: .15 },
-  { id: 'pantry', name: '다과실', number: '102', floor: 1, subtitle: '커피 · 사무실 소식', description: '잠시 쉬어 가며 사무실의 최근 소식을 확인하세요.', x: 3.4, z: .7, doorZ: 1.25, left: .35, right: 6.6 },
+  { id: 'office', name: '사무실', number: '201', floor: 2, subtitle: '업무 · CLI 세션', description: '동료의 책상에서 업무를 맡기고, CLI 대화를 이어서 확인하세요.', x: 1.8, z: .9, doorZ: 1.55, left: -14, right: 15.8 },
+  { id: 'meeting', name: '회의실', number: '301', floor: 3, subtitle: '질문 · 논의', description: '답변을 기다리는 업무를 열고 동료의 질문에 답하세요.', x: -6.5, z: .9, doorZ: 1.55, left: -14, right: .9 },
+  { id: 'executive', name: '대표이사실', number: '302', floor: 3, subtitle: '업무보고 · 승인', description: '진행 상황과 결과를 보고받고, 검토한 결과를 승인하세요.', x: 8.5, z: .9, doorZ: 1.55, left: 1.1, right: 15.8 },
+  { id: 'lounge', name: '휴게실', number: '101', floor: 1, subtitle: '휴식 · 대기', description: '업무를 기다리는 동료가 모이는 공간입니다. 입장과 퇴실은 실제 실행을 바꾸지 않습니다.', x: -6.5, z: .9, doorZ: 1.55, left: -14, right: .9 },
+  { id: 'pantry', name: '다과실', number: '102', floor: 1, subtitle: '커피 · 사무실 소식', description: '잠시 쉬어 가며 사무실의 최근 소식을 확인하세요.', x: 8.5, z: .9, doorZ: 1.55, left: 1.1, right: 15.8 },
 ]);
 export function hallForFloor(floor = 1) {
   const level = [1, 2, 3].includes(Number(floor)) ? Number(floor) : 1;
@@ -54,6 +56,17 @@ export function occupantRoom(occupant) {
 }
 export function occupantPosition(roomId, index) {
   const room = roomById(roomId);
-  if (roomId === 'office') return worldPoint(room, [-3.35, -.65, 2.05, 4.75][index % 4], index < 4 ? .75 : -1.05);
-  return worldPoint(room, room.x + (index % 2 ? .8 : -.8), .7);
+  if (roomId === 'office') return worldPoint(room, DESK_X[[0, 2, 4, 6, 8, 1, 3, 5, 7][index % DESK_X.length]] - .3, index < DESK_X.length ? .7 : -3.9);
+  return worldPoint(room, room.x + (index % 2 ? 1.1 : -1.1), .9);
+}
+
+// Walk from a desk through the open row aisle, then the central door aisle.
+export function pathToDoor(roomId, position) {
+  const room = roomById(roomId);
+  const points = [{ ...position }];
+  if (position.z >= room.doorZ) points.push(worldPoint(room, position.x, CORRIDOR_Z), worldPoint(room, room.x, CORRIDOR_Z));
+  else if (roomId === 'office' && position.z < -1) points.push(worldPoint(room, position.x, -3.25), worldPoint(room, room.x, -3.25));
+  else points.push(worldPoint(room, position.x, room.z));
+  points.push(worldPoint(room));
+  return points.filter((point, index) => !index || ['x', 'y', 'z'].some((axis) => point[axis] !== points[index - 1][axis]));
 }

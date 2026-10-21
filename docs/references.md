@@ -10,6 +10,16 @@
 
 Pixel Agents의 [코드 라이선스는 MIT](https://github.com/pixel-agents-hq/pixel-agents/blob/main/LICENSE)이며, 배포 자산은 도입 시 개별 출처도 확인해야 한다. Star Office UI는 [코드 MIT·아트 비상업용 조건](https://github.com/ringhyacinth/Star-Office-UI/blob/master/LICENSE)을 구분한다. 현재 사무실 그래픽은 자체 작성 자산을 사용한다.
 
+## 가로 배치와 입체 공간 보정 — 2026-10-22
+
+| 자료 | 참고한 구성 | 적용 결정 |
+| --- | --- | --- |
+| [AI Office](https://github.com/Gaurav2693/ai-office) | 입체 사무실, 움직이는 에이전트, 유리로 구분한 회의 공간 | 가구 높이와 방의 깊이가 보이는 층별 사선 보기, 책상 사이 통로를 지나는 보행 |
+| [Random Office Generator](https://github.com/designtology/random_office_generator) | 긴 복도와 분기, 방 표시와 표시 요소 전환 | 가로 복도를 연결 축으로 삼고 문까지 분기 표시, 동선 켜기·끄기 |
+| [Three.js OrthographicCamera](https://threejs.org/docs/pages/OrthographicCamera.html) | 투영 범위와 확대율 | 창 비율에 맞는 건물 배치와 화면 맞춤, 글자 크기를 유지하는 장면 확대 |
+
+공간 구성의 아이디어를 참고했으며 외부 코드·이미지·캐릭터 자산이나 의존성을 추가하지 않았다. 장면은 기존 Three.js와 자체 작성 가구·캐릭터로 구성한다. 전체 보기는 층 사이 관계를, 한 층 보기는 내부 깊이와 동선을 보여 주도록 구분한다.
+
 ## 이번 설계의 연결 경계
 
 브라우저 → 로컬 HTTP API → 전용 지시 폴더 → 호스트 연결 프로그램 → 공식 Codex 큐 순서다. 컨테이너에는 호스트 인증 폴더나 범용 셸 실행 권한을 주지 않는다. 지시 본문은 셸 문자열에 결합하지 않고 별도 인수로 전달한다.
