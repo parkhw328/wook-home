@@ -5,7 +5,10 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { collectSessions } from './lib/codex-observer.mjs';
+import { publishConversations } from './lib/codex-conversations.mjs';
 import { createCommandPump, findCodex, sendToCodex, supportsQueue } from './lib/codex-commands.mjs';
+import { createCliLifecycle } from './lib/cli-lifecycle.mjs';
+import { collectCliTools } from './lib/cli-tools.mjs';
 
 async function lockBridge(file) {
   try { await writeFile(file, String(process.pid), { flag: 'wx', mode: 0o600 }); }
@@ -30,6 +33,7 @@ async function main() {
     'sessions-dir': { type: 'string' },
     'output-dir': { type: 'string' },
     'allow-commands': { type: 'boolean', default: false },
+    'include-conversations': { type: 'boolean', default: false },
     'codex-bin': { type: 'string' },
     remote: { type: 'string' },
     'remote-auth-token-env': { type: 'string' },
@@ -38,7 +42,7 @@ async function main() {
     help: { type: 'boolean', default: false },
   } });
   if (values.help) {
-    process.stdout.write('Usage: npm run bridge:codex -- --workspace . [--allow-commands] [--once]\nOptions: --codex-bin <executable-or-js> --remote <Codex endpoint> --remote-auth-token-env <variable-name>\nStop: npm run bridge:codex -- --stop\nObservation is read-only by default; --allow-commands enables the official Codex queue. See docs/wiki/CLI.md.\n');
+    process.stdout.write('Usage: npm run bridge:codex -- --workspace . [--allow-commands] [--include-conversations] [--once]\nOptions: --codex-bin <executable-or-js> --remote <Codex endpoint> --remote-auth-token-env <variable-name>\nStop: npm run bridge:codex -- --stop\nObservation is read-only by default; --allow-commands enables the official Codex queue. --include-conversations exports limited, redacted public dialogue from this workspace to the local UI. See docs/wiki/CLI.md.\n');
     return;
   }
   if (values['remote-auth-token-env'] && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(values['remote-auth-token-env'])) throw new Error('Invalid environment variable name.');
@@ -53,7 +57,6 @@ async function main() {
     return;
   }
   await access(workspace);
-  await access(sessionsDir);
   await mkdir(output, { recursive: true });
   const lock = join(output, '.bridge.lock');
   await lockBridge(lock);
@@ -66,7 +69,10 @@ async function main() {
     const enabled = Boolean(cli && await supportsQueue(cli));
     const control = { enabled, bridgeId, reason: enabled ? 'ready' : values['allow-commands'] ? 'cli_unavailable' : 'not_enabled' };
     if (values['allow-commands']) process.stdout.write(enabled ? 'Codex command queue enabled.\n' : 'Codex command queue unavailable; observation only. Check codex queue --help.\n');
-    const collect = () => collectSessions({ sessionsDir, workspace });
+    const collect = () => collectSessions({ sessionsDir, workspace, includeConversations: values['include-conversations'] });
+    const lifecycle = createCliLifecycle();
+    const conversationsDir = join(output, 'conversations');
+    if (values['include-conversations']) await mkdir(conversationsDir, { recursive: true, mode: 0o700 });
     const pump = createCommandPump({ directory: commandsDir, bridgeId,
       getSessions: async () => (await collect()).sessions,
       send: (id, content) => sendToCodex(cli, id, content, workspace, values.remote, values['remote-auth-token-env']),
@@ -85,7 +91,10 @@ async function main() {
       try { await access(stopFile); stopping = true; break; } catch { /* No stop request. */ }
       try {
         if (Date.now() - lastCollection >= 5000) {
-          snapshot = { ...await collect(), control };
+          const [observed, processes, cliTools] = await Promise.all([collect(), lifecycle.poll(), collectCliTools()]);
+          snapshot = { ...observed, generatedAt: new Date().toISOString(), control, processes, cliTools };
+          snapshot.conversations = { enabled: values['include-conversations'] };
+          await publishConversations(snapshot, conversationsDir, values['include-conversations']);
           await writeFile(temporary, JSON.stringify(snapshot) + '\n', { mode: 0o644 });
           await rename(temporary, destination);
           lastCollection = Date.now();
@@ -95,7 +104,7 @@ async function main() {
         }).finally(() => { pending = null; });
         if (previouslyFailed) process.stdout.write('Codex observation resumed.\n');
         previouslyFailed = false;
-        if (values.once) process.stdout.write(`Observed ${snapshot.sessions.length} session(s). No conversation text exported.\n`);
+        if (values.once) process.stdout.write(`Observed ${snapshot.sessions.length} session(s). ${values['include-conversations'] ? 'Limited, redacted conversations exported locally.' : 'No conversation text exported.'}\n`);
       } catch {
         if (!previouslyFailed) process.stderr.write('Codex observation unavailable. Check local directory access.\n');
         previouslyFailed = true;
@@ -106,6 +115,8 @@ async function main() {
     await pending;
     if (snapshot && !values.once) {
       snapshot.control = { enabled: false, reason: 'not_enabled' };
+      snapshot.processes.status = 'unavailable';
+      snapshot.processes.items = snapshot.processes.items.map((item) => item.status === 'running' ? { ...item, status: 'unknown' } : item);
       await writeFile(temporary, JSON.stringify(snapshot) + '\n', { mode: 0o644 });
       await rename(temporary, destination);
     }

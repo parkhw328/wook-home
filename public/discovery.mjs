@@ -22,7 +22,7 @@ export function filterEntries(entries, source, provider) {
 }
 
 export function checksMarkup(checks) {
-  return checks.map((check) => `<article class="discovery-card"><div><strong>${esc(check.name)}</strong><p>${esc(check.message)}</p><small>${esc(check.action)}</small></div><span class="subtle-tag">${esc(check.statusLabel)}</span></article>`).join('');
+  return checks.map((check) => `<article class="discovery-card"><div><strong>${esc(check.name)}</strong><p>${esc(check.message)}</p><small>${esc(check.action)}<br>확인 시각: ${check.checkedAt && Number.isFinite(Date.parse(check.checkedAt)) ? esc(displayTime(check.checkedAt)) : '미점검'}</small></div><span class="subtle-tag">${esc(check.statusLabel)}</span></article>`).join('');
 }
 
 function initialize() {
@@ -88,12 +88,13 @@ function initialize() {
     finally { reading = false; render(); }
     if (!checking) {
       try { checkState = await apiRequest('/connections'); renderChecks(); }
-      catch { find('#discovery-check-status').textContent = '연결 점검 상태를 가져오지 못했습니다. 서버 연결을 확인하세요.'; }
+      catch { find('#discovery-checks').hidden = true; find('#discovery-check-status').textContent = '연결 점검 상태를 가져오지 못했습니다. 서버 연결을 확인하세요.'; }
     }
   }
 
   function renderChecks() {
     if (!checkState || !Array.isArray(checkState.checks)) return;
+    find('#discovery-checks').hidden = false;
     find('#discovery-checks').innerHTML = checksMarkup(checkState.checks);
     find('#discovery-check-status').textContent = checkState.checking ? '연결 상태를 점검하고 있습니다.'
       : checkState.checkedAt ? `마지막 점검 ${displayTime(checkState.checkedAt)}${checkState.nextCheckAt ? ` · 다음 점검 가능 ${displayTime(checkState.nextCheckAt)}` : ''}`
@@ -106,7 +107,7 @@ function initialize() {
     find('#discovery-check').disabled = true;
     find('#discovery-check-status').textContent = '연결 상태를 점검하고 있습니다.';
     try { checkState = await apiRequest('/connections/check', { method: 'POST', body: {} }); renderChecks(); }
-    catch (error) { find('#discovery-check-status').textContent = error.message; }
+    catch (error) { find('#discovery-check-status').textContent = `${error.message} 아래는 마지막 수신 결과입니다.`; }
     finally { checking = false; find('#discovery-check').disabled = false; }
   });
 
@@ -163,7 +164,8 @@ function initialize() {
   for (const id of ['#discovery-source', '#discovery-provider']) find(id).addEventListener('change', render);
   window.addEventListener('storage', (event) => { if (event.key === ENABLED_KEY) setEnabled(event.newValue === 'true'); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { void read(); void collect(); } });
-  setInterval(() => { void read(); void collect(); }, 15000);
+  setInterval(() => { void read(); }, 5000);
+  setInterval(() => { void collect(); }, 15000);
   render();
   void read();
   void collect();

@@ -54,7 +54,7 @@ npm run bridge:codex -- --workspace .
 
 ## 검증 범위
 
-자동 검증은 네 공급자의 복수 탭·동일 대화 중복·탭 닫기·허용 도메인·새 대화·연결 중단과 복구·프로필 분리·원문 제외·HTTP origin 검증·인계 제외를 확인합니다. 실제 Chrome 설치와 실시간 표시 결과는 [검증 기록](../validation.md)에 별도로 기록합니다.
+자동 검증은 네 공급자의 복수 탭·동일 대화 중복·탭 닫기·허용 도메인·새 대화·연결 중단과 복구·프로필 분리·원문 제외·HTTP origin 검증·인계 제외를 확인합니다. 실제 Chrome 설치와 실시간 표시 결과는 [검증 기록](https://github.com/parkhw328/wook-home/blob/main/docs/validation.md)에 별도로 기록합니다.
 
 설계 근거: [Chrome 탭 API와 사이트 권한](https://developer.chrome.com/docs/extensions/reference/api/tabs), [로컬 페이지 콘텐츠 스크립트](https://developer.chrome.com/docs/extensions/develop/concepts/content-scripts).
 

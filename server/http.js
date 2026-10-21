@@ -5,6 +5,8 @@ import { ApiError } from './office.js';
 import { VERSION, providers } from './catalog.js';
 import { createSessionObserver } from './sessions.js';
 import { createLocalCommands } from './local-commands.js';
+import { createDiscovery } from './discovery.js';
+import { createConnections } from './connections.js';
 
 const contentTypes = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
@@ -43,6 +45,8 @@ export function createHttpServer(office, { publicDir = resolve('public'), bridge
   const root = resolve(publicDir);
   const observer = createSessionObserver({ file: bridgeFile, clock });
   const commands = createLocalCommands({ directory: commandsDir, observer, office, clock });
+  const discovery = createDiscovery({ observer, clock });
+  const connections = createConnections({ observer, discovery, clock });
   return createServer({ requestTimeout: 15000, headersTimeout: 10000 }, async (request, response) => {
     try {
       const host = request.headers.host;
@@ -53,11 +57,19 @@ export function createHttpServer(office, { publicDir = resolve('public'), bridge
       const protectedRequest = path.startsWith('/api/') || !['GET', 'HEAD'].includes(method);
       if (protectedRequest && (request.headers['sec-fetch-site'] === 'cross-site' || (request.headers.origin && request.headers.origin !== `http://${host}`))) throw new ApiError(403, 'ORIGIN_REJECTED', '사무실 화면에서 다시 요청해 주세요.');
       if (method === 'GET' && path === '/api/health') return json(response, 200, { status: 'ok', version: VERSION });
+      if (method === 'GET' && path === '/api/connections') return json(response, 200, connections.snapshot());
+      if (method === 'POST' && path === '/api/connections/check') return json(response, 200, await connections.check(await bodyOf(request)));
+      if (method === 'GET' && path === '/api/discovery') return json(response, 200, discovery.snapshot());
+      if (method === 'POST' && path === '/api/discovery/browser') return json(response, 200, discovery.receive(await bodyOf(request)));
+      const browserDiscovery = /^\/api\/discovery\/browser\/([a-f0-9-]{36})$/.exec(path);
+      if (method === 'DELETE' && browserDiscovery) return json(response, 200, discovery.forget(browserDiscovery[1]));
       if (method === 'GET' && path === '/api/state') return json(response, 200, { ...office.snapshot(), localSessions: observer.snapshot() });
       if (method === 'GET' && path === '/api/providers') return json(response, 200, providers);
       if (method === 'GET' && path === '/api/handoff') return json(response, 200, office.handoff(), { 'Content-Disposition': 'attachment; filename="wook-home-handoff.json"' });
       if (method === 'POST' && path === '/api/agents') return json(response, 201, office.hire(await bodyOf(request)));
       if (method === 'POST' && path === '/api/tasks') return json(response, 201, office.assign(await bodyOf(request)));
+      const sessionConversation = /^\/api\/local-sessions\/([a-f0-9-]{36})\/conversation$/.exec(path);
+      if (method === 'GET' && sessionConversation) return json(response, 200, observer.conversation(sessionConversation[1]));
       const sessionCommand = /^\/api\/local-sessions\/([a-f0-9-]{36})\/commands$/.exec(path);
       if (method === 'POST' && sessionCommand) return json(response, 202, commands.submit(sessionCommand[1], await bodyOf(request)));
       const commandMatch = /^\/api\/local-commands\/([a-f0-9-]{36})$/.exec(path);

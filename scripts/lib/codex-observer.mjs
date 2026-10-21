@@ -1,5 +1,6 @@
 import { open, readdir, stat } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
+import { collectConversation } from './codex-conversations.mjs';
 
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const windowBytes = 1024 * 1024;
@@ -29,7 +30,7 @@ export function summarizeRecords(records, workspace) {
   return lastActivityAt ? { id: metadata.id, status, lastActivityAt } : null;
 }
 
-async function readSummary(file, workspace) {
+async function readSummary(file, workspace, includeConversations = false) {
   let handle;
   try {
     handle = await open(file, 'r');
@@ -50,7 +51,10 @@ async function readSummary(file, workspace) {
       const last = await handle.read(tail, 0, tail.length, info.size - tail.length);
       lines = tail.subarray(0, last.bytesRead).toString('utf8').split('\n').slice(1, -1);
     }
-    return summarizeRecords([metadata, ...lines.map(parse)], workspace);
+    const records = [metadata, ...lines.map(parse)];
+    const summary = summarizeRecords(records, workspace);
+    if (summary && includeConversations) summary.conversation = collectConversation(records, info.size > windowBytes);
+    return summary;
   } catch {
     return null;
   } finally {
@@ -58,7 +62,7 @@ async function readSummary(file, workspace) {
   }
 }
 
-export async function collectSessions({ sessionsDir, workspace, clock = Date.now }) {
+export async function collectSessions({ sessionsDir, workspace, clock = Date.now, includeConversations = false }) {
   const current = clock();
   const candidates = [];
   // Active logs stay in their creation-date directory. Look back seven days;
@@ -81,7 +85,7 @@ export async function collectSessions({ sessionsDir, workspace, clock = Date.now
   candidates.sort((a, b) => b.modified - a.modified);
   const sessions = [];
   for (const candidate of candidates.slice(0, 200)) {
-    const session = await readSummary(candidate.file, workspace);
+    const session = await readSummary(candidate.file, workspace, includeConversations);
     if (session && !sessions.some((item) => item.id === session.id)) sessions.push(session);
     if (sessions.length === 24) break;
   }

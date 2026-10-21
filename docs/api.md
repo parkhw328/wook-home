@@ -1,6 +1,6 @@
 # 초기 API 계약
 
-서버 세션과 웹 세션의 통합 기준. JSON은 camelCase, 시간은 ISO 8601 UTC, ID는 UUID다. API는 같은 origin의 /api 경로를 사용한다. 로컬 전용이며 외부 공개용 인증은 아직 없다.
+서버 세션과 웹 세션의 통합 기준. JSON은 camelCase, 시간은 ISO 8601 UTC, 직원·업무·대화 세션 ID는 UUID다. 감지 항목의 ID 형식은 각 계약을 따른다. API는 같은 origin의 /api 경로를 사용한다. 로컬 전용이며 외부 공개용 인증은 아직 없다.
 
 ## 응답
 
@@ -63,7 +63,15 @@
 - 직원·업무 집계, SQLite 저장과 인계 JSON에는 관찰 세션을 넣지 않는다. 사무실 pause는 새 지시 접수를 막지만 이미 전달된 지시나 호스트 CLI를 중단하지 않는다.
 - Docker는 상태 JSON 폴더를 읽기 전용으로, 지시 폴더를 별도 읽기·쓰기로 연결한다. 상세 실행법은 [CLI 연결 안내](wiki/CLI.md)를 따른다.
 
-## 로컬 Codex 지시
+## CLI 프로세스 추가·종료
+
+- `localSessions.processes`: `{ status, scope: "this_pc", updatedAt, items, events }`. `status`는 connected / unavailable / unsupported / disconnected다. 같은 Windows 로그인 세션의 지원 CLI 실행을 약 5초마다 확인하며, 현재 프로젝트의 저장 대화 목록인 `sessions`와 분리한다.
+- `items`: `{ id, pid, provider, name, status, startedAt, firstSeenAt, lastSeenAt, endedAt }`. ID는 PID·시작 시각에서 만든 `cli-` 접두사 식별자이며 UUID가 아니다. provider는 openai / claude / gemini, 상태는 running / exited / unknown이다. 첫 대화 이전도 감지한다. 종료 시각은 프로세스 부재를 확인한 시각이며 업무 완료를 의미하지 않는다.
+- `events`: `{ id, type: "detected" | "exited", processId, at }`. 중복 관찰은 같은 이벤트를 반복 생성하지 않는다. 최대 50개, 최근 10분만 보관한다. 실행 중 최대 64개와 최근 종료 최대 24개를 제공한다.
+- 프로세스 목록 조회에 실패하면 이전 실행을 unknown으로 표시하고 마지막 성공 시각을 유지한다. 20초 이상 갱신이 멈추면 disconnected다. 미지원 OS는 unsupported이며 저장 대화 관찰은 계속 가능하다.
+- 명령 인수·실행 경로·제목·대화·인증 정보는 응답에 포함하지 않는다. 프로세스를 대화 UUID에 추정 연결하지 않고 프로세스 감지만으로 지시·종료 권한을 부여하지 않는다. 기존 스냅샷에 processes가 없으면 unsupported로 처리한다.
+
+## 로컬 Codex 지시 전송
 
 - `localSessions.control`: `{ enabled, reason, bridgeId? }`. reason은 ready / not_enabled / cli_unavailable / disconnected. 최신 연결 프로그램이 `--allow-commands`로 실행되고 공식 CLI의 큐 지원이 확인된 경우 활성화된다. 개별 전달 성공은 접수 결과로 확인한다.
 - `POST /api/local-sessions/:sessionId/commands`: `{ id, content }`. 클라이언트가 생성한 UUID와 1~4000자의 지시. 현재 프로젝트의 관찰 세션만 대상이다. 사무실 중지·관찰 연결 끊김·제어 미활성화는 409, 없는 세션은 404.
@@ -73,6 +81,17 @@
 - code: QUEUED / CLI_REJECTED / DELIVERY_UNCERTAIN / REQUEST_EXPIRED / SESSION_UNAVAILABLE / BRIDGE_RESTARTED. 원시 CLI 오류 출력은 전달하지 않는다.
 - 요청 유효 시간 60초, CLI 호출 제한 15초. 전달 전 원문을 지우며 중단된 sending 요청은 자동 재실행하지 않는다. 연결 프로그램 재시작 전 요청은 만료 처리한다. 접수 기록은 연결 프로그램 실행 중 7일 보관, 최대 1000개다.
 
+## 로컬 Codex 대화기록
+
+- `localSessions.conversations`: `{ enabled }`. 연결기를 `--include-conversations`로 실행한 경우에만 활성화한다.
+- `GET /api/local-sessions/:sessionId/conversation`: `{ sessionId, status, messages, updatedAt, truncated, limit: 60 }`. 현재 작업 공간의 관찰 목록에 있는 UUID만 읽는다. 동일 출처 요청 검사와 `Cache-Control: no-store`를 적용한다.
+- `status`: ready(기록 수신), empty(수집 범위에 공개 대화 없음), disabled(미활성화), disconnected(20초 이상 갱신 중단), unavailable(세션 없음·읽기 실패·형식 불일치).
+- 메시지: `{ role: "user" | "assistant", timestamp, content, truncated }`. 시스템·개발자 지침, 내부 추론, 도구 원문을 제외한다. 호스트에서 알려진 인증 정보·개인 경로·연락처 패턴을 마스킹하고 화면은 HTML로 실행하지 않는다.
+- 로그 끝 1MB에서 최근 최대 60개, 총 24,000자, 메시지당 4,000자만 제공한다. 제한이 적용되면 `truncated`를 표시한다. 기록 파일은 200KB까지 읽으며 상태 JSON은 기존 64KB 한도를 유지한다.
+- 호스트는 `data/bridge/conversations/<uuid>.json`을 원자적으로 게시한다. 관찰 범위에서 사라진 파일과 비활성화 시의 내보낸 파일은 다음 수집 때 삭제한다. 원래 Codex 로그를 수정·삭제하지 않는다. SQLite·인계·Git·이미지에 대화를 복제하지 않는다.
+
 ## 현재 범위
 
-기존 Codex에 대한 큐 지시 외에 신규 AI 세션 실행, 답변·승인·중단·모델 변경, 다른 공급자 제어, 토큰·비용 측정, 임의 프로세스 감지, GitHub 자동 인계와 클라우드 인증은 지원하지 않는다.
+기존 Codex에 대한 큐 지시 외에 신규 AI 세션 실행, 실제 CLI 승인·중단·모델 변경, 다른 공급자 제어, 토큰·비용 측정, 임의 프로세스 감지, GitHub 자동 인계와 클라우드 인증은 지원하지 않는다.
+
+지원 CLI·AI 웹 탭의 통합 목록은 [감지 API](discovery-api.md), 설치·감지·API 인증의 분리된 점검은 [연결 점검 API](connections-api.md)를 따른다. API 연결 점검 성공은 위 업무 실행 기능을 활성화하지 않는다.

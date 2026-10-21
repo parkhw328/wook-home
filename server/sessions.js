@@ -1,6 +1,9 @@
 import { closeSync, fstatSync, openSync, readSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { readCliProcesses } from './cli-processes.js';
+import { readCliTools } from './cli-tools.js';
 
-const empty = (status = 'not_connected') => ({ status, updatedAt: null, workspace: '', sessions: [], control: { enabled: false, reason: 'disconnected' } });
+const empty = (status = 'not_connected') => ({ status, updatedAt: null, workspace: '', sessions: [], control: { enabled: false, reason: 'disconnected' }, processes: readCliProcesses(null, false), cliTools: readCliTools(null, false) });
 const states = new Set(['working', 'idle', 'interrupted', 'unknown']);
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const validTime = (value) => typeof value === 'string' && Number.isFinite(Date.parse(value));
@@ -40,12 +43,39 @@ export function createSessionObserver({ file, clock = Date.now } = {}) {
           reason: !connected ? 'disconnected' : enabled ? 'ready' : data.control?.reason === 'cli_unavailable' ? 'cli_unavailable' : 'not_enabled',
           ...(enabled ? { bridgeId: data.control.bridgeId } : {}),
         };
-        return { status: connected ? 'connected' : 'disconnected', updatedAt: new Date(data.generatedAt).toISOString(), workspace, sessions, control };
+        return { status: connected ? 'connected' : 'disconnected', updatedAt: new Date(data.generatedAt).toISOString(), workspace, sessions, control, conversations: { enabled: data.conversations?.enabled === true }, processes: readCliProcesses(data.processes, connected, clock()), cliTools: readCliTools(data.cliTools, connected) };
       } catch (error) {
         return empty(error.code === 'ENOENT' ? 'not_connected' : 'disconnected');
       } finally {
         if (descriptor !== undefined) closeSync(descriptor);
       }
+    },
+    conversation(id) {
+      const state = this.snapshot();
+      const result = { sessionId: id, status: 'disabled', messages: [], updatedAt: null, truncated: false, limit: 60 };
+      if (!uuid.test(id) || !state.sessions.some((session) => session.id === id)) return { ...result, status: 'unavailable' };
+      if (!state.conversations?.enabled) return result;
+      let descriptor;
+      try {
+        descriptor = openSync(join(dirname(file), 'conversations', `${id}.json`), 'r');
+        const size = fstatSync(descriptor).size;
+        if (size > 200000) return { ...result, status: 'unavailable' };
+        const buffer = Buffer.alloc(size);
+        readSync(descriptor, buffer, 0, size, 0);
+        const data = JSON.parse(buffer.toString('utf8'));
+        if (data.schemaVersion !== 1 || data.sessionId !== id || !validTime(data.generatedAt) || !Array.isArray(data.messages) || data.messages.length > 60) return { ...result, status: 'unavailable' };
+        let characters = 0;
+        const messages = data.messages.filter((message) => {
+          if (!message || !['user', 'assistant'].includes(message.role) || !validTime(message.timestamp) || typeof message.content !== 'string' || message.content.length > 4000) return false;
+          characters += message.content.length;
+          return characters <= 24000;
+        }).map((message) => ({ role: message.role, timestamp: new Date(message.timestamp).toISOString(), content: message.content, truncated: message.truncated === true }));
+        const age = clock() - Date.parse(data.generatedAt);
+        const fresh = state.status === 'connected' && age >= -5000 && age <= 20000;
+        return { ...result, status: !fresh ? 'disconnected' : messages.length ? 'ready' : 'empty', updatedAt: new Date(data.generatedAt).toISOString(), messages, truncated: data.truncated === true || characters > 24000 };
+      } catch {
+        return { ...result, status: state.status === 'connected' ? 'unavailable' : 'disconnected' };
+      } finally { if (descriptor !== undefined) closeSync(descriptor); }
     },
   };
 }

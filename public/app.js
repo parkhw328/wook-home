@@ -1,4 +1,6 @@
 import { apiRequest } from './api.mjs';
+import { OfficeWorkspace } from './workspace.mjs';
+import { occupantRoom } from './rooms.mjs';
 import {
   CommandDelivery, commandPresentation, commandUnavailableReason,
   loadCommandReceipts, saveCommandReceipts,
@@ -67,6 +69,14 @@ const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
 let motionEnabled = !motionPreference.matches;
 const modal = $('#modal');
 const body = $('#modal-body');
+const workspace = new OfficeWorkspace($('#office-workspace'), {
+  request: apiRequest,
+  onTaskAction(action, id, content) {
+    if (action === 'approve' && workspace.room !== 'executive') return;
+    void mutate(`/tasks/${encodeURIComponent(id)}/${action === 'answer' ? 'messages' : 'approve'}`,
+      action === 'answer' ? { content } : {}, action === 'answer' ? '답변을 전달했습니다. 대표이사실에서 결과 보고를 확인하세요.' : '보고를 확인하고 결과를 승인했습니다.', 'POST', () => openTask(id));
+  },
+});
 try {
   for (const record of loadCommandReceipts(sessionStorage)) {
     commandDeliveries.set(record.sessionId, new CommandDelivery(apiRequest, record, onCommandChange));
@@ -109,6 +119,7 @@ function updateControls() {
     button.disabled = unavailable || button.dataset.blocked === 'true';
   });
   renderSessionCommand();
+  workspace.update(state, connected, motionEnabled, pending);
 }
 
 function renderStats() {
@@ -138,11 +149,19 @@ function officeOccupants() {
 
 function renderCharacters() {
   const occupants = officeOccupants();
-  const displayed = occupants.slice(0, 6);
+  const seats = { office: [[138, 500], [212, 500], [493, 500], [567, 500]], meeting: [[405, 205], [525, 205]], executive: [[740, 220], [887, 220]], lounge: [[215, 207], [105, 218]] };
+  const used = {};
+  const displayed = occupants.flatMap((occupant) => {
+    const room = occupantRoom(occupant);
+    const index = used[room] || 0;
+    used[room] = index + 1;
+    const position = seats[room]?.[index];
+    return position ? [{ ...occupant, position }] : [];
+  });
   const signature = JSON.stringify([displayed.map(({ id, source, status, name }) => ({ id, source, status, name })), connected, state.office.paused]);
   $('#office-scene').classList.toggle('motion-disabled', !motionEnabled);
   $('#scene-empty').hidden = occupants.length > 0;
-  $('#office-meta').textContent = `${occupants.length}명${occupants.length > 6 ? ' · 사무실에는 6명 표시' : ' · 현재 사무실'}`;
+  $('#office-meta').textContent = `${state.localSessions?.sessions?.length || 0} CLI · ${state.agents.length} 직원${occupants.length > displayed.length ? ` · 지도 ${displayed.length}명 표시` : ''}`;
   if (signature === sceneSignature) return;
   sceneSignature = signature;
   const previous = document.activeElement?.closest('#desk-grid') ? document.activeElement : null;
@@ -163,6 +182,10 @@ function renderCharacters() {
       <span class="character-label"><strong><span class="character-name">${esc(occupant.name)}</span><span class="compact-character-name" aria-hidden="true">${esc(compactName)}</span></strong><small>${source}</small></span>
     </button>`;
   }).join('');
+  $$('.office-character', $('#desk-grid')).forEach((node, index) => {
+    node.style.left = `${displayed[index].position[0] / 10}%`;
+    node.style.top = `${displayed[index].position[1] / 6.2}%`;
+  });
   if (previousId) $$(`[data-${previousSource}]`, $('#desk-grid')).find((node) => node.dataset[previousSource] === previousId)?.focus({ preventScroll: true });
 }
 
@@ -182,8 +205,12 @@ function renderAgents() {
 
 function renderSessions() {
   const local = state.localSessions;
+  const observing = connected && local?.status === 'connected';
   const label = !connected ? '서버 연결 끊김' : local?.status === 'connected' ? '관찰 연결됨' : local?.status === 'disconnected' ? '관찰 연결 끊김' : '관찰 연결 대기';
   $('#sessions-connection').textContent = label;
+  $('#sessions-scope').textContent = local?.workspace
+    ? `작업 폴더: ${local.workspace} · ${observing ? '약 5초마다 갱신' : '갱신 연결 대기'}`
+    : '관찰 연결 후 작업 폴더가 표시됩니다.';
   const sessions = orderedLocalSessions(local);
   const signature = JSON.stringify([label, local?.control?.enabled, sessions.map(({ id, name, status }) => ({ id, name, status }))]);
   const focused = document.activeElement?.closest('#session-list') ? document.activeElement.dataset.session : null;
@@ -192,7 +219,9 @@ function renderSessions() {
     $('#session-list').innerHTML = sessions.length ? sessions.map((session) => {
     const status = observedSessionStatus(local, session, connected);
     return `<button type="button" class="session-card" data-session="${esc(session.id)}"><span class="session-symbol" aria-hidden="true">&gt;_</span><span class="session-info"><strong>${esc(session.name)}</strong><small>Codex · ${local?.control?.enabled ? '지시 전송 연결됨' : '상태 관찰'}</small></span><span class="status ${statusClass(status)}">${sessionStatusLabel(status)}</span></button>`;
-    }).join('') : emptyState('로컬 CLI의 상태를 연결하세요', 'PC에서 상태 연결기를 실행하면 현재 작업 공간의 Codex 세션이 나타납니다. 대화 내용은 전송하지 않습니다.', 'activity');
+    }).join('') : observing
+      ? emptyState('이 프로젝트에서 감지된 Codex 세션이 없습니다', '표시된 작업 폴더에서 Codex 새 대화를 시작하고 첫 메시지를 보내세요. 다음 갱신 때 다시 확인합니다.', 'activity')
+      : emptyState('로컬 CLI의 상태를 연결하세요', '선택한 작업 공간의 Codex 세션을 연결하세요. 대화기록은 연결 프로그램에서 별도로 활성화할 수 있습니다.', 'activity');
     if (focused) $$('[data-session]', $('#session-list')).find((node) => node.dataset.session === focused)?.focus({ preventScroll: true });
   }
   if (modalContext?.type === 'session' && modal.open) {
@@ -296,7 +325,7 @@ async function refresh(force = false) {
 }
 
 const VIEW_COPY = {
-  office: ['나의 사무실', 'A PLACE TO MAKE THINGS HAPPEN', '오늘도, 함께 만드는 일.', '동료를 모으고, 일을 나누고, 다음 한 걸음을 만들어 보세요.'],
+  office: ['나의 사무실', 'YOUR TEAM. YOUR PLACE.', '문을 열면, 함께하는 일이 시작됩니다.', '복도를 지나 동료를 만나고, 대화를 나누고, 업무를 보고받으세요.'],
   tasks: ['업무 보드', 'ONE TASK AT A TIME', '작은 일부터, 하나씩.', '질문에 답하고 결과를 확인하며 함께 일을 완성해 보세요.'],
   handoff: ['작업 인계', 'PICK UP WHERE YOU LEFT OFF', '오늘의 일을, 다음으로.', '잠시 멈추더라도 일의 흐름은 이어질 수 있도록.'],
 };
@@ -424,7 +453,7 @@ function openSession(id) {
   if (!session) return;
   const status = observedSessionStatus(state.localSessions, session, connected);
   const draft = commandDeliveries.get(id)?.record.content ?? commandDrafts.get(id) ?? '';
-  openModal(session.name, 'LOCAL CLI · SESSION', `<div class="info-box">${icon('activity')}<span>명령 허용 모드에서 기존 Codex 세션에 지시할 수 있습니다. 답변과 실행 결과는 원래 CLI에서 확인하세요.</span></div>
+  openModal(session.name, 'LOCAL CLI · SESSION', `<div class="info-box">${icon('activity')}<span>명령 허용 모드에서 기존 Codex 세션에 지시할 수 있습니다. 대화 연결이 켜져 있으면 사무실의 터미널에서 공개 응답을 확인할 수 있습니다. 승인·중단은 원래 CLI에서 처리하세요.</span></div>
     <dl class="detail-facts session-facts"><div><dt>관찰된 상태</dt><dd id="observed-status">${sessionStatusLabel(status)}</dd></div><div><dt>마지막 활동</dt><dd id="observed-last-event">${displayTime(session.lastActivityAt)}</dd></div><div><dt>연결 상태</dt><dd id="observed-connection">${state.localSessions.status === 'connected' && connected ? '관찰 연결됨' : '관찰 연결 끊김'}</dd></div><div><dt>작업 공간</dt><dd>${esc(state.localSessions.workspace || '현재 작업 공간')}</dd></div></dl>
     <p class="field-help">사무실 중지는 외부 CLI를 멈추지 않습니다. <a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/CLI" target="_blank" rel="noopener noreferrer">상태·연결 도움말 ↗</a></p>
     <section class="command-section" aria-labelledby="command-heading"><h3 id="command-heading">이 세션에 지시하기</h3><p class="field-help" id="command-availability"></p>
@@ -491,70 +520,15 @@ function openNewTask(agentId) {
   $('#task-title', body).focus();
 }
 
-function taskSignature(task) {
-  return JSON.stringify([task, state.office.paused]);
-}
-
-function openTask(id, draft = '') {
-  const task = state.tasks.find((item) => item.id === id);
-  if (!task) return;
-  const agent = state.agents.find((item) => item.id === task.agentId);
-  const provider = state.providers.find((item) => item.id === agent?.provider);
-  const actionable = !state.office.paused;
-  const messages = (task.messages || []).map((message) => `<div class="message ${['user', 'system'].includes(message.role) ? message.role : 'assistant'}"><small>${message.role === 'user' ? 'Commander' : message.role === 'system' ? '시스템' : `${esc(agent?.name || '직원')}${provider?.kind === 'demo' ? ' · 체험용' : ''}`}</small>${esc(message.content)}</div>`).join('');
-  let actions;
-  if (task.status === 'waiting_input' && actionable) {
-    actions = `<form id="answer-form" class="form-stack" data-id="${esc(id)}">
-      <div class="form-field"><label for="task-answer">직원의 질문에 답변해 주세요</label>
-        <textarea id="task-answer" name="content" rows="3" maxlength="4000" required placeholder="원하는 방향이나 판단 기준을 적어 주세요.">${esc(draft)}</textarea>
-      </div>
-      <div class="task-command-row">
-        <button type="button" class="button button-danger" data-cancel-task="${esc(id)}" data-mutation>업무 취소</button>
-        <button class="button button-primary" type="submit" data-mutation>답변 보내기</button>
-      </div>
-    </form>`;
-  } else if (task.status === 'waiting_approval' && actionable) {
-    actions = `<p class="field-help">결과를 검토한 후 승인하면 이 업무가 완료됩니다.</p>
-      <div class="task-command-row">
-        <button type="button" class="button button-danger" data-cancel-task="${esc(id)}" data-mutation>업무 취소</button>
-        <button type="button" class="button button-primary" data-approve-task="${esc(id)}" data-mutation>${icon('check')}결과 승인</button>
-      </div>`;
-  } else if (isOpenTask(task)) {
-    actions = `<div class="info-box">${icon('pause')}
-        <span>${state.office.paused || task.status === 'paused' ? '업무가 일시 중지되었습니다. 사무실 업무를 재개하면 이어서 진행할 수 있습니다.' : '업무 상태를 확인하고 있습니다.'}</span>
-      </div>
-      <div class="task-command-row">
-        <button type="button" class="button button-danger" data-cancel-task="${esc(id)}" data-mutation>업무 취소</button>
-        ${state.office.paused ? '<button type="button" class="button button-primary" data-resume-office data-mutation>사무실 업무 재개</button>' : ''}
-      </div>`;
-  } else {
-    actions = `<p class="task-completion">${task.status === 'completed' ? 'Commander가 결과를 승인한 업무입니다.' : task.status === 'cancelled' ? '취소된 업무입니다. 완료한 업무에는 포함되지 않습니다.' : '실패한 업무입니다. 완료한 업무에는 포함되지 않습니다.'}</p>`;
-  }
-  const content = `<div class="task-modal-meta"><span>${esc(agent?.name || '직원')} · ${displayTime(task.createdAt)}</span>${badge(task.status)}</div>
-    ${task.description ? `<p class="task-description">${esc(task.description)}</p>` : ''}
-    ${provider?.kind === 'demo' ? '<p class="field-help task-description">체험용 업무 · 실제 AI 추론 없이 생성되는 예시 응답입니다.</p>' : ''}
-    <div class="message-list">${messages}</div>
-    ${task.result ? `<div class="task-result"><h3>${provider?.kind === 'demo' ? '체험용 결과' : '업무 결과'}</h3><p>${esc(typeof task.result === 'string' ? task.result : JSON.stringify(task.result, null, 2))}</p></div>` : ''}
-    ${errorSlot()}${actions}`;
-  openModal(task.title, 'TASK & CONVERSATION', content, { type: 'task', id, signature: taskSignature(task) });
+function openTask(id) {
+  if (modal.open) modal.close();
+  location.hash = 'office';
+  void workspace.selectTask(id);
 }
 
 function syncModal() {
   if (!modal.open || !modalContext || pending) return;
-  if (modalContext.type === 'task') {
-    const task = state.tasks.find((item) => item.id === modalContext.id);
-    if (task && taskSignature(task) !== modalContext.signature) {
-      const answer = $('#task-answer', body);
-      const draft = answer?.value || '';
-      const selection = document.activeElement === answer ? [answer.selectionStart, answer.selectionEnd] : null;
-      openTask(task.id, draft);
-      const updatedAnswer = $('#task-answer', body);
-      if (selection && updatedAnswer) {
-        updatedAnswer.focus({ preventScroll: true });
-        updatedAnswer.setSelectionRange(...selection);
-      }
-    }
-  } else if (modalContext.type === 'agent' && agentSignature(modalContext.id) !== modalContext.signature) {
+  if (modalContext.type === 'agent' && agentSignature(modalContext.id) !== modalContext.signature) {
     openAgent(modalContext.id);
   }
 }
@@ -600,6 +574,8 @@ document.addEventListener('click', (event) => {
   const button = event.target.closest('button');
   if (!button || button.disabled) return;
   if (button.hasAttribute('data-close')) { closeModal(); return; }
+  if (button.hasAttribute('data-room-assign')) { openNewTask(); return; }
+  if (button.dataset.sessionCommand) { openSession(button.dataset.sessionCommand); return; }
   if (button.dataset.retryCommand) { void commandDeliveries.get(button.dataset.retryCommand)?.retry(); return; }
   if (button.dataset.checkCommand) { void commandDeliveries.get(button.dataset.checkCommand)?.check(); return; }
   if (button.dataset.freshCommand) {
@@ -612,7 +588,7 @@ document.addEventListener('click', (event) => {
     return;
   }
   if (button.dataset.agent) { openAgent(button.dataset.agent); return; }
-  if (button.dataset.session) { openSession(button.dataset.session); return; }
+  if (button.dataset.session) { location.hash = 'office'; void workspace.selectSession(button.dataset.session); return; }
   if (button.dataset.task) { openTask(button.dataset.task); return; }
   if (button.dataset.editAgent) { openEditAgent(button.dataset.editAgent); return; }
   if (button.dataset.newTask) { openNewTask(button.dataset.newTask); return; }
@@ -682,6 +658,7 @@ function updateMotionPreference() {
   $('#motion-toggle').disabled = motionPreference.matches;
   $('#motion-toggle').title = motionPreference.matches ? '시스템의 동작 줄이기 설정을 따릅니다.' : '캐릭터의 장식 움직임을 켜거나 끕니다.';
   renderCharacters();
+  workspace.update(state, connected, motionEnabled, pending);
 }
 $('#motion-toggle').addEventListener('click', () => {
   motionEnabled = !motionEnabled;
@@ -711,5 +688,6 @@ void refresh(true);
 setInterval(() => {
   if (document.hidden || pending) return;
   void refresh();
+  void workspace.reader.refresh();
   for (const delivery of commandDeliveries.values()) if (delivery.shouldPoll()) void delivery.check();
 }, 2500);

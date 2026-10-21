@@ -3,16 +3,17 @@
 ## 구조
 
 - `server/`: Node.js HTTP API, 업무 상태 전환, SQLite 저장.
-- `public/`: 빌드 단계 없는 HTML/CSS/JS 사무실 GUI.
+- `public/`: 빌드 단계 없는 HTML/CSS/JS 사무실 GUI. `rooms.mjs`는 문·복도 경로, `workspace.mjs`는 공간별 업무 패널, `conversation.mjs`는 터미널과 세션 전환, `floor-plan.svg`는 자체 제작 평면도다.
 - `public/fonts/`: 자체 호스팅 폰트와 라이선스. 출처는 해당 폴더 README에 기록한다.
-- `scripts/`: 호스트 Codex 관찰과 명시적으로 활성화하는 공식 큐 전달. Docker 이미지에 포함하지 않는다.
-- `tests/server/`, `tests/ui/`: Node.js 기본 테스트 러너를 사용하는 자동 검증.
+- `extensions/browser-observer/`: 브라우저의 지원 AI 탭 감지 확장. 설치 절차는 Wiki Detection 참조.
+- `scripts/`: 호스트 Codex 관찰·CLI 설치/프로세스 점검·대화 수집과 명시적으로 활성화하는 공식 큐 전달. Docker 이미지에 포함하지 않는다.
+- `tests/server/`, `tests/ui/`, `tests/extension/`: Node.js 기본 테스트 러너를 사용하는 API·화면 로직·브라우저 확장 자동 검증. 파일 이름은 `*.test.js` 또는 `*.test.mjs`다.
 - `docs/`: API 계약, 협업 현황, 사용자 Wiki, 릴리스 관리.
 - `data/`: 로컬 개발 실행 데이터. Git 제외 대상.
 
 ## 로컬 실행
 
-Node.js 24.14 이상을 사용한다. Docker 기본 이미지는 Node.js 24.14.0이며 로컬 Node.js 26.10에서도 검증한다. 외부 npm 의존성은 없다.
+Node.js 24.14 이상, 27 미만을 사용한다. Docker 기본 이미지는 Node.js 24.14.0이며 로컬 Node.js 26.10에서도 검증한다. 외부 npm 의존성은 없다.
 
 ```powershell
 npm ci
@@ -24,7 +25,7 @@ npm test
 
 환경 변수는 `HOST`(기본 127.0.0.1), `PORT`(기본 8080), `DATA_DIR`(기본 ./data), `OFFICE_NAME`(기본 StackQueue Office), `CODEX_BRIDGE_FILE`(기본 ./data/bridge/codex.json)이다. Docker Compose의 외부 포트는 `WOOK_PORT`로 지정한다. 로컬 서버와 컨테이너를 동시에 사용할 때는 포트를 구분한다. Node 직접 실행은 `.env`를 자동으로 읽지 않으므로 셸 환경 변수로 지정한다.
 
-`npm run bridge:codex -- --workspace .`는 현재 프로젝트의 최근 Codex 세션을 관찰한다. `--allow-commands`를 붙이면 공식 `codex queue`로 기존 세션에 지시를 전달한다. 다른 프로젝트의 전체 기록이나 인증 파일을 컨테이너에 연결하지 않는다. [CLI 연결 안내](wiki/CLI.md)에 조건과 상태의 의미를 기록한다. 명령 폴더는 `CODEX_COMMANDS_DIR`(기본 ./data/bridge/commands)로 지정한다.
+`npm run bridge:codex -- --workspace .`는 현재 프로젝트의 최근 Codex 세션을 관찰한다. `--allow-commands`를 붙이면 공식 `codex queue`로 기존 세션에 지시를 전달한다. `--include-conversations`를 추가하면 선택한 프로젝트의 제한된 공개 대화기록을 별도 로컬 파일과 API로 제공한다. 다른 프로젝트의 전체 기록이나 인증 파일을 컨테이너에 연결하지 않는다. [CLI 연결 안내](wiki/CLI.md)에 조건과 상태의 의미를 기록한다. 명령 폴더는 `CODEX_COMMANDS_DIR`(기본 ./data/bridge/commands)로 지정한다.
 
 ## Docker
 
@@ -39,12 +40,12 @@ docker compose stop
 
 ## 테스트와 완료 기준
 
-`npm test`는 서버와 UI 테스트를 실행하고 `npm run test:server`는 서버 테스트만 실행한다. 서버 테스트는 임시 DB에서 업무 전환, 중복 실행 방지, 재시작 보존, 입력·origin 검증과 정적 파일 제공을 확인한다. Codex 관찰 테스트는 프로젝트 필터, 부분 기록, 민감 필드 제외, 오래된 활동과 연결 끊김을 검증한다. UI 테스트는 웹 담당 세션이 관리한다.
+`npm test`는 서버와 UI 테스트를 실행하고 `npm run test:server`는 서버 테스트만 실행한다. 서버 테스트는 임시 DB에서 업무 전환, 중복 실행 방지, 재시작 보존, 입력·origin 검증과 정적 파일 제공을 확인한다. Codex 관찰 테스트는 프로젝트 필터, 부분 기록, 민감 필드 제외, 오래된 활동과 연결 끊김을 검증한다. 대화 테스트는 역할 제외·마스킹·분량 제한·프로젝트/세션 격리와 인계 제외를 검증한다. UI 테스트는 모든 방 사이 문·복도 경로, 보고 상태 분류, HTML 비실행과 늦은 세션 응답 차단도 검증한다.
 
-변경 범위에 맞는 자동 검증 후, Docker 빌드·health check와 브라우저의 실제 사용 흐름을 확인한다. 검사에 사용한 가상 직원과 실제 AI 연결을 구분하고 검증 결과를 커밋에 연결한다. [초기 검증 기록](validation.md)을 참고한다.
+변경 범위에 맞는 자동 검증 후, Docker 빌드·health check와 브라우저의 실제 사용 흐름을 확인한다. 검사에 사용한 가상 직원과 실제 AI 연결을 구분하고 검증 결과를 커밋에 연결한다. [검증 기록](validation.md)을 참고한다.
 
 ## 문서와 협업
 
-작업 전에 rules의 두 문서를 읽는다. [협업 현황](collaboration.md)의 파일 소유 범위와 [API 계약](api.md)을 따른다. JavaScript는 ES modules, 들여쓰기는 두 칸을 사용하며 `.editorconfig`를 적용한다. 별도 formatter/linter는 아직 도입하지 않았다.
+작업 전에 rules의 두 문서를 읽는다. [협업 현황](collaboration.md)의 파일 소유 범위와 [API 계약](api.md)을 따른다. 감지와 연결 진단의 상세 계약은 [감지 API](discovery-api.md), [연결 점검 API](connections-api.md)에 기록한다. JavaScript는 ES modules, 들여쓰기는 두 칸을 사용하며 `.editorconfig`를 적용한다. 별도 formatter/linter는 아직 도입하지 않았다.
 
 Node SQLite와 Compose 참고: [Node.js SQLite](https://nodejs.org/download/release/v24.14.0/docs/api/sqlite.html), [Docker Compose 서비스](https://docs.docker.com/reference/compose-file/services/).

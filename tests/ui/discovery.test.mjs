@@ -24,4 +24,7 @@ test('connection check text remains text even when a provider response contains 
   assert.doesNotMatch(result, /<script>|<img/);
   assert.match(result, /&lt;script&gt;/);
   assert.match(result, /check &amp; retry/);
+  assert.match(result, /확인 시각: 미점검/);
+  const checked = checksMarkup([{ name: 'API', checkedAt: '2026-10-22T00:00:00.000Z' }]);
+  assert.doesNotMatch(checked, /미점검|1970/);
 });

@@ -2,9 +2,9 @@
 
 **AI 직원들이 모이는 나만의 가상 회사.**
 
-직원을 등록하고 업무를 맡겨 보세요. 질문에 답하고 결과를 승인하는 Commander의 작업 공간, **StackQueue Office**를 로컬 브라우저에서 만날 수 있습니다.
+복도를 지나 동료의 방으로 들어가 보세요. 직원을 등록하고 업무를 맡기며, 회의실에서 질문에 답하고 대표이사실에서 보고를 확인합니다. Commander의 작업 공간, **StackQueue Office**를 로컬 브라우저에서 만날 수 있습니다.
 
-현재는 **0.1.0-dev 개발 버전**입니다. 기존 Codex의 활동을 보고 선택한 세션에 실제 지시를 보낼 수 있습니다. 체험 직원으로 업무·질문·승인 흐름도 경험할 수 있습니다. 새 AI 세션 채용·모델 변경과 다른 공급자 연결은 준비 중입니다.
+현재는 **0.1.0-dev 개발 버전**입니다. 기존 Codex의 활동과 최근 대화기록을 보고 선택한 세션에 실제 지시를 보낼 수 있습니다. 체험 직원으로 업무·질문·승인 흐름도 경험할 수 있습니다. 새 AI 세션 채용·모델 변경과 다른 공급자의 실제 업무 실행은 준비 중입니다.
 
 ## 빠른 시작
 
@@ -14,14 +14,14 @@ Docker Desktop의 Linux 컨테이너 환경과 Docker Compose를 준비한 후 �
 docker compose up --build -d
 ```
 
-브라우저에서 **http://localhost:8080**을 열고 `체험 직원`을 등록하세요. 업무 지시 → 질문 답변 → 결과 승인을 경험할 수 있습니다. AI 계정이나 API 키는 필요하지 않습니다.
+브라우저에서 **http://localhost:8080**을 열고 `체험 직원`을 등록하세요. 사무실 입장 → 업무 지시 → 회의실 답변 → 대표이사실 보고·승인을 경험할 수 있습니다. AI 계정이나 API 키는 필요하지 않습니다.
 
 사무실 이름은 `.env`의 `OFFICE_NAME=StackQueue Office`로 바꿀 수 있습니다. `.env.example`을 참고하고 변경 후 `docker compose up -d`로 적용하세요.
 
 이미 실행 중인 Codex에 지시하려면 호스트에 Node.js 24.14 이상(27 미만)과 `codex queue`를 지원하는 CLI를 준비하고 별도 터미널에서 실행하세요. [Wiki의 연결·명령 안내](https://github.com/parkhw328/wook-home/wiki/CLI)를 확인할 수 있습니다.
 
 ```powershell
-npm run bridge:codex -- --workspace . --allow-commands
+npm run bridge:codex -- --workspace . --allow-commands --include-conversations
 ```
 
 ```powershell
@@ -33,6 +33,7 @@ docker compose up -d   # 다시 실행한 뒤 화면에서 업무 재개
 
 ## 문서
 
+- [CLI·웹 감지 안내](https://github.com/parkhw328/wook-home/wiki/Detection) · [전체 연결 점검](https://github.com/parkhw328/wook-home/wiki/Connections)
 - [사용설명서 Wiki](https://github.com/parkhw328/wook-home/wiki)
 - [기존 Codex 연결](https://github.com/parkhw328/wook-home/wiki/CLI) · [StackQueue Blog](https://blog.naver.com/stack-queue)
 - [공급자 서비스 접속·연결 준비](https://github.com/parkhw328/wook-home/wiki/Providers)

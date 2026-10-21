@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 620" fill="none">
+  <defs>
+    <pattern id="wood" width="110" height="24" patternUnits="userSpaceOnUse"><path d="M0 0H110M0 24H110M55 0V24" stroke="#d8bba0" stroke-opacity=".35"/></pattern>
+    <pattern id="carpet" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M0 0L8 8M8 0L0 8" stroke="#c8b6ad" stroke-opacity=".15"/></pattern>
+    <pattern id="tiles" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M0 40V0H40" stroke="#d5d1c7" stroke-opacity=".5"/></pattern>
+    <filter id="shadow" x="-40%" y="-50%" width="200%" height="220%"><feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#493329" flood-opacity=".13"/></filter>
+    <g id="plant"><circle r="17" fill="#d5c1a3"/><ellipse cy="-3" rx="13" ry="10" fill="#a8b08d"/><path d="M0 5Q-22-5-10-15Q0-17 0 5M0 5Q20-6 12-17Q0-15 0 5" fill="#7d9574"/><path d="M0 5V-12" stroke="#5b7156" stroke-width="2"/></g>
+    <g id="chair"><rect x="-14" y="-10" width="28" height="26" rx="9" fill="#706865"/><rect x="-16" y="8" width="32" height="10" rx="5" fill="#4e4947"/><path d="M0 17V24M-9 24H9" stroke="#7b7570" stroke-width="3"/></g>
+    <g id="monitor"><rect x="-18" y="-12" width="36" height="24" rx="3" fill="#464d4e"/><rect x="-15" y="-9" width="30" height="18" rx="1" fill="#a4b8b4"/><path d="M0 12V18M-8 18H8" stroke="#626968" stroke-width="3"/><path d="M-10-4H6M-10 0H0" stroke="#e0ece7" stroke-width="2"/></g>
+    <g id="desk"><rect x="-75" y="-24" width="150" height="57" rx="5" fill="#c69b7b"/><rect x="-75" y="-30" width="150" height="57" rx="5" fill="#e4c3a1" stroke="#c8a283"/><use href="#monitor" x="-37" y="-3"/><use href="#monitor" x="37" y="-3"/><rect x="-60" y="14" width="34" height="7" rx="2" fill="#f0eae1"/><rect x="23" y="14" width="34" height="7" rx="2" fill="#f0eae1"/><path d="M0-29V26" stroke="#c4a182"/><circle cx="64" cy="13" r="5" fill="#b85c50"/></g>
+  </defs>
+  <rect x="20" y="39" width="960" height="567" rx="5" fill="#b6a395"/>
+  <rect x="20" y="24" width="960" height="570" rx="5" fill="#eee3d6" stroke="#c8b5a4" stroke-width="2"/>
+  <path d="M26 30H290V280H26Z" fill="#e9dcc8"/><path d="M26 30H290V280H26Z" fill="url(#wood)"/>
+  <path d="M290 30H650V280H290Z" fill="#e1e8e3"/><path d="M290 30H650V280H290Z" fill="url(#carpet)"/>
+  <path d="M650 30H974V280H650Z" fill="#e9d6cd"/><path d="M650 30H974V280H650Z" fill="url(#wood)"/>
+  <path d="M26 370H650V588H26Z" fill="#eee7de"/><path d="M26 370H650V588H26Z" fill="url(#carpet)"/>
+  <path d="M650 370H974V588H650Z" fill="#e8e8d9"/><path d="M650 370H974V588H650Z" fill="url(#tiles)"/>
+  <!-- A continuous corridor connects all five real door openings. -->
+  <path d="M26 286H974V364H26Z" fill="#faf2e8"/>
+  <path d="M90 325H935" stroke="#d8b6a6" stroke-dasharray="3 9" stroke-width="2"/>
+  <path d="m915 319 7 6-7 6M105 319l-7 6 7 6" stroke="#bd9285" stroke-width="2"/>
+  <rect x="28" y="297" width="45" height="56" rx="3" fill="#c3a29a"/><path d="M34 303V347M42 303V347M50 303V347M58 303V347M66 303V347" stroke="#ead6c7"/>
+  <g stroke="#aa968a" stroke-width="9"><path d="M290 30V280M650 30V280M650 370V588"/><path d="M26 280H128M182 280H438M492 280H788M842 280H974M26 370H328M382 370H788M842 370H974"/></g>
+  <g stroke="#fcf7ee" stroke-width="6"><path d="M290 24V274M650 24V274M650 364V582"/><path d="M26 274H128M182 274H438M492 274H788M842 274H974M26 364H328M382 364H788M842 364H974"/></g>
+  <g stroke="#a88672" stroke-width="2"><path d="M128 280V231M128 231A49 49 0 0 1 177 280M438 280V231M438 231A49 49 0 0 1 487 280M788 280V231M788 231A49 49 0 0 1 837 280M328 370V419M328 419A49 49 0 0 0 377 370M788 370V419M788 419A49 49 0 0 0 837 370"/></g>
+  <g stroke="#bd7c6a" stroke-width="3"><path d="M130 280H180M440 280H490M790 280H840M330 370H380M790 370H840"/></g>
+  <path d="M46 30H265M312 30H626M674 30H947" stroke="#a9c1c1" stroke-width="7"/><path d="M46 27H265M312 27H626M674 27H947" stroke="#edfafa" stroke-width="2"/><path d="M155 24V35M465 24V35M815 24V35" stroke="#869c9c" stroke-width="4"/>
+  <!-- Lounge -->
+  <rect x="58" y="108" width="192" height="130" rx="12" fill="#cdbba4" opacity=".5"/>
+  <g filter="url(#shadow)"><rect x="65" y="112" width="44" height="119" rx="10" fill="#9b8e74"/><rect x="70" y="119" width="40" height="49" rx="7" fill="#b6ab91"/><rect x="70" y="174" width="40" height="49" rx="7" fill="#b6ab91"/><rect x="65" y="112" width="12" height="119" rx="5" fill="#8f836a"/><rect x="190" y="120" width="48" height="53" rx="12" fill="#ad947f"/><rect x="190" y="120" width="48" height="11" rx="5" fill="#96806f"/><rect x="130" y="128" width="41" height="53" rx="14" fill="#f6ede0" stroke="#d5b79c"/><rect x="138" y="138" width="17" height="23" rx="1" fill="#ba7569"/></g>
+  <use href="#plant" x="250" y="243"/><circle cx="249" cy="105" r="11" fill="#d1ad75"/><circle cx="249" cy="105" r="7" fill="#f7e7bc"/>
+  <!-- Meeting room -->
+  <g filter="url(#shadow)"><use href="#chair" x="405" y="106" transform="rotate(180 405 106)"/><use href="#chair" x="465" y="106" transform="rotate(180 465 106)"/><use href="#chair" x="525" y="106" transform="rotate(180 525 106)"/><use href="#chair" x="405" y="196"/><use href="#chair" x="525" y="196"/><rect x="362" y="116" width="207" height="68" rx="27" fill="#d0aa86"/><rect x="362" y="110" width="207" height="68" rx="27" fill="#ecd0ad" stroke="#c5a385"/><rect x="394" y="126" width="31" height="23" rx="2" fill="#f7f4ec"/><rect x="498" y="137" width="33" height="20" rx="2" fill="#98aaa5"/><circle cx="465" cy="143" r="10" fill="#b5b99d"/></g>
+  <rect x="605" y="95" width="12" height="91" rx="3" fill="#c3d0c8"/><rect x="609" y="99" width="7" height="83" rx="1" fill="#fcfdf7"/><use href="#plant" x="325" y="242"/>
+  <!-- Executive office -->
+  <rect x="698" y="101" width="236" height="140" rx="7" fill="#b9887a" opacity=".22"/><use href="#chair" x="815" y="110" transform="rotate(180 815 110)"/>
+  <g filter="url(#shadow)"><rect x="729" y="129" width="173" height="41" rx="6" fill="#a87661"/><rect x="729" y="123" width="173" height="41" rx="6" fill="#c39378" stroke="#a97a65"/><use href="#monitor" x="815" y="140" transform="rotate(180 815 140)"/><rect x="752" y="134" width="26" height="19" rx="2" fill="#f0ddc4"/><rect x="720" y="195" width="40" height="37" rx="9" fill="#9f6b5e"/><rect x="867" y="195" width="40" height="37" rx="9" fill="#9f6b5e"/></g>
+  <rect x="928" y="92" width="25" height="84" rx="2" fill="#bca38b"/><path d="M934 98V169M941 98V169M948 98V169" stroke="#e0c6ae" stroke-width="4"/><use href="#plant" x="684" y="242"/>
+  <!-- Office desk islands leave the centre aisle open. -->
+  <g filter="url(#shadow)"><use href="#desk" x="175" y="450"/><use href="#desk" x="530" y="450"/><use href="#chair" x="138" y="500"/><use href="#chair" x="212" y="500"/><use href="#chair" x="493" y="500"/><use href="#chair" x="567" y="500"/></g>
+  <rect x="85" y="551" width="175" height="20" rx="4" fill="#cbb7a5"/><path d="M130 551V571M175 551V571M220 551V571" stroke="#a38d7f"/><rect x="458" y="551" width="149" height="20" rx="4" fill="#cbb7a5"/><path d="M507 551V571M557 551V571" stroke="#a38d7f"/><use href="#plant" x="52" y="549"/><use href="#plant" x="620" y="549"/>
+  <!-- Pantry -->
+  <g filter="url(#shadow)"><rect x="685" y="425" width="263" height="37" rx="4" fill="#aaa48e"/><rect x="685" y="418" width="263" height="37" rx="4" fill="#dbd3b9" stroke="#b7b09a"/><rect x="701" y="423" width="40" height="25" rx="5" fill="#a3ada8"/><rect x="706" y="426" width="30" height="18" rx="4" fill="#bbc4bc"/><path d="M726 422V415H717V420" stroke="#7e8986" stroke-width="3"/><rect x="856" y="420" width="34" height="29" rx="3" fill="#5d655e"/><rect x="863" y="429" width="19" height="14" rx="2" fill="#bfc9be"/><circle cx="919" cy="437" r="11" fill="#f8efdc"/><circle cx="915" cy="434" r="4" fill="#b28b58"/><circle cx="924" cy="438" r="4" fill="#be935a"/><circle cx="891" cy="531" r="32" fill="#cbb68d"/><circle cx="891" cy="526" r="32" fill="#eee1bf"/><circle cx="840" cy="528" r="14" fill="#a1a889"/><circle cx="941" cy="528" r="14" fill="#a1a889"/></g>
+  <use href="#plant" x="685" y="552"/>
+  <path d="M20 24H980M20 24V594M980 24V594" stroke="#fffaf3" stroke-width="9"/><path d="M20 592H980" stroke="#c6afa0" stroke-width="6"/>
+</svg>
