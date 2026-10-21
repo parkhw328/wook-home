@@ -1,0 +1,35 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { runInNewContext } from 'node:vm';
+
+test('the real content script forwards only correlated same-origin office requests and contains extension failures', async () => {
+  const source = await readFile(new URL('../../extensions/browser-observer/office.js', import.meta.url), 'utf8');
+  const replies = [];
+  let listener;
+  let called = 0;
+  let marker = 'wook-home';
+  let fail = false;
+  const window = { addEventListener: (_, fn) => { listener = fn; }, postMessage: (data, origin) => replies.push({ data, origin }) };
+  window.top = window;
+  const location = { origin: 'http://localhost:8080', pathname: '/' };
+  const chrome = { runtime: { async sendMessage() { called += 1; if (fail) throw new Error('private-extension-error'); return { ok: true, snapshot: { tabs: [] } }; } } };
+  runInNewContext(source, { window, location, chrome, document: { querySelector: () => ({ content: marker }) } });
+  const data = { type: 'stackqueue:discover', requestId: '00000000-0000-0000-0000-000000000001' };
+  const event = { source: window, origin: location.origin, data };
+  await listener({ ...event, origin: 'https://claude.ai' });
+  await listener({ ...event, source: {} });
+  marker = 'other-site';
+  await listener(event);
+  assert.equal(called, 0);
+  marker = 'wook-home';
+  await listener(event);
+  assert.equal(called, 1);
+  assert.equal(replies[0].data.requestId, data.requestId);
+  assert.equal(replies[0].origin, location.origin);
+  assert.equal(replies[0].data.ok, true);
+  fail = true;
+  await listener(event);
+  assert.equal(replies[1].data.ok, false);
+  assert.doesNotMatch(JSON.stringify(replies), /private-extension-error/);
+});

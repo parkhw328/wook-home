@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "StackQueue 웹 탭 감지",
+  "version": "0.1.0",
+  "description": "열린 AI 웹 탭의 공급자와 대화 구분을 로컬 StackQueue Office에 전달합니다.",
+  "minimum_chrome_version": "120",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://claude.ai/*",
+    "https://gemini.google.com/*",
+    "https://www.meta.ai/*",
+    "https://meta.ai/*"
+  ],
+  "background": { "service_worker": "background.mjs", "type": "module" },
+  "action": { "default_title": "StackQueue 감지 연결", "default_popup": "options.html" },
+  "options_page": "options.html",
+  "content_scripts": [{
+    "matches": ["http://localhost/*", "http://127.0.0.1/*"],
+    "js": ["office.js"],
+    "run_at": "document_idle"
+  }]
+}

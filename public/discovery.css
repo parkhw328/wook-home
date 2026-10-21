@@ -1,0 +1,19 @@
+.discovery-panel { margin-top: 24px; padding: 24px; }
+.discovery-check-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 28px; padding-top: 16px; border-top: 1px solid #eedcdd; }
+.discovery-panel .panel-heading { flex-wrap: wrap; gap: 12px; }
+.discovery-intro, .discovery-connection { margin: 10px 0; line-height: 1.7; }
+.discovery-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 18px 0; }
+.discovery-toolbar label { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.discovery-toolbar select { min-height: 40px; border: 1px solid #d9bfc0; border-radius: 8px; background: #fffafa; color: #553238; padding: 6px 10px; font: inherit; }
+.discovery-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 12px; margin-top: 16px; }
+.discovery-card { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; min-width: 0; border: 1px solid #eedcdd; background: #fffafa; padding: 16px; border-radius: 12px; }
+.discovery-card strong { overflow-wrap: anywhere; }
+.discovery-card p { margin: 6px 0; font-size: 13px; line-height: 1.6; }
+.discovery-card small, .discovery-empty { color: #755e62; line-height: 1.6; }
+.discovery-card .subtle-tag { flex-shrink: 0; }
+@media (max-width: 600px) {
+  .discovery-panel { padding: 16px; }
+  .discovery-toolbar .button { min-height: 44px; }
+  .discovery-card { flex-wrap: wrap; }
+  .discovery-panel .subtle-tag { white-space: normal; line-height: 1.6; }
+}
