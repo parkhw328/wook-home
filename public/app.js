@@ -1,8 +1,12 @@
 import { apiRequest } from './api.mjs';
 import {
+  CommandDelivery, commandPresentation, commandUnavailableReason,
+  loadCommandReceipts, saveCommandReceipts,
+} from './commands.mjs';
+import {
   escapeHtml as esc, statusLabel, statusClass, isOpenTask, needsAttention,
   officeCounts, taskUnavailableReason, filterTasks, displayTime, normalizeState, programUrl,
-  officeName, observedSessionStatus, sessionStatusLabel, characterMotion,
+  officeName, observedSessionStatus, sessionStatusLabel, characterMotion, orderedLocalSessions,
 } from './model.mjs';
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -56,10 +60,17 @@ let modalContext = null;
 let modalTrigger = null;
 let sceneSignature = '';
 let sessionsSignature = '';
+const commandDeliveries = new Map();
+const commandDrafts = new Map();
 const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
 let motionEnabled = !motionPreference.matches;
 const modal = $('#modal');
 const body = $('#modal-body');
+try {
+  for (const record of loadCommandReceipts(sessionStorage)) {
+    commandDeliveries.set(record.sessionId, new CommandDelivery(apiRequest, record, onCommandChange));
+  }
+} catch { /* Some browser privacy modes disable session storage. */ }
 
 function setConnection(value) {
   connected = value;
@@ -96,6 +107,7 @@ function updateControls() {
   $$('[data-mutation]', body).forEach((button) => {
     button.disabled = unavailable || button.dataset.blocked === 'true';
   });
+  renderSessionCommand();
 }
 
 function renderStats() {
@@ -109,14 +121,14 @@ function renderStats() {
   $('#office-meta').textContent = state.office.paused ? '업무 일시 중지' : '로컬 사무실';
   $('#app-version').textContent = `v${state.office.version || '개발 중'} · 로컬 작업 공간`;
   const name = officeName(state.office);
-  $$('[data-office-name]').forEach((node) => { node.textContent = name; });
+  $$('[data-office-name]').forEach((node) => { node.textContent = name; node.title = name; });
   $('#brand-link').setAttribute('aria-label', `${name} 사무실`);
   document.title = `${name} · ${VIEW_COPY[currentView][0]}`;
   $('meta[name="description"]').content = `${name} · AI 직원과 로컬 CLI의 작업 상태를 확인하는 사무실`;
 }
 
 function officeOccupants() {
-  const sessions = (state.localSessions?.sessions || []).map((session) => ({
+  const sessions = orderedLocalSessions(state.localSessions).map((session) => ({
     ...session, source: 'session', status: observedSessionStatus(state.localSessions, session, connected),
   }));
   const agents = state.agents.map((agent) => ({ ...agent, source: 'agent' }));
@@ -141,7 +153,8 @@ function renderCharacters() {
     const movement = characterMotion(occupant.status, connected && (isSession || !state.office.paused));
     const provider = state.providers.find((item) => item.id === occupant.provider);
     const source = isSession ? 'CLI 관찰' : provider?.kind === 'demo' ? '체험 직원' : '등록 직원';
-    const compactName = isSession ? occupant.name.replace(/^Codex\s*·\s*/, '') : occupant.name;
+    const compactName = isSession ? occupant.name.replace(/^Codex\s*·\s*/, '')
+      : Array.from(occupant.name).length > 3 ? `${Array.from(occupant.name).slice(0, 2).join('')}…` : occupant.name;
     return `<button type="button" class="office-character station-${index} variant-${index % 3} motion-${movement} ${statusClass(occupant.status)}" data-${occupant.source}="${esc(occupant.id)}" aria-label="${esc(occupant.name)} · ${source} · ${label} 상세 보기">
       <span class="character-shadow" aria-hidden="true"></span>
       <span class="character-body" aria-hidden="true"><span class="character-head"><i></i></span><span class="character-shirt"></span><span class="character-arm arm-left"></span><span class="character-arm arm-right"></span><span class="character-leg leg-left"></span><span class="character-leg leg-right"></span></span>
@@ -164,14 +177,14 @@ function renderSessions() {
   const local = state.localSessions;
   const label = !connected ? '서버 연결 끊김' : local?.status === 'connected' ? '관찰 연결됨' : local?.status === 'disconnected' ? '관찰 연결 끊김' : '관찰 연결 대기';
   $('#sessions-connection').textContent = label;
-  const sessions = local?.sessions || [];
-  const signature = JSON.stringify([label, sessions.map(({ id, name, status }) => ({ id, name, status }))]);
+  const sessions = orderedLocalSessions(local);
+  const signature = JSON.stringify([label, local?.control?.enabled, sessions.map(({ id, name, status }) => ({ id, name, status }))]);
   const focused = document.activeElement?.closest('#session-list') ? document.activeElement.dataset.session : null;
   if (signature !== sessionsSignature) {
     sessionsSignature = signature;
     $('#session-list').innerHTML = sessions.length ? sessions.map((session) => {
     const status = observedSessionStatus(local, session, connected);
-    return `<button type="button" class="session-card" data-session="${esc(session.id)}"><span class="session-symbol" aria-hidden="true">&gt;_</span><span class="session-info"><strong>${esc(session.name)}</strong><small>Codex · 읽기 전용 관찰</small></span><span class="status ${statusClass(status)}">${sessionStatusLabel(status)}</span></button>`;
+    return `<button type="button" class="session-card" data-session="${esc(session.id)}"><span class="session-symbol" aria-hidden="true">&gt;_</span><span class="session-info"><strong>${esc(session.name)}</strong><small>Codex · ${local?.control?.enabled ? '지시 전송 연결됨' : '상태 관찰'}</small></span><span class="status ${statusClass(status)}">${sessionStatusLabel(status)}</span></button>`;
     }).join('') : emptyState('로컬 CLI의 상태를 연결하세요', 'PC에서 상태 연결기를 실행하면 현재 작업 공간의 Codex 세션이 나타납니다. 대화 내용은 전송하지 않습니다.', 'activity');
     if (focused) $$('[data-session]', $('#session-list')).find((node) => node.dataset.session === focused)?.focus({ preventScroll: true });
   }
@@ -186,6 +199,7 @@ function renderSessions() {
       if ($('#observed-status', body)) $('#observed-status', body).textContent = '확인 필요 · 관찰 목록에서 사라짐';
       if ($('#observed-connection', body)) $('#observed-connection', body).textContent = '이 세션의 현재 상태를 확인할 수 없습니다.';
     }
+    renderSessionCommand();
   }
 }
 
@@ -402,11 +416,54 @@ function openSession(id) {
   const session = state.localSessions?.sessions?.find((item) => item.id === id);
   if (!session) return;
   const status = observedSessionStatus(state.localSessions, session, connected);
-  openModal(session.name, 'LOCAL CLI · OBSERVATION ONLY', `<div class="info-box">${icon('activity')}<span>이 PC의 Codex CLI에서 발생한 상태 이벤트를 관찰합니다. 대화와 실행 권한을 가져오지 않습니다.</span></div>
+  const draft = commandDeliveries.get(id)?.record.content ?? commandDrafts.get(id) ?? '';
+  openModal(session.name, 'LOCAL CLI · SESSION', `<div class="info-box">${icon('activity')}<span>명령 허용 모드에서 기존 Codex 세션에 지시할 수 있습니다. 답변과 실행 결과는 원래 CLI에서 확인하세요.</span></div>
     <dl class="detail-facts session-facts"><div><dt>관찰된 상태</dt><dd id="observed-status">${sessionStatusLabel(status)}</dd></div><div><dt>마지막 활동</dt><dd id="observed-last-event">${displayTime(session.lastActivityAt)}</dd></div><div><dt>연결 상태</dt><dd id="observed-connection">${state.localSessions.status === 'connected' && connected ? '관찰 연결됨' : '관찰 연결 끊김'}</dd></div><div><dt>작업 공간</dt><dd>${esc(state.localSessions.workspace || '현재 작업 공간')}</dd></div></dl>
-    <p class="field-help">활동 관찰은 최근 이벤트가 있었다는 뜻이며 프로세스가 지금도 실행 중이라는 보장은 아닙니다. 턴 종료 관찰은 CLI 턴이 끝났다는 뜻으로, 사무실 업무의 완료와는 별개입니다.</p>
-    <p class="field-help session-help">일정 시간 활동이 없거나 연결이 끊기면 확인이 필요한 상태로 표시합니다. 사무실 일시 중지는 외부 CLI를 중지하지 않습니다.</p>
-    <div class="detail-actions"><button type="button" class="button" disabled>명령 전송 미지원</button><button type="button" class="button" disabled>CLI 중지 미지원</button></div>`, { type: 'session', id });
+    <p class="field-help">사무실 중지는 외부 CLI를 멈추지 않습니다. <a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/CLI" target="_blank" rel="noopener noreferrer">상태·연결 도움말 ↗</a></p>
+    <section class="command-section" aria-labelledby="command-heading"><h3 id="command-heading">이 세션에 지시하기</h3><p class="field-help" id="command-availability"></p>
+      <form id="session-command-form" class="form-stack" data-id="${esc(id)}"><div class="form-field"><label for="session-command">전달할 지시</label><textarea id="session-command" name="content" rows="4" maxlength="4000" required placeholder="원래 CLI에 이어서 수행할 일을 적어 주세요.">${esc(draft)}</textarea></div>${errorSlot()}<div class="form-actions"><button class="button button-primary" type="submit" id="send-command">지시 보내기</button></div></form>
+      <div id="command-receipt" role="status" aria-live="polite"></div>
+    </section>`, { type: 'session', id });
+  renderSessionCommand();
+}
+
+function renderSessionCommand() {
+  if (!modal.open || modalContext?.type !== 'session' || !$('#session-command', body)) return;
+  const id = modalContext.id;
+  const delivery = commandDeliveries.get(id);
+  const record = delivery?.record;
+  const reason = commandUnavailableReason(state, id, connected);
+  $('#command-availability', body).textContent = reason || '지시는 Codex 큐에 전달됩니다. 기존 작업이 끝나면 실행되며, CLI의 원래 권한과 승인 정책을 따릅니다.';
+  const input = $('#session-command', body);
+  $('#session-command-form', body).hidden = Boolean(record && !record.content);
+  input.readOnly = Boolean(record);
+  input.disabled = !record && Boolean(reason);
+  $('#send-command', body).disabled = Boolean(reason || record || pending);
+  $('#send-command', body).hidden = Boolean(record);
+  const receipt = $('#command-receipt', body);
+  if (!record) { receipt.innerHTML = ''; delete receipt.dataset.signature; return; }
+  const presentation = commandPresentation(record);
+  const signature = JSON.stringify([record.status, record.error, record.lookupError, delivery.busy, reason]);
+  if (receipt.dataset.signature === signature) return;
+  receipt.dataset.signature = signature;
+  receipt.innerHTML = `<div class="command-status"><strong>${presentation.title}</strong><p>${esc(presentation.description)}</p>${record.restored ? '<p>새로고침 전 지시의 접수 기록입니다. 지시 원문은 브라우저에 저장하지 않습니다.</p>' : ''}${record.lookupError ? `<p class="command-warning">${esc(record.lookupError)}</p>` : ''}${presentation.retry ? `<button type="button" class="button button-small" data-retry-command="${esc(id)}" ${delivery.busy || reason ? 'disabled' : ''}>같은 지시 다시 전송</button>` : ''}${record.status === 'unconfirmed' || record.lookupError ? `<button type="button" class="button button-small" data-check-command="${esc(id)}" ${delivery.busy ? 'disabled' : ''}>접수 상태 다시 확인</button>` : ''}${presentation.final ? `<button type="button" class="button button-small" data-fresh-command="${esc(id)}">새 지시 작성</button>` : ''}</div>`;
+}
+
+function onCommandChange() {
+  try { saveCommandReceipts(sessionStorage, commandDeliveries); } catch { /* Keep in-memory tracking. */ }
+  renderSessionCommand();
+}
+
+async function sendSessionCommand(id, content) {
+  if (commandDeliveries.has(id)) return;
+  const reason = commandUnavailableReason(state, id, connected);
+  if (reason) { formError(reason); return; }
+  const delivery = new CommandDelivery(apiRequest, {
+    id: crypto.randomUUID(), sessionId: id, content,
+  }, onCommandChange);
+  commandDeliveries.set(id, delivery);
+  commandDrafts.set(id, content);
+  await delivery.send();
 }
 
 function agentSignature(id) {
@@ -536,6 +593,17 @@ document.addEventListener('click', (event) => {
   const button = event.target.closest('button');
   if (!button || button.disabled) return;
   if (button.hasAttribute('data-close')) { closeModal(); return; }
+  if (button.dataset.retryCommand) { void commandDeliveries.get(button.dataset.retryCommand)?.retry(); return; }
+  if (button.dataset.checkCommand) { void commandDeliveries.get(button.dataset.checkCommand)?.check(); return; }
+  if (button.dataset.freshCommand) {
+    const id = button.dataset.freshCommand;
+    commandDeliveries.delete(id);
+    commandDrafts.delete(id);
+    onCommandChange();
+    openSession(id);
+    $('#session-command', body)?.focus();
+    return;
+  }
   if (button.dataset.agent) { openAgent(button.dataset.agent); return; }
   if (button.dataset.session) { openSession(button.dataset.session); return; }
   if (button.dataset.task) { openTask(button.dataset.task); return; }
@@ -559,13 +627,20 @@ body.addEventListener('change', (event) => {
   if (event.target.id === 'agent-provider') updateProviderFields();
 });
 
+body.addEventListener('input', (event) => {
+  if (event.target.id === 'session-command' && modalContext?.type === 'session') commandDrafts.set(modalContext.id, event.target.value);
+});
+
 body.addEventListener('submit', (event) => {
   event.preventDefault();
   const form = event.target;
   if (pending || !form.reportValidity()) return;
   const data = Object.fromEntries(new FormData(form));
   Object.keys(data).forEach((key) => { data[key] = data[key].trim(); });
-  if (form.id === 'hire-form') {
+  if (form.id === 'session-command-form') {
+    if (!data.content) { formError('전달할 지시를 입력해 주세요.'); return; }
+    void sendSessionCommand(form.dataset.id, data.content);
+  } else if (form.id === 'hire-form') {
     if (!data.name || !data.role) { formError('이름과 역할을 입력해 주세요.'); return; }
     if (!data.model) delete data.model;
     if (!data.reasoningEffort) delete data.reasoningEffort;
@@ -626,4 +701,8 @@ updateMotionPreference();
 navigate();
 updateControls();
 void refresh(true);
-setInterval(() => { if (!document.hidden && !pending) void refresh(); }, 2500);
+setInterval(() => {
+  if (document.hidden || pending) return;
+  void refresh();
+  for (const delivery of commandDeliveries.values()) if (delivery.shouldPoll()) void delivery.check();
+}, 2500);

@@ -25,8 +25,8 @@
           <a href="#handoff" class="nav-link" data-view="handoff"><span data-icon="handoff"></span>작업 인계</a>
           <a href="https://github.com/parkhw328/wook-home/wiki" class="nav-link help-link" target="_blank" rel="noopener noreferrer"><span data-icon="message"></span>도움말<span class="external-arrow" aria-hidden="true">↗</span></a>
         </nav>
-        <div class="sidebar-note"><span class="note-spark" aria-hidden="true">✳</span><strong>작은 팀, 더 큰 가능성.</strong><p>각자의 역할이 모여<br>하나의 일을 완성합니다.</p></div>
-        <div class="sidebar-bottom"><span class="commander-avatar" aria-hidden="true">C</span><div><strong>Commander</strong><span>이 공간의 방향을 정하는 사람</span></div></div>
+        <div class="sidebar-note"><span class="note-spark" aria-hidden="true">✳</span><strong>작은 팀, 더 큰 가능성.</strong><p>각자의 역할이 모여 하나의 일을 완성합니다.</p></div>
+        <div class="sidebar-bottom"><span class="commander-avatar" aria-hidden="true">C</span><div><strong>Commander</strong><span>워크스페이스 관리자</span></div></div>
       </aside>
 
       <div class="main-shell">
@@ -45,10 +45,11 @@
           <section id="view-office" class="view">
             <div class="office-layout">
               <div class="office-main">
-                <section class="panel office-panel" aria-labelledby="office-heading"><div class="panel-heading"><div class="panel-title"><span class="live-dot" aria-hidden="true"></span><h2 id="office-heading">우리의 사무실</h2><span class="subtle-tag">1F · WORK LOUNGE</span></div><span class="office-meta" id="office-meta">문을 여는 중</span></div>
+                <section class="panel office-panel" aria-labelledby="office-heading"><div class="panel-heading"><div class="panel-title"><span class="live-dot" aria-hidden="true"></span><h2 id="office-heading">우리의 사무실</h2><span class="subtle-tag">1F · TEAM OFFICE</span></div><span class="office-meta" id="office-meta">문을 여는 중</span></div>
                   <div class="office-scene" id="office-scene">
                     <div class="scene-art" aria-hidden="true"></div>
-                    <div class="scene-coordinate scene-coordinate-top" aria-hidden="true">01 / WORK LOUNGE</div>
+                    <div class="scene-coordinate" aria-hidden="true">01 / TEAM OFFICE</div>
+                    <div class="scene-zones" aria-label="사무실 공간"><span class="scene-zone zone-team">팀 업무 공간</span><span class="scene-zone zone-meeting">회의실</span><span class="scene-zone zone-lounge">라운지</span></div>
                     <div class="desk-grid" id="desk-grid" aria-label="사무실 캐릭터"></div>
                     <div class="scene-empty" id="scene-empty"><span>좋은 일은, 좋은 동료로부터.</span><button type="button" class="scene-invite" id="scene-hire-button">첫 동료를 맞이해 보세요 <span aria-hidden="true">↗</span></button></div>
                     <span class="scene-caption" data-office-name>StackQueue Office</span>
@@ -57,8 +58,8 @@
                   <div class="office-legend"><span><i class="legend-dot idle"></i>업무 대기</span><span><i class="legend-dot working"></i>진행 중</span><span><i class="legend-dot waiting_input"></i>응답·승인 대기</span><span><i class="legend-dot unavailable"></i>미연결</span></div>
                 </section>
                 <section class="team-section" aria-labelledby="team-heading"><div class="section-heading"><h2 id="team-heading">함께하는 직원 <span id="team-count">0</span></h2><span class="muted">동료를 선택해 업무를 확인하세요</span></div><div id="agent-list" class="agent-grid"><div class="empty-state"><span class="empty-icon" data-icon="people"></span><strong>첫 동료를 기다리고 있어요</strong><p>체험용 직원을 채용해 업무 흐름을 시작해 보세요.</p></div></div></section>
-                <section class="panel sessions-panel" aria-labelledby="sessions-heading"><div class="panel-heading"><h2 id="sessions-heading">이 PC의 CLI 세션</h2><span id="sessions-connection" class="subtle-tag">관찰 연결 대기</span></div><div id="session-list" class="session-list"></div><p class="panel-footnote">CLI의 최근 이벤트를 관찰합니다. 이 화면에서 명령을 보내거나 외부 CLI를 중지하지 않습니다. <a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/CLI" target="_blank" rel="noopener noreferrer">연결 방법 보기 ↗</a></p></section>
-                <section class="panel provider-panel" aria-labelledby="provider-heading"><div class="panel-heading"><h2 id="provider-heading">AI 공급자 연결</h2><span class="subtle-tag">연동 준비 중</span></div><div id="provider-list" class="provider-list"></div><p class="panel-footnote">현재는 체험용 직원으로 업무 흐름을 사용할 수 있습니다. 외부 AI 실행은 준비 중이며, 로컬 CLI는 상태 연결기로 관찰할 수 있습니다.</p></section>
+                <section class="panel sessions-panel" aria-labelledby="sessions-heading"><div class="panel-heading"><h2 id="sessions-heading">이 PC의 CLI 세션</h2><span id="sessions-connection" class="subtle-tag">관찰 연결 대기</span></div><div id="session-list" class="session-list"></div><p class="panel-footnote">세션을 선택해 최근 상태를 확인하세요. 호스트에서 명령 전송을 허용하면 지시를 보낼 수 있습니다. 실행 결과는 원래 CLI에서 확인합니다. <a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/CLI" target="_blank" rel="noopener noreferrer">연결 방법 보기 ↗</a></p></section>
+                <section class="panel provider-panel" aria-labelledby="provider-heading"><div class="panel-heading"><h2 id="provider-heading">AI 공급자 연결</h2><span class="subtle-tag">연동 준비 중</span></div><div id="provider-list" class="provider-list"></div><p class="panel-footnote">체험용 직원으로 업무 흐름을 사용할 수 있습니다. 새 외부 AI 직원 실행은 준비 중이며, 기존 로컬 Codex 세션은 별도 연결 프로그램을 사용합니다.</p></section>
               </div>
               <aside class="commander-panel" aria-label="Commander 확인 사항"><section class="panel inbox-panel"><div class="panel-heading"><h2>Commander의 데스크</h2><span class="inbox-count" id="inbox-count">0</span></div><p class="panel-intro">당신의 한마디가 필요한 순간.</p><div id="inbox-list"></div><button class="text-link inbox-footer" type="button" id="all-tasks-button">업무 보드에서 모두 보기 <span aria-hidden="true">↗</span></button></section><section class="panel activity-panel"><div class="panel-heading"><h2>사무실 소식</h2><span class="muted">최근 활동</span></div><div id="event-list" class="event-list"></div></section><div class="mode-note"><span data-icon="spark"></span><div><strong>먼저, 가볍게 경험해 보세요.</strong><p>체험용 직원은 실제 AI를 호출하지 않습니다. 질문부터 결과 승인까지 차근차근 살펴보세요.</p></div></div></aside>
             </div>

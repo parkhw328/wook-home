@@ -32,7 +32,9 @@ export async function supportsQueue(cli) {
 }
 
 export async function sendToCodex(cli, sessionId, content, workspace, remote, remoteAuthTokenEnv) {
-  const args = [...cli.prefix, 'queue', '--thread', sessionId, '--message', content];
+  // Bind the value with '=' so a Markdown instruction starting with '-' cannot
+  // be interpreted as a CLI flag. This is still a single literal argv value.
+  const args = [...cli.prefix, 'queue', '--thread', sessionId, `--message=${content}`];
   if (remote) args.push('--remote', remote);
   if (remoteAuthTokenEnv) args.push('--remote-auth-token-env', remoteAuthTokenEnv);
   try {

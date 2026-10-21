@@ -6,7 +6,7 @@
 
 | 담당 | 소유 경로 | 현재 작업 |
 | --- | --- | --- |
-| 서버 세션 | server/, scripts/, tests/server/, package.json, package-lock.json, Dockerfile, compose.yaml, .dockerignore, .gitignore, .env.example | API·SQLite·Docker 및 Codex 관찰 구현·검증 |
+| 서버 세션 | server/, scripts/, tests/server/, package.json, package-lock.json, Dockerfile, compose.yaml, .dockerignore, .gitignore, .env.example | API·SQLite·Docker 및 Codex 관찰·지시 전달 구현·검증 |
 | 웹 세션 | public/, tests/ui/, docs/wiki/UI.md | 의존성 없는 HTML/CSS/JS 사무실 GUI 구현 |
 | 서버 세션 통합 | README.md, CHANGELOG.md, docs/wiki/Home.md, rules/ 문서, docs/api.md | 실행 검증 후 실제 구현 범위 반영 |
 
@@ -14,7 +14,7 @@
 - Git index는 공유된다. 서버 세션이 commit/push를 전담한다. 웹 세션은 완료 파일 목록과 검증 결과를 전달하며 서버 세션이 검토 후 커밋한다.
 - Docker 기본 주소는 http://localhost:8080 이다. 웹 개발 서버는 /api 요청을 http://localhost:8080 으로 프록시한다.
 - 서버는 public/을 정적으로 제공한다. 웹 빌드 단계나 외부 의존성은 필요 없다. 루트 npm 스크립트는 서버 세션이 관리한다.
-- 실제 AI 인증·명령 제어는 미구현이다. 호스트 Codex의 선택한 프로젝트 기록은 읽기 전용 연결 프로그램으로 관찰한다. 데모는 별도 공급자 demo로 표시하고 실제 모델 추론으로 표현하지 않는다.
+- 기존 Codex는 호스트 연결 프로그램의 명령 허용 모드에서 공식 큐로 지시한다. 신규 실제 AI 실행·다른 공급자 제어는 미구현이다. 데모는 별도 공급자 demo로 표시하고 실제 모델 추론으로 표현하지 않는다.
 - API 계약은 [api.md](api.md)를 기준으로 한다. 화면은 응답에 없는 기능을 추정하지 않는다.
 
 ## 웹 진행 메모
@@ -29,4 +29,6 @@
 - 검증: 서버 19개 테스트 및 UI 포함 통합 34개 테스트 통과. 별도 Docker 검증 환경에서 정상 종료·재시작·승인 단계 복원, 비루트 실행과 이미지 포함 파일 확인.
 - 최종 UI 파일과 문서 통합 완료. 기본 http://localhost:8080 에 Docker 컨테이너를 실행하고 서버 연결·사무실 재개·직원 채용 화면을 확인했다.
 - 후속 구현: `OFFICE_NAME` 설정, StackQueue Blog 배너 데이터, 호스트 Codex 관찰 프로그램과 `localSessions` 상태 API. 실제 두 세션의 상태만 전달하며 새 Docker 화면에서 표시됨을 확인.
-- 확정 전: 실제 AI 공급자 실행 연결, 인증 저장과 세션 제어권.
+- 후속 구현: 공식 Codex 큐 지시, 요청 ID 중복 방지와 접수 조회, 전달 전 원문 제거, 연결 프로그램 재시작·시간 초과 시 자동 재실행 방지. 서버 26개 테스트 통과와 실제 API→호스트→Codex 큐 접수 확인.
+- 최종 통합: 회사 구역 배치와 CSS 정리, 기존 세션 지시·접수 화면, 세션 순서 고정. 320·390·768·1366px 검증, 서버 26개+UI 22개 총 48개 테스트 통과. 기본 Docker에서 한글 지시의 공식 큐 접수 확인.
+- 확정 전: 신규 실제 AI 세션 실행, 다른 공급자 연결, 웹에서의 답변·승인·중단과 모델 변경.

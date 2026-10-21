@@ -4,7 +4,7 @@
 
 ## 연결하기
 
-Docker가 실행되는 PC에 Node.js 24.14 이상(27 미만), 로그인된 Codex CLI와 세션 기록이 필요합니다. `codex queue --help`에서 `--thread`와 `--message` 지원을 확인하세요. 저장소 루트의 별도 터미널에서 실행합니다.
+Docker가 실행되는 PC에 Node.js 24.14 이상(27 미만), 로그인된 Codex CLI와 세션 기록이 필요합니다. `codex queue --help`에서 `--thread`와 `--message` 지원을 확인하세요. 큐 전달은 CLI 0.163.0에서 검증했습니다. 저장소 루트의 별도 터미널에서 실행합니다.
 
 ```powershell
 npm run bridge:codex -- --workspace . --allow-commands

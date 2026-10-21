@@ -103,6 +103,10 @@ export function officeName(office) {
   return typeof office?.name === 'string' && office.name.trim() ? office.name.trim() : 'StackQueue Office';
 }
 
+export function orderedLocalSessions(localSessions) {
+  return [...(localSessions?.sessions || [])].sort((a, b) => a.id.localeCompare(b.id));
+}
+
 export function observedSessionStatus(localSessions, session, connection = true) {
   if (!connection || localSessions?.status !== 'connected') return 'disconnected';
   return ['working', 'idle', 'interrupted', 'unknown', 'disconnected'].includes(session.status) ? session.status : 'unknown';

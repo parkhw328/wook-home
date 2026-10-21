@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   escapeHtml, statusLabel, statusClass, officeCounts, taskUnavailableReason,
   filterTasks, normalizeState, programUrl,
-  officeName, observedSessionStatus, sessionStatusLabel, characterMotion,
+  officeName, observedSessionStatus, sessionStatusLabel, characterMotion, orderedLocalSessions,
 } from '../../public/model.mjs';
 
 function fixture() {
@@ -112,4 +112,12 @@ test('the configured office name and the agreed blog URL are supported without b
   assert.equal(officeName({ name: '' }), 'StackQueue Office');
   assert.equal(programUrl({ name: 'StackQueue Blog', url: 'https://blog.naver.com/stack-queue' }), 'https://blog.naver.com/stack-queue');
   assert.equal(programUrl({ name: 'StackQueue Blog', url: 'https://blog.naver.com/another-account' }), null);
+});
+
+test('new CLI activity does not move the session a user is about to select', () => {
+  const first = [{ id: 'session-b', lastActivityAt: '2026-10-21T12:00:00Z' }, { id: 'session-a', lastActivityAt: '2026-10-21T11:00:00Z' }];
+  const next = [{ id: 'session-a', lastActivityAt: '2026-10-21T13:00:00Z' }, { id: 'session-b', lastActivityAt: '2026-10-21T12:00:00Z' }];
+  assert.deepEqual(orderedLocalSessions({ sessions: first }).map((session) => session.id), orderedLocalSessions({ sessions: next }).map((session) => session.id));
+  assert.equal(first[0].id, 'session-b');
+  assert.deepEqual(orderedLocalSessions(undefined), []);
 });

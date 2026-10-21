@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
-test('background observation can be stopped without controlling a Codex session', { timeout: 15000 }, async (t) => {
+test('one background bridge owns the output and can stop without controlling Codex', { timeout: 15000 }, async (t) => {
   const root = await mkdtemp(join(tmpdir(), 'wook-home-bridge-'));
   const sessions = join(root, 'sessions');
   const output = join(root, 'bridge');
@@ -26,6 +26,9 @@ test('background observation can be stopped without controlling a Codex session'
     await new Promise((done) => setTimeout(done, 50));
   }
   assert.equal(published, true);
+  await assert.rejects(promisify(execFile)(process.execPath,
+    [script, '--workspace', root, '--sessions-dir', sessions, '--output-dir', output, '--once'],
+    { windowsHide: true }), (error) => error.code === 1);
   const result = await promisify(execFile)(process.execPath, [script, '--output-dir', output, '--stop'], { windowsHide: true });
   assert.match(result.stdout, /stop requested/);
   assert.equal(await exited, 0);
