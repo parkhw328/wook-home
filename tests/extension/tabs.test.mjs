@@ -57,11 +57,13 @@ test('the extension can be contacted only by a local office top-level URL', () =
   assert.throws(() => officeOrigins('https://remote.example/'));
 });
 
-test('manifest has only scoped site access and never injects scripts into AI sites', async () => {
+test('manifest keeps scoped access and separates metadata discovery from gated AI message capture', async () => {
   const manifest = JSON.parse(await readFile(new URL('../../extensions/browser-observer/manifest.json', import.meta.url), 'utf8'));
   assert.deepEqual(manifest.permissions, ['storage']);
   assert.deepEqual(manifest.host_permissions, SITE_PATTERNS);
   assert.deepEqual(manifest.content_scripts[0].matches, ['http://localhost/*', 'http://127.0.0.1/*']);
+  assert.deepEqual(manifest.content_scripts[1].matches, SITE_PATTERNS);
+  assert.deepEqual(manifest.content_scripts[1].js, ['capture-core.js', 'capture.js']);
   assert.equal(manifest.externally_connectable, undefined);
 });
 

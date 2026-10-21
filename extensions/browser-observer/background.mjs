@@ -1,6 +1,7 @@
 import { SITE_PATTERNS, isOfficeUrl, officeOrigins, summarizeTabs } from './tabs.mjs';
+import { collectSearchTabs } from './search.mjs';
 
-// Storage holds only a random profile alias, never browsing data.
+// Metadata discovery remains separate from opt-in per-conversation search capture.
 let client;
 async function clientId() {
   if (!client) client = (async () => {
@@ -14,11 +15,24 @@ async function clientId() {
 }
 
 let collecting;
+let searchCollecting;
 chrome.runtime.onMessage.addListener((message, sender, reply) => {
-  if (message?.type !== 'stackqueue:collect' || !sender.tab || sender.frameId !== 0 || !isOfficeUrl(sender.url) || sender.tab.incognito) return;
+  if (!['stackqueue:collect', 'stackqueue:search-collect'].includes(message?.type) || !sender.tab || sender.frameId !== 0 || !isOfficeUrl(sender.url) || sender.tab.incognito) return;
   (async () => {
     const settings = await chrome.storage.local.get('officeUrl');
     if (!officeOrigins(settings.officeUrl).includes(new URL(sender.url).origin)) throw new Error('OFFICE_NOT_ALLOWED');
+    if (message.type === 'stackqueue:search-collect') {
+      if (!searchCollecting) searchCollecting = (async () => {
+        const chosen = await chrome.storage.local.get('searchSelections');
+        const tabs = await chrome.tabs.query({ url: SITE_PATTERNS });
+        const sessions = await collectSearchTabs(tabs, chosen.searchSelections, (tabId, url) => Promise.race([
+          chrome.tabs.sendMessage(tabId, { type: 'stackqueue:capture-public', url }, { frameId: 0 }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('CAPTURE_TIMEOUT')), 1500)),
+        ]));
+        return { clientId: await clientId(), sessions };
+      })().finally(() => { searchCollecting = null; });
+      return searchCollecting;
+    }
     if (!collecting) collecting = (async () => {
       const id = await clientId();
       const tabs = await chrome.tabs.query({ url: SITE_PATTERNS });

@@ -1,0 +1,50 @@
+.search-panel, .search-settings { padding: 28px; min-width: 0; }
+.search-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
+.search-heading p, .search-settings p { margin: 8px 0 16px; }
+.search-heading .text-link { flex-shrink: 0; font-size: var(--font-control); }
+.search-coverage { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0; border-block: 1px solid #ecdedd; margin: 20px 0; }
+.search-coverage p, .search-scope-note, .search-result-meta, .search-result-date, .search-message header span { font-size: var(--font-caption); line-height: 1.75; color: var(--muted); }
+.search-coverage button { flex-shrink: 0; }
+.session-search-input label, .search-filters label, #search-import-form label { display: grid; gap: 8px; font-size: var(--font-control); font-weight: 600; min-width: 0; }
+.session-search-input > div { display: flex; gap: 12px; margin-top: 8px; }
+#session-search-query { flex: 1; min-width: 0; }
+#view-search input, #view-search select, #view-search textarea { padding: 11px 13px; border: 1px solid #cfbbbd; border-radius: 8px; background: #fffdfc; color: #49343a; width: 100%; font: inherit; font-size: var(--font-control); min-height: 46px; }
+.search-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 18px 0; }
+.search-results-heading, .search-result-meta { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.search-results-heading { margin-top: 24px; }
+#search-result-count { font-size: var(--font-control); }
+#search-results { display: grid; gap: 14px; margin-top: 16px; }
+.search-result { padding: 20px; border: 1px solid #e9d9d7; border-radius: 10px; background: #fffdfb; min-width: 0; }
+.search-result-meta { justify-content: flex-start; gap: 10px 20px; }
+.search-result-open { display: block; font-size: var(--font-emphasis); font-weight: 650; text-align: left; background: none; color: #8a2940; border: 0; padding: 8px 0; cursor: pointer; overflow-wrap: anywhere; min-height: 44px; }
+.search-snippet, .search-message p { font-size: var(--font-body); line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0; }
+.search-result-date { margin-top: 12px; }
+#view-search mark { background: #ffdfa6; color: #533300; border-radius: 2px; }
+.search-pagination { display: flex; gap: 12px; justify-content: center; margin-top: 22px; }
+.search-empty { background: #fbf3f0; padding: 30px; border-radius: 10px; text-align: center; }
+.search-empty p { margin-top: 12px; }
+.search-settings { margin-top: 24px; }
+.search-settings details { border-top: 1px solid #ecdedd; padding-top: 20px; margin-top: 20px; }
+.search-settings summary { cursor: pointer; font-size: var(--font-control); font-weight: 600; }
+#search-import-form { display: grid; gap: 16px; max-width: 850px; margin-top: 16px; }
+#search-error, #search-import-status { color: #8a2940; }
+.search-dialog { width: min(980px, calc(100% - 32px)); max-width: none; max-height: calc(100dvh - 32px); padding: 24px; border: 1px solid #dfc9c9; border-radius: 16px; background: #fffcfa; color: #49343a; }
+.search-dialog::backdrop { background: #29172099; }
+.search-dialog > header { display: flex; gap: 16px; justify-content: space-between; align-items: flex-start; }
+.search-dialog > header { position: sticky; top: -1px; z-index: 1; background: #fffcfa; padding-bottom: 12px; }
+.search-dialog-actions { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0; }
+.search-dialog-messages { max-height: 62dvh; overflow-y: auto; overscroll-behavior: contain; padding: 4px; }
+.search-message { padding: 20px; margin: 12px 0; border: 1px solid #eadbd6; border-radius: 10px; }
+.search-message.selected { border: 2px solid #b43d3e; background: #fff6ee; }
+.search-message header { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: space-between; }
+@media (max-width: 1000px) { .search-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .search-heading { display: block; } }
+@media (max-width: 560px) {
+  .search-panel, .search-settings { padding: 18px; }
+  .search-coverage { align-items: flex-start; flex-direction: column; }
+  .search-filters { grid-template-columns: minmax(0, 1fr); }
+  .session-search-input > div { flex-direction: column; }
+  .search-result { padding: 14px; }
+  .search-dialog { padding: 16px; }
+  .search-dialog > header { flex-wrap: wrap; }
+  .search-message { padding: 14px; }
+}

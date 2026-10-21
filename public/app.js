@@ -2,6 +2,7 @@ import { apiRequest } from './api.mjs';
 import { connectionLocation, connectionSummary, connectionMarkup } from './staff-connections.mjs';
 import { officeOccupants as observedOccupants } from './office-activity.mjs';
 import { OfficeWorkspace } from './workspace.mjs';
+import { CliConversationDialog } from './cli-dialog.mjs';
 import { occupantRoom } from './rooms.mjs';
 import {
   CommandDelivery, commandPresentation, commandUnavailableReason,
@@ -71,7 +72,9 @@ const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
 let motionEnabled = !motionPreference.matches;
 const modal = $('#modal');
 const body = $('#modal-body');
+const cliDialog = new CliConversationDialog({ request: apiRequest, getState: () => ({ state, connected }), onCommand: openSession, onAgent: openAgent });
 const workspace = new OfficeWorkspace($('#office-workspace'), {
+  onSession: (id) => cliDialog.open(id),
   request: apiRequest,
   onTaskAction(action, id, content) {
     if (action === 'approve' && workspace.room !== 'executive') return;
@@ -312,6 +315,7 @@ async function refresh(force = false) {
 }
 
 const VIEW_COPY = {
+  search: ['자료 검색', 'FIND YOUR NEXT STEP', '지난 대화의 자료를, 한곳에서.', 'CLI와 웹 채팅에 남긴 작업 내용과 답변을 찾아 이어가세요.'],
   office: ['나의 사무실', 'YOUR TEAM. YOUR PLACE.', '문을 열면, 함께하는 일이 시작됩니다.', '복도를 지나 동료를 만나고, 대화를 나누고, 업무를 보고받으세요.'],
   tasks: ['업무 보드', 'ONE TASK AT A TIME', '작은 일부터, 하나씩.', '질문에 답하고 결과를 확인하며 함께 일을 완성해 보세요.'],
   handoff: ['작업 인계', 'PICK UP WHERE YOU LEFT OFF', '오늘의 일을, 다음으로.', '잠시 멈추더라도 일의 흐름은 이어질 수 있도록.'],
@@ -439,7 +443,7 @@ function openSession(id) {
   if (!session) return;
   const status = observedSessionStatus(state.localSessions, session, connected);
   const draft = commandDeliveries.get(id)?.record.content ?? commandDrafts.get(id) ?? '';
-  openModal(session.name, 'LOCAL CLI · SESSION', `<div class="info-box">${icon('activity')}<span>명령 허용 모드에서 기존 Codex 세션에 지시할 수 있습니다. 대화 연결이 켜져 있으면 사무실의 터미널에서 공개 응답을 확인할 수 있습니다. 승인·중단은 원래 CLI에서 처리하세요.</span></div>
+  openModal(session.name, 'LOCAL CLI · SESSION', `<div class="info-box">${icon('activity')}<span>명령 허용 모드에서 기존 Codex 세션에 지시할 수 있습니다. 세션을 클릭하면 대화기록 모달에서 공개 응답을 확인할 수 있습니다. 승인·중단은 원래 CLI에서 처리하세요.</span></div><button type="button" class="button button-small" data-session="${esc(id)}">대화기록 보기 ↗</button>
     <dl class="detail-facts session-facts"><div><dt>관찰된 상태</dt><dd id="observed-status">${sessionStatusLabel(status)}</dd></div><div><dt>마지막 활동</dt><dd id="observed-last-event">${displayTime(session.lastActivityAt)}</dd></div><div><dt>연결 상태</dt><dd id="observed-connection">${state.localSessions.status === 'connected' && connected ? '관찰 연결됨' : '관찰 연결 끊김'}</dd></div><div><dt>작업 공간</dt><dd>${esc(state.localSessions.workspace || '현재 작업 공간')}</dd></div></dl>
     <p class="field-help">사무실 중지는 외부 CLI를 멈추지 않습니다. <a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/CLI" target="_blank" rel="noopener noreferrer">상태·연결 도움말 ↗</a></p>
     <section class="command-section" aria-labelledby="command-heading"><h3 id="command-heading">이 세션에 지시하기</h3><p class="field-help" id="command-availability"></p>
@@ -573,7 +577,12 @@ document.addEventListener('click', (event) => {
     $('#session-command', body)?.focus();
     return;
   }
-  if (button.dataset.agent) { openAgent(button.dataset.agent); return; }
+  if (button.dataset.agent) {
+    const sessionId = state.agents.find((agent) => agent.id === button.dataset.agent)?.connection?.sessionId;
+    if (sessionId) { if (modal.open) closeModal(); cliDialog.open(sessionId); }
+    else openAgent(button.dataset.agent);
+    return;
+  }
   if (button.dataset.session) { if (modal.open) closeModal(); location.hash = 'office'; void workspace.selectSession(button.dataset.session); return; }
   if (button.dataset.task) { openTask(button.dataset.task); return; }
   if (button.dataset.editAgent) { openEditAgent(button.dataset.editAgent); return; }

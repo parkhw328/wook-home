@@ -8,6 +8,7 @@ import { createLocalCommands } from './local-commands.js';
 import { createDiscovery } from './discovery.js';
 import { createConnections } from './connections.js';
 import { createStaffConnections } from './staff-connections.js';
+import { createSessionSearch } from './session-search.js';
 
 const contentTypes = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
@@ -29,27 +30,28 @@ function json(response, status, body, extra = {}) {
   response.end(JSON.stringify(body));
 }
 
-async function bodyOf(request) {
+async function bodyOf(request, limit = 32768) {
   if (!request.headers['content-type']?.toLowerCase().startsWith('application/json')) throw new ApiError(415, 'UNSUPPORTED_MEDIA_TYPE', 'application/json 형식으로 요청해 주세요.');
   const chunks = [];
   let size = 0;
   for await (const chunk of request) {
     size += chunk.length;
-    if (size > 32768) throw new ApiError(413, 'BODY_TOO_LARGE', '요청 내용이 너무 큽니다.');
+    if (size > limit) throw new ApiError(413, 'BODY_TOO_LARGE', '요청 내용이 너무 큽니다.');
     chunks.push(chunk);
   }
   try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); }
   catch { throw new ApiError(400, 'INVALID_JSON', '올바른 JSON을 입력해 주세요.'); }
 }
 
-export function createHttpServer(office, { publicDir = resolve('public'), bridgeFile, commandsDir, clock } = {}) {
+export function createHttpServer(office, { publicDir = resolve('public'), bridgeFile, commandsDir, searchDirectory, clock } = {}) {
   const root = resolve(publicDir);
   const observer = createSessionObserver({ file: bridgeFile, clock });
   const commands = createLocalCommands({ directory: commandsDir, observer, office, clock });
   const discovery = createDiscovery({ observer, clock });
   const connections = createConnections({ observer, discovery, clock });
   const staff = createStaffConnections({ office, discovery });
-  return createServer({ requestTimeout: 15000, headersTimeout: 10000 }, async (request, response) => {
+  const search = createSessionSearch({ directory: searchDirectory, bridgeFile, observer, clock });
+  const server = createServer({ requestTimeout: 15000, headersTimeout: 10000 }, async (request, response) => {
     try {
       const host = request.headers.host;
       if (!host || !/^(localhost|127\.0\.0\.1|\[::1\])(?::\d{1,5})?$/i.test(host)) throw new ApiError(403, 'LOCAL_ONLY', '이 버전은 로컬 주소로만 접속할 수 있습니다.');
@@ -59,6 +61,12 @@ export function createHttpServer(office, { publicDir = resolve('public'), bridge
       const protectedRequest = path.startsWith('/api/') || !['GET', 'HEAD'].includes(method);
       if (protectedRequest && (request.headers['sec-fetch-site'] === 'cross-site' || (request.headers.origin && request.headers.origin !== `http://${host}`))) throw new ApiError(403, 'ORIGIN_REJECTED', '사무실 화면에서 다시 요청해 주세요.');
       if (method === 'GET' && path === '/api/health') return json(response, 200, { status: 'ok', version: VERSION });
+      if (method === 'GET' && path === '/api/search/status') return json(response, 200, await search.status());
+      if (method === 'POST' && path === '/api/search/query') return json(response, 200, await search.query(await bodyOf(request)));
+      if (method === 'PUT' && path === '/api/search/settings') return json(response, 200, search.configure(await bodyOf(request)));
+      if (method === 'POST' && path === '/api/search/web') return json(response, 200, search.receiveWeb(await bodyOf(request, 3 * 1024 * 1024)));
+      const searchSession = /^\/api\/search\/sessions\/([a-f0-9]{64})$/.exec(path);
+      if (method === 'GET' && searchSession) return json(response, 200, await search.detail(searchSession[1]));
       if (method === 'GET' && path === '/api/connections') return json(response, 200, connections.snapshot());
       if (method === 'POST' && path === '/api/connections/check') return json(response, 200, await connections.check(await bodyOf(request)));
       if (method === 'GET' && path === '/api/discovery') return json(response, 200, staff.discoverySnapshot());
@@ -109,4 +117,6 @@ export function createHttpServer(office, { publicDir = resolve('public'), bridge
       if (!known) process.stderr.write('Request failed (details withheld).\n');
     }
   });
+  server.once('close', () => search.close());
+  return server;
 }

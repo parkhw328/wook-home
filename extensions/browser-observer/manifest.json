@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "StackQueue 웹 탭 감지",
-  "version": "0.1.0",
-  "description": "열린 AI 웹 탭의 공급자와 대화 구분을 로컬 StackQueue Office에 전달합니다.",
+  "version": "0.2.0",
+  "description": "AI 웹 탭 감지와 사용자가 선택한 대화의 로컬 검색 보관을 지원합니다.",
   "minimum_chrome_version": "120",
   "permissions": ["storage"],
   "host_permissions": [
@@ -18,6 +18,10 @@
   "content_scripts": [{
     "matches": ["http://localhost/*", "http://127.0.0.1/*"],
     "js": ["office.js"],
+    "run_at": "document_idle"
+  }, {
+    "matches": ["https://chatgpt.com/*", "https://claude.ai/*", "https://gemini.google.com/*", "https://www.meta.ai/*", "https://meta.ai/*"],
+    "js": ["capture-core.js", "capture.js"],
     "run_at": "document_idle"
   }]
 }

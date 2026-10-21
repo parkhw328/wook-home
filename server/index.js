@@ -10,6 +10,7 @@ const server = createHttpServer(office, {
   publicDir: fileURLToPath(new URL('../public/', import.meta.url)),
   bridgeFile: process.env.CODEX_BRIDGE_FILE || resolve('data/bridge/codex.json'),
   commandsDir: process.env.CODEX_COMMANDS_DIR || resolve('data/bridge/commands'),
+  searchDirectory: process.env.DATA_DIR || resolve('data'),
 });
 const port = Number(process.env.PORT || 8080);
 const host = process.env.HOST || '127.0.0.1';

@@ -9,6 +9,7 @@ import { publishConversations } from './lib/codex-conversations.mjs';
 import { createCommandPump, findCodex, sendToCodex, supportsQueue } from './lib/codex-commands.mjs';
 import { createCliLifecycle } from './lib/cli-lifecycle.mjs';
 import { collectCliTools } from './lib/cli-tools.mjs';
+import { createSearchHistoryCollector } from './lib/session-search-history.mjs';
 
 async function lockBridge(file) {
   try { await writeFile(file, String(process.pid), { flag: 'wx', mode: 0o600 }); }
@@ -34,6 +35,7 @@ async function main() {
     'output-dir': { type: 'string' },
     'allow-commands': { type: 'boolean', default: false },
     'include-conversations': { type: 'boolean', default: false },
+    'include-search-history': { type: 'boolean', default: false },
     'codex-bin': { type: 'string' },
     remote: { type: 'string' },
     'remote-auth-token-env': { type: 'string' },
@@ -42,7 +44,7 @@ async function main() {
     help: { type: 'boolean', default: false },
   } });
   if (values.help) {
-    process.stdout.write('Usage: npm run bridge:codex -- --workspace . [--allow-commands] [--include-conversations] [--once]\nOptions: --codex-bin <executable-or-js> --remote <Codex endpoint> --remote-auth-token-env <variable-name>\nStop: npm run bridge:codex -- --stop\nObservation is read-only by default; --allow-commands enables the official Codex queue. --include-conversations exports limited, redacted public dialogue from this workspace to the local UI. See docs/wiki/CLI.md.\n');
+    process.stdout.write('Usage: npm run bridge:codex -- --workspace . [--allow-commands] [--include-conversations] [--include-search-history] [--once]\nOptions: --codex-bin <executable-or-js> --remote <Codex endpoint> --remote-auth-token-env <variable-name>\nStop: npm run bridge:codex -- --stop\nObservation is read-only by default; --allow-commands enables the official Codex queue. --include-conversations exports recent public dialogue. --include-search-history also archives bounded public Codex, Claude Code and Gemini CLI history from this workspace for local search, including older sessions. See docs/wiki/CLI.md and docs/wiki/Search.md.\n');
     return;
   }
   if (values['remote-auth-token-env'] && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(values['remote-auth-token-env'])) throw new Error('Invalid environment variable name.');
@@ -71,6 +73,7 @@ async function main() {
     if (values['allow-commands']) process.stdout.write(enabled ? 'Codex command queue enabled.\n' : 'Codex command queue unavailable; observation only. Check codex queue --help.\n');
     const collect = () => collectSessions({ sessionsDir, workspace, includeConversations: values['include-conversations'] });
     const lifecycle = createCliLifecycle();
+    const history = values['include-search-history'] ? createSearchHistoryCollector({ workspace, sessionsDir, output: join(output, 'search-history') }) : null;
     const conversationsDir = join(output, 'conversations');
     if (values['include-conversations']) await mkdir(conversationsDir, { recursive: true, mode: 0o700 });
     const pump = createCommandPump({ directory: commandsDir, bridgeId,
@@ -87,12 +90,14 @@ async function main() {
     let snapshot;
     let lastCollection = 0;
     let pending;
+    let pendingHistory;
+    let lastHistory = -Infinity;
     do {
       try { await access(stopFile); stopping = true; break; } catch { /* No stop request. */ }
       try {
         if (Date.now() - lastCollection >= 5000) {
           const [observed, processes, cliTools] = await Promise.all([collect(), lifecycle.poll(), collectCliTools()]);
-          snapshot = { ...observed, generatedAt: new Date().toISOString(), control, processes, cliTools };
+          snapshot = { ...observed, generatedAt: new Date().toISOString(), control, processes, cliTools, searchHistory: { enabled: Boolean(history) } };
           snapshot.conversations = { enabled: values['include-conversations'] };
           await publishConversations(snapshot, conversationsDir, values['include-conversations']);
           await writeFile(temporary, JSON.stringify(snapshot) + '\n', { mode: 0o644 });
@@ -102,6 +107,12 @@ async function main() {
         if (enabled && !pending) pending = pump().catch(() => {
           process.stderr.write('Command delivery unavailable. Check local folder access; requests are not automatically retried.\n');
         }).finally(() => { pending = null; });
+        if (history && !pendingHistory && Date.now() - lastHistory >= 30000) {
+          lastHistory = Date.now();
+          pendingHistory = history.collect().catch(() => {
+            process.stderr.write('Search history collection unavailable. Existing local search copies are retained.\n');
+          }).finally(() => { pendingHistory = null; });
+        }
         if (previouslyFailed) process.stdout.write('Codex observation resumed.\n');
         previouslyFailed = false;
         if (values.once) process.stdout.write(`Observed ${snapshot.sessions.length} session(s). ${values['include-conversations'] ? 'Limited, redacted conversations exported locally.' : 'No conversation text exported.'}\n`);
@@ -113,6 +124,7 @@ async function main() {
       if (!values.once && !stopping) await new Promise((done) => setTimeout(done, 1000));
     } while (!values.once && !stopping);
     await pending;
+    await pendingHistory;
     if (snapshot && !values.once) {
       snapshot.control = { enabled: false, reason: 'not_enabled' };
       snapshot.processes.status = 'unavailable';

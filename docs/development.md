@@ -56,3 +56,13 @@ docker compose stop
 작업 전에 rules의 두 문서를 읽는다. [협업 현황](collaboration.md)의 파일 소유 범위와 [API 계약](api.md)을 따른다. 감지와 연결 진단의 상세 계약은 [감지 API](discovery-api.md), [연결 점검 API](connections-api.md)에 기록한다. JavaScript는 ES modules, 들여쓰기는 두 칸을 사용하며 `.editorconfig`를 적용한다. 별도 formatter/linter는 아직 도입하지 않았다.
 
 Node SQLite와 Compose 참고: [Node.js SQLite](https://nodejs.org/download/release/v24.14.0/docs/api/sqlite.html), [Docker Compose 서비스](https://docs.docker.com/reference/compose-file/services/).
+
+## 세션 자료 검색 개발
+
+`server/session-search.js`는 업무 DB와 분리된 SQLite 검색 사본, `scripts/lib/session-search-history.mjs`는 선택 프로젝트의 공개 CLI 기록 수집, `public/session-search*.mjs`와 `public/cli-dialog.mjs`는 검색·즉시 대화 모달을 담당한다. 외부 의존성 추가 없이 Node 내장 SQLite를 사용한다. 확장 0.2.0은 개별 대화 동의 후에만 공개 메시지를 읽는다. [검색 계약](session-search-api.md)과 [사용 안내](wiki/Search.md)를 참조한다.
+
+미리보기 사본 안의 중복 테스트를 피하려면 저장소 테스트 경로를 명시한다.
+
+```powershell
+node --test tests/server/*.test.js tests/ui/*.test.mjs tests/extension/*.test.mjs
+```

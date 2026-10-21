@@ -1,5 +1,8 @@
-body { margin: 0; width: 360px; max-width: 100%; font: 15px/1.65 system-ui, sans-serif; color: #52363b; background: #fffafa; }
+body { margin: 0; width: 380px; max-width: 100%; font: 17px/1.75 system-ui, sans-serif; color: #52363b; background: #fffafa; }
 main { padding: 24px; } h1 { font-size: 20px; } label { display: block; font-weight: 600; }
 input { box-sizing: border-box; width: 100%; padding: 10px; font: inherit; border: 1px solid #c8adaf; border-radius: 6px; }
 button { margin-top: 12px; padding: 10px 16px; border: 0; border-radius: 6px; background: #a72f43; color: white; font: inherit; cursor: pointer; }
 #status { min-height: 26px; font-weight: 600; }
+button, input { font-size: 16px; min-height: 44px; } h2 { font-size: 22px; }
+section { border-top: 1px solid #dfc9cb; margin-top: 24px; padding-top: 12px; }
+button:disabled { opacity: .6; cursor: default; } #search-selected { display: grid; gap: 6px; }

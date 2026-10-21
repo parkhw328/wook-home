@@ -6,9 +6,10 @@ import { officeOccupants, sessionRoom, activityRoomMarkup, activitySummaryMarkup
 import { escapeHtml as esc, statusLabel, statusClass, displayTime, orderedLocalSessions, unassignedLocalSessions, observedSessionStatus, sessionStatusLabel, taskUnavailableReason } from './model.mjs';
 
 export class OfficeWorkspace {
-  constructor(root, { request, onTaskAction }) {
+  constructor(root, { request, onTaskAction, onSession }) {
     this.root = root;
     this.onTaskAction = onTaskAction;
+    this.onSession = onSession;
     this.room = 'corridor';
     this.selection = null;
     this.connected = false;
@@ -121,7 +122,10 @@ export class OfficeWorkspace {
     if (!task) return;
     return this.enter(this.room === 'executive' ? 'executive' : taskRoom(task), { type: 'task', id });
   }
-  selectSession(id) { return this.enter(this.state ? sessionRoom(this.state, id, this.connected) : 'office', { type: 'session', id }); }
+  selectSession(id) {
+    this.onSession?.(id);
+    return this.enter(this.state ? sessionRoom(this.state, id, this.connected) : 'office', { type: 'session', id });
+  }
 
   renderRoom() {
     if (!this.state) return;
