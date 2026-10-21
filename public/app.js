@@ -256,10 +256,12 @@ function renderHandoff() {
 
 function renderPrograms() {
   const titles = { wShell: '서버 접속과 파일 전송을 한곳에서', wPost: 'API 요청과 응답을 간편하게', wText: '문서 편집과 차이 비교를 한곳에서', 'StackQueue Blog': 'StackQueue 네이버 블로그' };
-  const marks = { wShell: '&gt;_', wPost: '{ }', wText: 'Tt', 'StackQueue Blog': 'SQ' };
+  const icons = { wShell: '/program-icons/wshell.png', wPost: '/program-icons/wpost.png', wText: '/program-icons/wtext.png' };
   $('#program-list').innerHTML = state.programs.filter((program) => programUrl(program)).map((program) => {
     const isBlog = program.name === 'StackQueue Blog';
-    return `<a class="program-card ${isBlog ? 'blog-card' : ''}" href="${programUrl(program)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(program.name)} ${isBlog ? '네이버 블로그' : 'GitHub 저장소'} (새 탭)"><header><span class="program-icon" aria-hidden="true">${marks[program.name]}</span><h3>${esc(program.name)}</h3><span class="external-arrow" aria-hidden="true">↗</span></header><strong>${titles[program.name]}</strong><p>${esc(program.description)}</p><span class="program-link-label">${isBlog ? '블로그에서' : 'GitHub에서'} 살펴보기 <span aria-hidden="true">→</span></span></a>`;
+    const icon = icons[program.name];
+    const artwork = icon ? `<img src="${icon}" alt="" width="56" height="56" loading="lazy" decoding="async">` : 'SQ';
+    return `<a class="program-card ${isBlog ? 'blog-card' : ''}" href="${programUrl(program)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(program.name)} ${isBlog ? '네이버 블로그' : 'GitHub 저장소'} (새 탭)"><header><span class="program-icon${icon ? ' program-icon--app' : ''}" aria-hidden="true">${artwork}</span><h3>${esc(program.name)}</h3><span class="external-arrow" aria-hidden="true">↗</span></header><strong>${titles[program.name]}</strong><p>${esc(program.description)}</p><span class="program-link-label">${isBlog ? '블로그에서' : 'GitHub에서'} 살펴보기 <span aria-hidden="true">→</span></span></a>`;
   }).join('');
 }
 
