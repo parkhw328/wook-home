@@ -159,6 +159,8 @@ else writeFileSync(new URL('./received.json',import.meta.url),JSON.stringify(pro
   const content = '한글 "quotes"\n$(touch forbidden) & exit; %PATH% `literal`';
   assert.equal((await sendToCodex(cli, f.sessionId, content, f.root)).status, 'accepted');
   assert.deepEqual(JSON.parse(readFileSync(join(f.root, 'received.json'), 'utf8')), ['queue', '--thread', f.sessionId, '--message', content]);
+  await sendToCodex(cli, f.sessionId, content, f.root, 'ws://127.0.0.1:9000', 'WOOK_CODEX_TOKEN');
+  assert.deepEqual(JSON.parse(readFileSync(join(f.root, 'received.json'), 'utf8')).slice(-4), ['--remote', 'ws://127.0.0.1:9000', '--remote-auth-token-env', 'WOOK_CODEX_TOKEN']);
   writeFileSync(script, 'process.stderr.write("private-error");process.exitCode=2;');
   assert.deepEqual(await sendToCodex(cli, f.sessionId, content, f.root), { status: 'failed', code: 'CLI_REJECTED' });
 });

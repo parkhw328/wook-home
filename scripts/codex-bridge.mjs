@@ -32,14 +32,16 @@ async function main() {
     'allow-commands': { type: 'boolean', default: false },
     'codex-bin': { type: 'string' },
     remote: { type: 'string' },
+    'remote-auth-token-env': { type: 'string' },
     once: { type: 'boolean', default: false },
     stop: { type: 'boolean', default: false },
     help: { type: 'boolean', default: false },
   } });
   if (values.help) {
-    process.stdout.write('Usage: npm run bridge:codex -- --workspace . [--allow-commands] [--once]\nOptions: --codex-bin <executable-or-js> --remote <Codex endpoint>\nStop: npm run bridge:codex -- --stop\nObservation is read-only by default; --allow-commands enables the official Codex queue. See docs/wiki/CLI.md.\n');
+    process.stdout.write('Usage: npm run bridge:codex -- --workspace . [--allow-commands] [--once]\nOptions: --codex-bin <executable-or-js> --remote <Codex endpoint> --remote-auth-token-env <variable-name>\nStop: npm run bridge:codex -- --stop\nObservation is read-only by default; --allow-commands enables the official Codex queue. See docs/wiki/CLI.md.\n');
     return;
   }
+  if (values['remote-auth-token-env'] && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(values['remote-auth-token-env'])) throw new Error('Invalid environment variable name.');
   const workspace = resolve(values.workspace);
   const sessionsDir = resolve(values['sessions-dir'] || join(process.env.CODEX_HOME || join(homedir(), '.codex'), 'sessions'));
   const output = resolve(values['output-dir'] || fileURLToPath(new URL('../data/bridge/', import.meta.url)));
@@ -67,7 +69,7 @@ async function main() {
     const collect = () => collectSessions({ sessionsDir, workspace });
     const pump = createCommandPump({ directory: commandsDir, bridgeId,
       getSessions: async () => (await collect()).sessions,
-      send: (id, content) => sendToCodex(cli, id, content, workspace, values.remote),
+      send: (id, content) => sendToCodex(cli, id, content, workspace, values.remote, values['remote-auth-token-env']),
       shouldStop: () => stopping,
     });
     const destination = join(output, 'codex.json');

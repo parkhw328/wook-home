@@ -31,9 +31,10 @@ export async function supportsQueue(cli) {
   } catch { return false; }
 }
 
-export async function sendToCodex(cli, sessionId, content, workspace, remote) {
+export async function sendToCodex(cli, sessionId, content, workspace, remote, remoteAuthTokenEnv) {
   const args = [...cli.prefix, 'queue', '--thread', sessionId, '--message', content];
   if (remote) args.push('--remote', remote);
+  if (remoteAuthTokenEnv) args.push('--remote-auth-token-env', remoteAuthTokenEnv);
   try {
     await execute(cli.executable, args, { cwd: workspace, timeout: 15000, maxBuffer: 32768, windowsHide: true });
     return { status: 'accepted', code: 'QUEUED' };
