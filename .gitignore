@@ -1,1 +1,12 @@
 /resources/
+/data/
+/node_modules/
+/.env
+/.env.*
+!/.env.example
+/coverage/
+*.log
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+/artifacts/

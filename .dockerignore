@@ -1,1 +1,11 @@
 /resources/
+**
+!package.json
+!server/
+!server/**
+!public/
+!public/**
+**/.env
+**/.env.*
+**/*.sqlite*
+**/*.log

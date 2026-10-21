@@ -1,0 +1,84 @@
+import { createServer } from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { extname, resolve, sep } from 'node:path';
+import { ApiError } from './office.js';
+import { VERSION, providers } from './catalog.js';
+
+const contentTypes = {
+  '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml',
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp',
+  '.ico': 'image/x-icon', '.woff2': 'font/woff2',
+};
+
+const headers = {
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'no-referrer',
+  'X-Frame-Options': 'DENY',
+  'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+  'Cache-Control': 'no-store',
+};
+
+function json(response, status, body, extra = {}) {
+  response.writeHead(status, { ...headers, 'Content-Type': 'application/json; charset=utf-8', ...extra });
+  response.end(JSON.stringify(body));
+}
+
+async function bodyOf(request) {
+  if (!request.headers['content-type']?.toLowerCase().startsWith('application/json')) throw new ApiError(415, 'UNSUPPORTED_MEDIA_TYPE', 'application/json 형식으로 요청해 주세요.');
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of request) {
+    size += chunk.length;
+    if (size > 32768) throw new ApiError(413, 'BODY_TOO_LARGE', '요청 내용이 너무 큽니다.');
+    chunks.push(chunk);
+  }
+  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+  catch { throw new ApiError(400, 'INVALID_JSON', '올바른 JSON을 입력해 주세요.'); }
+}
+
+export function createHttpServer(office, { publicDir = resolve('public') } = {}) {
+  const root = resolve(publicDir);
+  return createServer({ requestTimeout: 15000, headersTimeout: 10000 }, async (request, response) => {
+    try {
+      const host = request.headers.host;
+      if (!host || !/^(localhost|127\.0\.0\.1|\[::1\])(?::\d{1,5})?$/i.test(host)) throw new ApiError(403, 'LOCAL_ONLY', '이 버전은 로컬 주소로만 접속할 수 있습니다.');
+      const url = new URL(request.url, `http://${host}`);
+      if (request.headers['sec-fetch-site'] === 'cross-site' || (request.headers.origin && request.headers.origin !== `http://${host}`)) throw new ApiError(403, 'ORIGIN_REJECTED', '사무실 화면에서 다시 요청해 주세요.');
+      const path = url.pathname;
+      const method = request.method;
+      if (method === 'GET' && path === '/api/health') return json(response, 200, { status: 'ok', version: VERSION });
+      if (method === 'GET' && path === '/api/state') return json(response, 200, office.snapshot());
+      if (method === 'GET' && path === '/api/providers') return json(response, 200, providers);
+      if (method === 'GET' && path === '/api/handoff') return json(response, 200, office.handoff(), { 'Content-Disposition': 'attachment; filename="wook-home-handoff.json"' });
+      if (method === 'POST' && path === '/api/agents') return json(response, 201, office.hire(await bodyOf(request)));
+      if (method === 'POST' && path === '/api/tasks') return json(response, 201, office.assign(await bodyOf(request)));
+      const agentMatch = /^\/api\/agents\/([a-f0-9-]{36})$/.exec(path);
+      if (method === 'PATCH' && agentMatch) return json(response, 200, office.editAgent(agentMatch[1], await bodyOf(request)));
+      const taskMatch = /^\/api\/tasks\/([a-f0-9-]{36})\/(messages|approve|cancel)$/.exec(path);
+      if (method === 'POST' && taskMatch) {
+        const action = { messages: 'answer', approve: 'approve', cancel: 'cancel' }[taskMatch[2]];
+        return json(response, 200, office[action](taskMatch[1], await bodyOf(request)));
+      }
+      if (method === 'POST' && path === '/api/office/pause') return json(response, 200, office.pause(await bodyOf(request)));
+      if (method === 'POST' && path === '/api/office/resume') return json(response, 200, office.resume(await bodyOf(request)));
+      if (path.startsWith('/api/') || !['GET', 'HEAD'].includes(method)) throw new ApiError(404, 'NOT_FOUND', '요청한 경로가 없습니다.');
+
+      let decoded;
+      try { decoded = decodeURIComponent(path); }
+      catch { throw new ApiError(400, 'INVALID_PATH', '올바른 경로로 요청해 주세요.'); }
+      const file = resolve(root, `.${decoded === '/' ? '/index.html' : decoded}`);
+      if (!file.startsWith(`${root}${sep}`) || decoded.includes('\\') || decoded.includes('\0') || !contentTypes[extname(file)]) throw new ApiError(404, 'NOT_FOUND', '요청한 파일이 없습니다.');
+      let data;
+      try { data = await readFile(file); }
+      catch { throw new ApiError(404, 'NOT_FOUND', '요청한 파일이 없습니다.'); }
+      response.writeHead(200, { ...headers, 'Content-Type': contentTypes[extname(file)], 'Content-Length': data.length });
+      response.end(method === 'HEAD' ? undefined : data);
+    } catch (error) {
+      if (response.destroyed || response.headersSent) return;
+      const known = error instanceof ApiError;
+      json(response, known ? error.status : 500, { error: { code: known ? error.code : 'INTERNAL_ERROR', message: known ? error.message : '요청을 처리하지 못했습니다. 다시 시도해 주세요.' } });
+      if (!known) process.stderr.write('Request failed (details withheld).\n');
+    }
+  });
+}
