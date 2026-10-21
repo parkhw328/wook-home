@@ -160,7 +160,7 @@ dt, .task-filters { font-size: var(--font-control); }
 .report-detail dd, .terminal-message pre { font-size: var(--font-body); line-height: 1.85; }
 .terminal-toolbar { flex-wrap: wrap; gap: 10px 16px; }
 .terminal-toolbar > button { font-size: var(--font-control); min-height: 44px; padding: 8px; }
-.terminal-filters { flex-wrap: wrap; gap: 12px; }
+.terminal-filters { flex-wrap: wrap; align-items: flex-end; gap: 12px; }
 .terminal-filters label { flex-wrap: wrap; gap: 7px; }
 .terminal-filters .search-field { min-width: min(100%, 210px); }
 .terminal input::placeholder { color: #c4b2b3; }
