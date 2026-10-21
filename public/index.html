@@ -21,8 +21,10 @@
     <a class="skip-link" href="#main">본문으로 이동</a>
     <div class="app-shell">
       <aside class="sidebar" aria-label="작업 공간 탐색">
-        <a class="brand" href="#office" id="brand-link" aria-label="StackQueue Office"><span class="brand-icon" aria-hidden="true">SQ<span></span></span><span class="brand-copy"><span data-office-name>StackQueue Office</span><small>YOUR LOCAL AI WORKSPACE</small></span></a>
-        <div class="workspace-card"><span class="workspace-icon" aria-hidden="true">SQ</span><div><strong data-office-name>StackQueue Office</strong><span>Local workspace</span></div><span class="workspace-dot" aria-hidden="true"></span></div>
+        <div class="workspace-identity">
+          <a class="brand" href="#office" id="brand-link" aria-label="StackQueue Office"><span class="brand-icon" aria-hidden="true">SQ<span></span></span><span class="brand-copy"><span data-office-name>StackQueue Office</span></span></a>
+          <span class="connection-pill" id="connection-status" role="status"><i aria-hidden="true"></i>로컬 서버 연결 중</span>
+        </div>
         <div class="nav-label">WORKSPACE</div>
         <nav class="main-nav">
           <a href="#office" class="nav-link active" data-view="office" aria-current="page"><span data-icon="office"></span>나의 사무실</a>
@@ -35,7 +37,6 @@
       </aside>
 
       <div class="main-shell">
-        <header class="topbar"><div class="breadcrumb"><span data-office-name>StackQueue Office</span><span aria-hidden="true">/</span><strong id="page-label">나의 사무실</strong></div><div class="topbar-actions"><span class="connection-pill" id="connection-status" role="status"><i aria-hidden="true"></i>서버 연결 중</span><span class="local-label">LOCAL</span></div></header>
         <main id="main" tabindex="-1">
           <div class="page-heading"><div><p class="eyebrow" id="page-eyebrow">A PLACE TO MAKE THINGS HAPPEN</p><h1 id="page-title">오늘도, 함께 만드는 일.</h1><p class="page-description" id="page-description">동료를 모으고, 일을 나누고, 다음 한 걸음을 만들어 보세요.</p></div><button class="button button-primary" type="button" id="hire-button"><span data-icon="plus"></span>직원 채용</button></div>
           <div id="connection-error" class="notice notice-error" role="alert" hidden><span data-icon="alert"></span><div><strong>서버와 연결이 끊어졌습니다.</strong><p>마지막으로 받은 상태입니다. 연결되면 자동으로 갱신합니다.</p></div><button class="button button-small button-quiet" id="retry-button" type="button">다시 연결</button></div>

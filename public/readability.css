@@ -24,9 +24,14 @@ h3 { font-size: var(--font-emphasis); line-height: 1.6; }
 /* Navigation and small headings remain legible in both Korean and English. */
 .brand { font-size: var(--font-control); letter-spacing: -.02em; }
 .sidebar { overflow-y: auto; }
-.brand small { font-size: var(--font-caption); letter-spacing: .025em; line-height: 1.6; white-space: normal; }
-.workspace-card strong, .sidebar-bottom strong, .sidebar-note strong { font-size: var(--font-control); }
-.workspace-card div span, .sidebar-bottom div span { font-size: var(--font-caption); }
+.workspace-identity { padding: 14px; border: 1px solid #e9d7cf; border-radius: 12px; background: #f4e8e3; }
+.workspace-identity .brand { min-height: 40px; gap: 10px; }
+.workspace-identity .brand-icon { width: 38px; }
+.workspace-identity .brand-copy > span { white-space: normal; overflow: visible; }
+.workspace-identity .connection-pill { margin: 8px 0 0 48px; align-items: flex-start; line-height: 1.6; white-space: normal; }
+.workspace-identity .connection-pill i { flex: none; margin-top: 8px; }
+.sidebar-bottom strong, .sidebar-note strong { font-size: var(--font-control); }
+.sidebar-bottom div span { font-size: var(--font-caption); }
 .sidebar-note p { max-width: none; color: var(--muted); font-size: var(--font-small); line-height: 1.8; }
 .nav-link { min-height: 48px; font-size: var(--font-control); color: #625459; }
 .nav-label, .eyebrow, .page-heading .eyebrow, .modal-header .eyebrow,
@@ -37,10 +42,7 @@ h3 { font-size: var(--font-emphasis); line-height: 1.6; }
   line-height: 1.65;
   color: #77564f;
 }
-.nav-count, .inbox-count, .breadcrumb, .connection-pill, .local-label { font-size: var(--font-caption); }
-.local-label { letter-spacing: .04em; }
-.breadcrumb { flex-wrap: wrap; gap: 5px 12px; }
-.topbar { gap: 12px 20px; }
+.nav-count, .inbox-count, .connection-pill { font-size: var(--font-caption); }
 
 /* Controls and prose use a full-size text face, including dialog actions. */
 .button, .button-small, .provider-actions .button, .detail-actions .button,
@@ -188,7 +190,6 @@ dt, .task-filters { font-size: var(--font-control); }
 @media (max-width: 600px) {
   .main-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
   .nav-link { justify-content: flex-start; padding: 10px 12px; }
-  .topbar { flex-wrap: wrap; padding: 14px 16px; }
   .page-heading { gap: 18px; }
   .page-heading > .button { width: 100%; }
   .stat-card { padding: 14px; }

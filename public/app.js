@@ -319,7 +319,6 @@ function navigate() {
   const view = location.hash.slice(1);
   currentView = Object.hasOwn(VIEW_COPY, view) ? view : 'office';
   const [label, eyebrow, title, description] = VIEW_COPY[currentView];
-  $('#page-label').textContent = label;
   $('#page-eyebrow').textContent = eyebrow;
   $('#page-title').textContent = title;
   $('#page-description').textContent = description;
