@@ -3,18 +3,18 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { get } from 'node:http';
+import { get, request } from 'node:http';
 import { createStore } from '../../server/store.js';
 import { createOffice } from '../../server/office.js';
 import { createHttpServer } from '../../server/http.js';
 
-async function fixture(t) {
+async function fixture(t, options = {}) {
   const directory = mkdtempSync(join(tmpdir(), 'wook-home-http-'));
   writeFileSync(join(directory, 'index.html'), '<!doctype html><title>Office</title>');
   writeFileSync(join(directory, 'app.mjs'), 'export const ready = true;');
   writeFileSync(join(directory, 'test.woff2'), 'font-header-fixture');
   const store = createStore(':memory:');
-  const server = createHttpServer(createOffice(store), { publicDir: directory });
+  const server = createHttpServer(createOffice(store), { publicDir: directory, ...options });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   t.after(async () => {
     await new Promise((resolve) => server.close(resolve));
@@ -75,6 +75,38 @@ test('cross-origin and non-local Host requests cannot reach state or mutations',
   const navigation = await fetch(base, { headers: { 'Sec-Fetch-Site': 'cross-site' } });
   assert.equal(navigation.status, 200);
   assert.equal((await (await fetch(base + '/api/state')).json()).agents.length, 0);
+});
+
+test('configured network addresses serve the office and same-origin API without accepting other hosts or origins', async (t) => {
+  const host = '192.0.2.10:8080';
+  const { base } = await fixture(t, { allowedHosts: [host, 'office.example:8080'] });
+  const call = (path, headers, body) => new Promise((resolve, reject) => {
+    const req = request(base + path, { method: body ? 'POST' : 'GET', headers: { Host: host, 'Content-Type': 'application/json', ...headers } }, (response) => {
+      response.resume(); response.on('end', () => resolve(response.statusCode));
+    });
+    req.on('error', reject);
+    req.end(body ? JSON.stringify(body) : undefined);
+  });
+  assert.equal(await call('/'), 200);
+  assert.equal(await call('/api/state'), 200);
+  assert.equal(await call('/api/state', { Host: 'office.example:8080' }), 200);
+  const agent = { name: 'Network test', role: 'Review', provider: 'demo' };
+  assert.equal(await call('/api/agents', { Origin: `http://${host}`, 'Sec-Fetch-Site': 'same-origin' }, agent), 201);
+  assert.equal(await call('/api/agents', { Origin: 'http://other.example' }, agent), 403);
+  assert.equal(await call('/api/agents', { Origin: 'http://192.0.2.10:8081' }, agent), 403);
+  assert.equal(await call('/api/state', { 'Sec-Fetch-Site': 'cross-site' }), 403);
+  assert.equal(await call('/api/state', { Host: '192.0.2.11:8080' }), 403);
+  assert.equal(await call('/api/state', { Host: '192.0.2.10:8081' }), 403);
+  assert.equal((await fetch(base + '/api/health')).status, 200);
+});
+
+test('network host configuration rejects wildcard, URL and malformed entries', () => {
+  const store = createStore(':memory:');
+  try {
+    for (const host of ['*', 'http://192.0.2.10:8080', '192.0.2.10:8080/path', 'user@office.example', 'office.example:99999', 'office.example\\private', ' office.example']) {
+      assert.throws(() => createHttpServer(createOffice(store), { allowedHosts: [host] }), /Invalid OFFICE_ALLOWED_HOSTS/);
+    }
+  } finally { store.close(); }
 });
 
 test('invalid JSON, unsupported fields and non-public files are rejected', async (t) => {

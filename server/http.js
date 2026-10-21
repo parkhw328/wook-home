@@ -43,7 +43,14 @@ async function bodyOf(request, limit = 32768) {
   catch { throw new ApiError(400, 'INVALID_JSON', '올바른 JSON을 입력해 주세요.'); }
 }
 
-export function createHttpServer(office, { publicDir = resolve('public'), bridgeFile, commandsDir, searchDirectory, clock } = {}) {
+export function createHttpServer(office, { publicDir = resolve('public'), bridgeFile, commandsDir, searchDirectory, clock, allowedHosts = [] } = {}) {
+  const hosts = new Set(allowedHosts.map((value) => {
+    const host = typeof value === 'string' ? value.toLowerCase() : '';
+    // Exact host:port entries, never URLs, wildcards or caller-supplied overrides.
+    if (!host || /[\s/*?#@\\]/.test(host) || !URL.canParse(`http://${host}`)
+      || new URL(`http://${host}`).host !== host) throw new Error('Invalid OFFICE_ALLOWED_HOSTS configuration.');
+    return host;
+  }));
   const root = resolve(publicDir);
   const observer = createSessionObserver({ file: bridgeFile, clock });
   const commands = createLocalCommands({ directory: commandsDir, observer, office, clock });
@@ -54,7 +61,7 @@ export function createHttpServer(office, { publicDir = resolve('public'), bridge
   const server = createServer({ requestTimeout: 15000, headersTimeout: 10000 }, async (request, response) => {
     try {
       const host = request.headers.host;
-      if (!host || !/^(localhost|127\.0\.0\.1|\[::1\])(?::\d{1,5})?$/i.test(host)) throw new ApiError(403, 'LOCAL_ONLY', '이 버전은 로컬 주소로만 접속할 수 있습니다.');
+      if (!host || (!/^(localhost|127\.0\.0\.1|\[::1\])(?::\d{1,5})?$/i.test(host) && !hosts.has(host.toLowerCase()))) throw new ApiError(403, 'LOCAL_ONLY', '로컬 주소 또는 서버에 설정한 접속 주소를 사용해 주세요.');
       const url = new URL(request.url, `http://${host}`);
       const path = url.pathname;
       const method = request.method;

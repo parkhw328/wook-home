@@ -45,7 +45,7 @@ docker compose ps
 docker compose stop
 ```
 
-컨테이너는 비루트 사용자로 실행하며 정적 파일과 서버 코드만 이미지에 복사한다. 데이터 볼륨·지시 폴더·임시 디렉터리만 쓰기를 허용한다. 호스트의 `data/bridge`는 `/app/bridge`에 읽기 전용으로, `data/bridge/commands`는 `/app/commands`에 읽기·쓰기로 마운트한다. 두 바인드 마운트의 `z` 옵션은 Linux SELinux의 공유 레이블을 지정한다. 지시 본문은 CLI 호출 전에 제거한다. Compose 포트는 127.0.0.1에만 바인딩한다. 현재 외부 접속용 인증 기능은 없다.
+컨테이너는 비루트 사용자로 실행하며 정적 파일과 서버 코드만 이미지에 복사한다. 데이터 볼륨·지시 폴더·임시 디렉터리만 쓰기를 허용한다. 호스트의 `data/bridge`는 `/app/bridge`에 읽기 전용으로, `data/bridge/commands`는 `/app/commands`에 읽기·쓰기로 마운트한다. 두 바인드 마운트의 `z` 옵션은 Linux SELinux의 공유 레이블을 지정한다. 지시 본문은 CLI 호출 전에 제거한다. Compose는 기본 127.0.0.1에 바인딩한다. `WOOK_BIND_ADDRESS=0.0.0.0`으로 네트워크 접속을 켤 때 `OFFICE_ALLOWED_HOSTS`에 사용할 서버 주소와 포트를 쉼표로 지정한다. 실제 IP 설정은 Git 제외 `.env`에 두고 예시는 `.env.example`을 따른다. 같은 출처 검사는 유지하며 외부 접속용 인증 기능은 없다.
 
 Linux 프로세스 감지기는 `scripts/lib/linux-processes.mjs`다. `/proc/<pid>/status`의 유효 UID로 범위를 제한하고 `stat`의 시작 tick과 부팅 시각, `getconf CLK_TCK`로 실행 시각을 계산한다. NUL 구분 인수와 공식 npm 심볼릭 링크는 분류 중 메모리에서만 확인한다. 인수·경로·사용자 이름은 상태 파일/API에 넣지 않는다. 최대 32,768 PID·512 후보·64 CLI, 파일별 읽기 한도와 조회 시간 한도를 두며 불완전한 조회는 종료로 처리하지 않는다. 자동 검증은 `tests/server/linux-processes.test.js`와 기존 lifecycle·bridge·discovery 테스트에 포함한다.
 

@@ -26,6 +26,8 @@ docker compose up --build -d
 
 사무실 이름은 `.env`의 `OFFICE_NAME=StackQueue Office`로 바꿀 수 있습니다. `.env.example`을 참고하고 변경 후 `docker compose up -d`로 적용하세요.
 
+다른 PC에서 확인하려면 `.env`에 바인딩 주소와 접속할 서버 주소를 지정하세요. [네트워크 접속 설정](https://github.com/parkhw328/wook-home/wiki/Linux#다른-pc에서-접속).
+
 **CLI·웹 감지는 Windows와 Linux에서 사용할 수 있습니다.** 호스트의 별도 터미널에서 `npm run bridge:codex -- --workspace .`를 실행하면 지원 CLI의 추가·종료를 확인합니다. Linux에서는 같은 사용자 계정의 프로세스를 감지합니다. 웹 탭은 Chrome/Chromium에 [감지 확장프로그램](https://github.com/parkhw328/wook-home/wiki/Detection)을 설치하고 화면에서 **웹 탭 감지 켜기**를 누르세요. [Linux 실행과 권한 안내](https://github.com/parkhw328/wook-home/wiki/Linux).
 
 이미 실행 중인 Codex에 지시하려면 호스트에 Node.js 24.14 이상(27 미만)과 `codex queue`를 지원하는 CLI를 준비하고 별도 터미널에서 실행하세요. [Wiki의 연결·명령 안내](https://github.com/parkhw328/wook-home/wiki/CLI)를 확인할 수 있습니다.
@@ -39,7 +41,7 @@ docker compose stop    # 체험 상태를 저장하고 중지 (외부 Codex는 �
 docker compose up -d   # 다시 실행한 뒤 화면에서 업무 재개
 ```
 
-직원과 업무는 Docker 볼륨에 보관됩니다. PC 간 데이터는 자동 공유되지 않으며, 인계 JSON 내보내기는 검토용입니다. 가져오기와 원격 접속은 아직 지원하지 않습니다.
+직원과 업무는 Docker 볼륨에 보관됩니다. PC 간 데이터는 자동 공유되지 않으며, 인계 JSON 내보내기는 검토용입니다. 가져오기와 원격 사용자 인증은 아직 지원하지 않습니다.
 
 ## 문서
 

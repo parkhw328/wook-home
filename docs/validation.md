@@ -1,5 +1,12 @@
 # 로컬 버전 검증 기록
 
+## 명시적 네트워크 접속 설정 — 2026-10-22
+
+- Docker의 `WOOK_BIND_ADDRESS`와 서버의 정확한 `OFFICE_ALLOWED_HOSTS` 목록을 추가했다. 이 PC의 Git 제외 `.env`에서 0.0.0.0:8080 바인딩과 사용할 서버 주소를 설정했다. 다른 환경의 기본값은 localhost로 유지한다.
+- `npm test` 146개 통과. 허용한 IP·도메인의 화면·API와 같은 출처 쓰기 요청을 확인하고, 미등록 Host·다른 포트·다른 Origin·cross-site API 호출·와일드카드 설정은 거절했다.
+- `docker compose up --build -d --wait` 후 healthy 상태와 0.0.0.0:8080 리스닝을 확인했다. 호스트의 네트워크 IP를 통해 화면·health·state·discovery가 HTTP 200을 반환했다. 외부 PC에서의 실제 접속 확인은 사용자 확인 범위다.
+- Chromium에서 네트워크 IP로 사무실을 열어 서버 연결과 Linux CLI 감지 범위, 같은 출처 검색 POST의 HTTP 200을 확인했다. 페이지 JS 오류는 없었다.
+
 ## Linux Docker·CLI·웹 감지 — 2026-10-22
 
 - Rocky Linux 9.8, Node.js 26.8.1, Docker Engine 29.5.3, Compose 5.1.4에서 확인했다. `docker compose up --build -d`와 최종 `docker compose up -d --wait` 후 기본 8080 사무실이 healthy이고 `/api/health`가 정상 응답했다. 사무실은 비루트 사용자, 127.0.0.1 바인딩, 상태 마운트 읽기 전용을 유지한다. SELinux는 이 검증 환경에서 비활성화되어 공유 `z` 옵션의 실제 enforcing 정책 검증은 포함하지 않는다.

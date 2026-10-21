@@ -20,6 +20,20 @@ docker compose ps
 
 컨테이너가 `healthy`이면 **http://localhost:8080**을 엽니다. **직원 · 연결 관리 → 연결 관리 → 감지**에서 `Linux 같은 사용자`와 CLI 실행 수를 확인하세요. 기본 연결은 메타데이터 관찰이며 AI 로그인·메시지 전송·대화 본문 수집을 켜지 않습니다.
 
+## 다른 PC에서 접속
+
+`.env`에서 Docker가 받을 주소와 브라우저에서 사용할 서버 주소를 지정합니다. 아래 `192.0.2.10`은 예시이므로 실제 서버 IP로 바꾸세요.
+
+```dotenv
+WOOK_BIND_ADDRESS=0.0.0.0
+WOOK_PORT=8080
+OFFICE_ALLOWED_HOSTS=192.0.2.10:8080
+```
+
+`docker compose up --build -d`로 적용한 뒤 다른 PC에서 `http://서버-IP:8080`을 엽니다. `0.0.0.0`은 모든 네트워크 인터페이스에서 요청을 받는 설정입니다. 여러 IP·도메인을 쓰면 `OFFICE_ALLOWED_HOSTS`에 쉼표로 구분하고 포트까지 정확히 적습니다. 이 목록은 접속할 서버 주소이며 접속자 IP 목록은 아닙니다. 기존 localhost 접속과 같은 출처 API 검사는 유지합니다.
+
+현재 사용자 인증은 제공하지 않으므로 이 모드는 접근을 허용한 네트워크에서 확인하는 용도입니다. 호스트 CLI 감지 상태는 볼 수 있으며 웹 탭 감지 확장은 계속 localhost·127.0.0.1 사무실에만 연결합니다. 네트워크 주소에서 확장을 켜는 기능은 포함하지 않습니다. 로컬 전용으로 되돌리려면 `WOOK_BIND_ADDRESS=127.0.0.1`, `OFFICE_ALLOWED_HOSTS=`로 바꾸고 `docker compose up -d`를 실행합니다.
+
 ## CLI 감지 범위
 
 - 연결 프로그램과 같은 유효 UID의 Codex·Claude Code·Gemini CLI를 약 5초마다 확인합니다. 같은 사용자의 다른 터미널·SSH 세션도 포함하며 다른 사용자나 Windows 프로세스는 포함하지 않습니다.
