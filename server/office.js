@@ -37,6 +37,14 @@ function message(role, content) {
   return { id: randomUUID(), role, content, createdAt: now() };
 }
 
+function connectionPreference(value) {
+  if (value === null) return null;
+  fields(value, ['source', 'kind']);
+  const kinds = { cli: ['session', 'process'], web: ['conversation', 'page'] };
+  if (!kinds[value.source]?.includes(value.kind)) fail(400, 'VALIDATION_ERROR', '지원되는 연결 종류를 선택해 주세요.');
+  return { source: value.source, kind: value.kind };
+}
+
 function refreshAgent(state, agentId) {
   const agent = state.agents.find((item) => item.id === agentId);
   if (!agent) return;
@@ -101,8 +109,9 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
       output.tasks.forEach((task) => delete task.previousStatus);
       return { office: output.office, providers: structuredClone(providers), agents: output.agents, tasks: output.tasks, events: output.events, programs: structuredClone(programs) };
     },
-    hire(body) {
+    hire(body, preference = null) {
       fields(body, ['name', 'role', 'provider', 'model', 'reasoningEffort']);
+      const connection = connectionPreference(preference);
       return update((next) => {
         if (next.agents.length >= 100) fail(409, 'LIMIT_REACHED', '초기 버전은 직원 100명까지 등록할 수 있습니다.');
         const provider = providers.find((item) => item.id === body.provider);
@@ -117,9 +126,23 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
           provider: provider.id, model, reasoningEffort, status: 'idle', location: 'local-container',
           createdAt: now(), updatedAt: now(),
         };
+        if (connection) agent.connectionPreference = connection;
         next.agents.push(agent);
         refreshAgent(next, agent.id);
         event(next, 'agent.created', '직원 정보를 등록했습니다.');
+        return agent;
+      });
+    },
+    setAgentConnection(id, preference) {
+      const connection = connectionPreference(preference);
+      return update((next) => {
+        const agent = next.agents.find((item) => item.id === id);
+        if (!agent) fail(404, 'NOT_FOUND', '직원을 찾을 수 없습니다.');
+        if (agent.provider === 'demo') fail(409, 'PROVIDER_MISMATCH', '체험 직원에는 외부 세션을 연결할 수 없습니다.');
+        if (connection) agent.connectionPreference = connection;
+        else delete agent.connectionPreference;
+        agent.updatedAt = now();
+        event(next, 'agent.connection.updated', connection ? '직원의 관찰 연결을 지정했습니다.' : '직원의 관찰 연결을 해제했습니다.');
         return agent;
       });
     },
@@ -234,7 +257,7 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
       return {
         schemaVersion: 1, exportedAt: now(),
         notice: '사용자가 입력한 업무·대화가 포함됩니다. 공개 전 내용을 검토하세요. 인증 정보는 수집하지 않습니다. 이 버전은 가져오기를 지원하지 않습니다.',
-        office: structuredClone(state.office), agents: structuredClone(state.agents), tasks: structuredClone(state.tasks),
+        office: structuredClone(state.office), agents: state.agents.map(({ connectionPreference: _, ...agent }) => structuredClone(agent)), tasks: structuredClone(state.tasks),
       };
     },
   };

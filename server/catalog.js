@@ -37,7 +37,7 @@ export const providers = [
     guideUrl: 'https://github.com/parkhw328/wook-home/wiki/Providers',
     available: false,
     kind: 'external',
-    reason: '연결 기능 준비 중입니다. 직원 정보만 등록할 수 있습니다.',
+    reason: '감지한 CLI·웹을 직원에 연결할 수 있습니다. 새 AI 실행과 모델 변경은 준비 중입니다.',
     models: [],
     reasoningEfforts: [],
     capabilities: { ...unavailableCapabilities },

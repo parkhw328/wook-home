@@ -24,6 +24,8 @@
 
 ## 공급자와 직원
 
+감지한 CLI·웹에서 직원 등록·기존 직원 연결·해제는 [직원 연결 API](staff-connections-api.md)를 따른다. `/state`는 등록 직원의 관찰 연결을 `connection`으로 제공하며, 관찰 중인 직원의 `status`는 `observing`이다.
+
 - `GET /api/providers`: 공급자 객체 배열.
 - 공급자: `{ id, name, available, kind, reason, models, reasoningEfforts, capabilities, webUrl?, guideUrl? }`. kind는 demo 또는 external. capabilities는 `{ createSession, observeSession, resumeSession, interrupt, changeModel }` 불리언 객체.
 - 외부 공급자의 `webUrl`은 공식 서비스 접속 주소, `guideUrl`은 공급자 연결 안내 Wiki다. 고정 HTTPS 링크이며 인증·연동 상태를 의미하지 않는다. 링크를 열어도 `available`이나 capabilities는 바뀌지 않는다.
