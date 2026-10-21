@@ -16,6 +16,8 @@ html:has(dialog[open]) { overflow: hidden; }
 .cli-dialog-log .terminal-message pre { white-space: pre-wrap; overflow-wrap: anywhere; font-family: inherit; font-size: var(--font-body); line-height: 1.85; }
 .cli-dialog-log .terminal-message header { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: var(--font-caption); }
 .cli-dialog-log .terminal-role, .cli-dialog-log time { color: #66574d; }
+.cli-dialog-log .terminal-message.user .terminal-role { color: #922f3d; }
+.cli-dialog-log .terminal-limit { color: #66574d; }
 .cli-conversation-dialog footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-top: 12px; font-size: var(--font-caption); }
 @media (max-width: 650px) {
   .cli-conversation-dialog { width: calc(100% - 16px); max-height: calc(100dvh - 16px); padding: 16px; }
