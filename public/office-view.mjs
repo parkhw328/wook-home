@@ -13,7 +13,7 @@ export class OfficeViewControls {
       if (action === 'fit') scene.setZoom(1);
       if (action === 'paths') scene.setPaths(!scene.pathsVisible);
       if (action === 'fullscreen') void this.toggleFullscreen();
-      if (action === 'work') root.querySelector('#room-panel').scrollIntoView({ behavior: scene.motion ? 'smooth' : 'instant', block: 'start' });
+      if (action === 'work') root.querySelector('.workbench').scrollIntoView({ behavior: scene.motion ? 'smooth' : 'instant', block: 'start' });
       this.refresh();
     });
     root.addEventListener('keydown', (event) => {

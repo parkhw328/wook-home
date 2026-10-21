@@ -3,7 +3,7 @@
 ## 구조
 
 - `server/`: Node.js HTTP API, 업무 상태 전환, SQLite 저장.
-- `public/`: HTML/CSS/JS 사무실 GUI. `rooms.mjs`는 층·문·복도·엘리베이터 경로, `office-3d.mjs`는 자체 제작 입체 건물·가구·캐릭터, `workspace.mjs`는 공간별 업무 패널, `conversation.mjs`는 터미널과 세션 전환이다.
+- `public/`: HTML/CSS/JS 사무실 GUI. `rooms.mjs`는 층·문·복도·엘리베이터 경로, `office-models.mjs`는 자체 제작 입체 건물·가구·캐릭터, `office-3d.mjs`는 카메라·동선·활동 애니메이션, `workspace.mjs`는 공간별 업무 패널, `conversation.mjs`는 터미널과 세션 전환이다.
 - `public/vendor/three/`: 버전을 고정한 Three.js ES 모듈과 MIT 라이선스. 앱 실행 중 CDN 요청 없이 제공한다.
 - `public/fonts/`: 자체 호스팅 폰트와 라이선스. 출처는 해당 폴더 README에 기록한다.
 - `public/program-icons/`: wShell·wPost·wText의 실제 앱 아이콘과 라이선스. 원본 커밋·파일·SHA-256은 [자산 안내](../public/program-icons/README.md)에 기록한다.
@@ -49,7 +49,7 @@ docker compose stop
 
 `npm test`는 서버와 UI 테스트를 실행하고 `npm run test:server`는 서버 테스트만 실행한다. 서버 테스트는 임시 DB에서 업무 전환, 중복 실행 방지, 재시작 보존, 입력·origin 검증과 정적 파일 제공을 확인한다. Codex 관찰 테스트는 프로젝트 필터, 부분 기록, 민감 필드 제외, 오래된 활동과 연결 끊김을 검증한다. 대화 테스트는 역할 제외·마스킹·분량 제한·프로젝트/세션 격리와 인계 제외를 검증한다. UI 테스트는 모든 방 사이 문·복도 경로, 보고 상태 분류, HTML 비실행과 늦은 세션 응답 차단도 검증한다.
 
-변경 범위에 맞는 자동 검증 후, Docker 빌드·health check와 브라우저의 실제 사용 흐름을 확인한다. 검사에 사용한 가상 직원과 실제 AI 연결을 구분하고 검증 결과를 커밋에 연결한다. [검증 기록](validation.md)을 참고한다.
+변경 범위에 맞는 자동 검증 후, Docker 빌드·health check와 브라우저의 실제 사용 흐름을 확인한다. 검사에 사용한 가상 직원과 실제 AI 연결을 구분하고 검증 결과를 커밋에 연결한다. [검증 기록](validation.md)과 [실내 배치 검증](office-layout-validation.md)을 참고한다.
 
 ## 문서와 협업
 

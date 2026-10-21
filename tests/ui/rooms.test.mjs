@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ROOMS, HALL, routeBetween, roomTasks, taskRoom, worldPoint, isHall, roomById, hallForFloor, CORRIDOR_Z, LIFT_X, DESK_X, occupantPosition, pathToDoor } from '../../public/rooms.mjs';
+import { ROOMS, HALL, routeBetween, roomTasks, taskRoom, worldPoint, isHall, roomById, hallForFloor, CORRIDOR_Z, LIFT_X, DESKS, occupantPosition, pathToDoor } from '../../public/rooms.mjs';
 import { ConversationReader, conversationMarkup, filterMessages } from '../../public/conversation.mjs';
 
 test('every floor and room route uses doors, corridors and the open lift shaft without crossing walls or slabs', () => {
@@ -30,8 +30,8 @@ test('leaving a room stays on the same floor and each mandatory space is assigne
   }
 });
 
-test('both desk rows reach the door through clear aisles without crossing a desk', () => {
-  for (let seat = 0; seat < DESK_X.length * 2; seat += 1) {
+test('all nine desk stations reach the door through clear aisles without crossing furniture', () => {
+  for (let seat = 0; seat < 16; seat += 1) {
     const home = occupantPosition('office', seat);
     const route = pathToDoor('office', home);
     assert.deepEqual(route[0], home);
@@ -39,9 +39,9 @@ test('both desk rows reach the door through clear aisles without crossing a desk
     for (let i = 1; i < route.length; i += 1) {
       const [a, b] = [route[i - 1], route[i]];
       assert.equal(['x', 'y', 'z'].filter((axis) => a[axis] !== b[axis]).length, 1);
-      for (const x of DESK_X) for (const z of [-4.8, -.5]) {
-        const crosses = Math.max(a.x, b.x) > x - 1.075 && Math.min(a.x, b.x) < x + 1.075
-          && Math.max(a.z, b.z) > z - .525 && Math.min(a.z, b.z) < z + .525;
+      for (const { x, z, width, depth } of DESKS) {
+        const crosses = Math.max(a.x, b.x) > x - width / 2 && Math.min(a.x, b.x) < x + width / 2
+          && Math.max(a.z, b.z) > z - depth / 2 && Math.min(a.z, b.z) < z + depth / 2;
         assert.equal(crosses, false, `seat ${seat} crosses desk ${x}, ${z}`);
       }
     }
@@ -91,4 +91,17 @@ test('connection errors retain the last received messages without replaying comm
   await reader.refresh();
   assert.equal(reader.data.status, 'disconnected');
   assert.equal(reader.data.messages[0].content, 'received');
+});
+
+test('collaboration and presentation seats reach their door without crossing the table or the executive partition', () => {
+  for (const [id, pose] of [['meeting', 'discussing'], ['executive', 'presenting']]) for (let seat = 0; seat < 4; seat++) {
+    const home = occupantPosition(id, seat, pose);
+    const route = pathToDoor(id, home);
+    assert.deepEqual(route.at(-1), worldPoint(roomById(id)));
+    for (let i = 1; i < route.length; i++) {
+      const [a, b] = [route[i - 1], route[i]];
+      if (id === 'meeting') assert.equal(Math.max(a.x, b.x) > 6.5 && Math.min(a.x, b.x) < 10.3 && Math.max(a.z, b.z) > -3.85 && Math.min(a.z, b.z) < -2.15, false);
+      else if (Math.min(a.x, b.x) < 2.95 && Math.max(a.x, b.x) > 2.95) assert.ok(a.z > -2 && b.z > -2, 'presentation route goes around the glass partition');
+    }
+  }
 });

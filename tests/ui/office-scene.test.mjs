@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { buildFloor } from '../../public/office-models.mjs';
 import { OfficeScene, officeCameraFrame } from '../../public/office-3d.mjs';
 import { routeBetween, BUILDING, FLOOR_HEIGHT, CORRIDOR_Z, LIFT_X, occupantRoom } from '../../public/rooms.mjs';
-import { Object3D, Scene, MeshBasicMaterial, OrthographicCamera, Vector3 } from '../../public/vendor/three/three.module.js';
+import { Object3D, Scene, MeshBasicMaterial, OrthographicCamera, Vector3, Box3 } from '../../public/vendor/three/three.module.js';
 
 test('missing WebGL preserves room navigation and does not block entry with reduced motion', async () => {
   const fallback = { hidden: true };
@@ -31,7 +32,7 @@ test('automatic camera framing contains each floor and the full building at desk
     const camera = new OrthographicCamera(-frame.size * aspect / 2, frame.size * aspect / 2, frame.size / 2, -frame.size / 2, .1, 150);
     camera.position.copy(frame.eye); camera.lookAt(frame.target); camera.updateMatrixWorld();
     const base = floor ? (floor - 1) * FLOOR_HEIGHT : 0;
-    for (const x of [BUILDING.left, BUILDING.right]) for (const z of [BUILDING.back, BUILDING.front]) for (const y of [base - .28, (floor ? base : 2 * FLOOR_HEIGHT) + 2.55]) {
+    for (const x of [BUILDING.left, BUILDING.right]) for (const z of [BUILDING.back, BUILDING.front]) for (const y of [base - .45, (floor ? base : 2 * FLOOR_HEIGHT) + BUILDING.wallHeight + .25]) {
       const projected = new Vector3(x, y, z).project(camera);
       assert.ok(Math.abs(projected.x) < 1 && Math.abs(projected.y) < 1, `building clipped at aspect ${aspect}, floor ${floor}`);
     }
@@ -67,4 +68,17 @@ test('observed activities move actors through the lift and queue new destination
   scene.syncPeople([actor]);
   assert.equal(item.nextDestination.room, 'office', 'expiry clears the presentation destination');
   assert.equal(occupantRoom({ source: 'session', status: 'working', sceneActivity: { room: 'executive' } }), 'executive');
+});
+
+test('furnished floors stay inside the building envelope and retain route and presentation controls', () => {
+  const scene = new Scene();
+  for (const floor of [1, 2, 3]) {
+    const model = buildFloor(scene, floor);
+    const bounds = new Box3().setFromObject(model);
+    assert.ok(bounds.min.x >= BUILDING.left - .2 && bounds.max.x <= BUILDING.right + .2, `floor ${floor}: furniture or glazing projects beyond side walls`);
+    assert.ok(bounds.min.z >= BUILDING.back - .2 && bounds.max.z <= BUILDING.front + .2);
+    assert.ok(bounds.max.y <= (floor - 1) * FLOOR_HEIGHT + BUILDING.wallHeight + .2);
+    assert.ok(model.userData.wayfinding.children.length > 0);
+    if (floor === 3) assert.equal(model.userData.presentation.visible, false, 'no presentation slide before an actual activity');
+  }
 });

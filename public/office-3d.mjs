@@ -1,238 +1,17 @@
 import * as T from './vendor/three/three.module.js';
 import { gesturePose } from './office-gestures.mjs';
-import { ROOMS, FLOOR_HEIGHT, CORRIDOR_Z, LIFT_X, BUILDING, DESK_X, roomById, worldPoint, occupantRoom, occupantPosition, routeBetween, pathToDoor } from './rooms.mjs';
+import { buildFloor, createPerson, createLiftPlatform } from './office-models.mjs';
+import { ROOMS, FLOOR_HEIGHT, CORRIDOR_Z, LIFT_X, BUILDING, MEETING_CENTER, roomById, worldPoint, occupantRoom, occupantPosition, routeBetween, pathToDoor } from './rooms.mjs';
 
-const colors = { plaster: 0xf2e9df, trim: 0xd8c9b7, oak: 0xc9a478, walnut: 0x735044, cream: 0xe6d6bf, red: 0xb84c4c, charcoal: 0x333d42, green: 0x6d8064, brass: 0xbea16c };
-const boxGeometry = new T.BoxGeometry(1, 1, 1);
-const sphereGeometry = new T.SphereGeometry(1, 16, 12);
-const cylinderGeometry = new T.CylinderGeometry(1, 1, 1, 16);
-const materials = new Map();
-function material(color, options = {}) {
-  const key = JSON.stringify([color, options]);
-  if (!materials.has(key)) materials.set(key, new T.MeshStandardMaterial({ color, roughness: .72, ...options }));
-  return materials.get(key);
-}
-function mesh(parent, geometry, color, size, position, options = {}) {
-  const node = new T.Mesh(geometry, material(color, options));
-  node.scale.set(...size); node.position.set(...position);
-  node.castShadow = !options.transparent; node.receiveShadow = true;
-  parent.add(node); return node;
-}
-const box = (parent, color, size, position, options) => mesh(parent, boxGeometry, color, size, position, options);
-const sphere = (parent, color, size, position, options) => mesh(parent, sphereGeometry, color, size, position, options);
-const cylinder = (parent, color, radius, height, position, options) => mesh(parent, cylinderGeometry, color, [radius, height, radius], position, options);
-function group(parent, x = 0, y = 0, z = 0) { const node = new T.Group(); node.position.set(x, y, z); parent.add(node); return node; }
-function rounded(parent, color, width, height, depth, x, y, z, radius = .12) {
-  const shape = new T.Shape(); const w = width / 2; const d = depth / 2; const r = Math.min(radius, w, d);
-  shape.moveTo(-w + r, -d); shape.lineTo(w - r, -d); shape.quadraticCurveTo(w, -d, w, -d + r);
-  shape.lineTo(w, d - r); shape.quadraticCurveTo(w, d, w - r, d); shape.lineTo(-w + r, d);
-  shape.quadraticCurveTo(-w, d, -w, d - r); shape.lineTo(-w, -d + r); shape.quadraticCurveTo(-w, -d, -w + r, -d);
-  const geometry = new T.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false, curveSegments: 4 });
-  geometry.rotateX(-Math.PI / 2); geometry.translate(0, -height / 2, 0);
-  return mesh(parent, geometry, color, [1, 1, 1], [x, y, z]);
-}
-function plant(parent, x, z, scale = 1) {
-  const pot = group(parent, x, 0, z); pot.scale.setScalar(scale);
-  cylinder(pot, colors.cream, .22, .38, [0, .2, 0]); cylinder(pot, 0x564735, .18, .025, [0, .4, 0]);
-  cylinder(pot, 0x7c7760, .025, .48, [0, .6, 0]);
-  for (let i = 0; i < 6; i += 1) {
-    const angle = i * Math.PI / 3;
-    const leaf = sphere(pot, i % 2 ? 0x758d69 : 0x556e50, [.11, .34, .15], [Math.cos(angle) * .17, .75 + i % 2 * .13, Math.sin(angle) * .17]);
-    leaf.rotation.z = -.65 * Math.cos(angle); leaf.rotation.x = .65 * Math.sin(angle);
-  }
-}
-function chair(parent, x, z, angle = 0, color = colors.charcoal) {
-  const seat = group(parent, x, 0, z); seat.rotation.y = angle;
-  cylinder(seat, 0x687076, .055, .42, [0, .25, 0]);
-  box(seat, 0x737b80, [.7, .035, .06], [0, .055, 0]); box(seat, 0x737b80, [.06, .035, .7], [0, .055, 0]);
-  rounded(seat, color, .62, .12, .6, 0, .48, 0);
-  rounded(seat, color, .6, .58, .1, 0, .78, -.25);
-  return seat;
-}
-function monitor(parent, x, z, size = .75) {
-  box(parent, 0x536368, [.31, .025, .23], [x, .84, z]); box(parent, 0x59686a, [.045, .25, .045], [x, .95, z]);
-  const screen = box(parent, 0x37494e, [size, .48, .055], [x, 1.23, z]);
-  box(screen, 0x92bbc1, [.91, .82, .08], [0, 0, .53], { emissive: 0x426e76, emissiveIntensity: .22 });
-  box(parent, 0xcccac3, [.5, .022, .17], [x, .84, z + .44]);
-  for (let line = 0; line < 3; line += 1) box(parent, 0xb5d4d4, [size * (.6 - line * .12), .018, .005], [x - .05, 1.35 - line * .065, z + .032]);
-}
-function desk(parent, x, z) {
-  const node = group(parent, x, 0, z);
-  rounded(node, colors.oak, 2.15, .11, 1.05, 0, .78, 0, .06);
-  for (const dx of [-.9, .9]) box(node, 0xe8dfd3, [.055, .72, .72], [dx, .37, 0]);
-  box(node, 0xf5eadb, [.38, .6, .65], [.6, .34, .05]);
-  monitor(node, -.3, -.18);
-  cylinder(node, 0xf4ede3, .07, .15, [.56, .91, .2]);
-  box(node, 0x7d9686, [.2, .045, .3], [.6, .86, -.2]);
-  chair(parent, x - .3, z + .78, Math.PI);
-}
-function sofa(parent, x, z, width = 2.2, angle = 0, color = 0xbfb2a0) {
-  const node = group(parent, x, 0, z); node.rotation.y = angle;
-  rounded(node, color, width, .36, .85, 0, .3, 0);
-  rounded(node, color, width, .61, .2, 0, .64, -.38);
-  for (const dx of [-width / 2 + .08, width / 2 - .08]) rounded(node, color, .18, .56, .9, dx, .51, 0);
-  for (let i = 0; i < 3; i += 1) rounded(node, 0xd8cbb9, width / 3 - .09, .12, .6, (i - 1) * (width / 3 - .05), .54, .045);
-}
-function bookshelf(parent, x, z, width = 2.5) {
-  box(parent, colors.walnut, [width, 1.9, .12], [x, .95, z - .22]);
-  for (const dx of [-width / 2, width / 2]) box(parent, colors.oak, [.08, 1.95, .5], [x + dx, .97, z]);
-  for (let shelf = 0; shelf < 4; shelf += 1) {
-    const y = .13 + shelf * .55; box(parent, colors.oak, [width, .065, .5], [x, y, z]);
-    if (shelf < 3) for (let i = 0; i < 8; i += 1) box(parent, [0xe4c39c, 0x859c92, 0x66727b, 0xaa645b][(i + shelf) % 4], [.11, .28 + i % 3 * .04, .27], [x - width / 2 + .23 + i * .2, y + .18, z + .05]);
-  }
-}
-function floorArchitecture(scene, floor) {
-  const node = group(scene, 0, (floor - 1) * FLOOR_HEIGHT, 0);
-  const { left, right, back, front, roomsLeft, split } = BUILDING;
-  const width = right - roomsLeft;
-  const center = (right + roomsLeft) / 2;
-  // The wide front promenade connects every door. The lift shaft stays open.
-  box(node, colors.plaster, [width, .28, front - back], [center, -.17, (front + back) / 2]);
-  box(node, colors.plaster, [roomsLeft - left, .28, 1.55 - back], [(left + roomsLeft) / 2, -.17, (back + 1.55) / 2]);
-  box(node, colors.trim, [width, .08, .12], [center, -.16, front]);
-  box(node, 0xd5e0d9, [width - .08, .025, 2.42], [center, .005, 2.8]);
-  for (let x = roomsLeft; x < right; x += 1.05) box(node, 0xb9c9c0, [.012, .008, 2.35], [x, .025, 2.8]);
-  box(node, colors.plaster, [right - left, 2.5, .15], [(left + right) / 2, 1.25, back]);
-  box(node, colors.plaster, [.15, 2.5, 1.55 - back], [left, 1.25, (back + 1.55) / 2]);
-  box(node, colors.plaster, [.15, .55, front - back], [right, .275, (front + back) / 2]);
-  box(node, colors.trim, [right - left, .09, .2], [(left + right) / 2, 2.52, back]);
-  for (let x = roomsLeft + .9; x < right - .7; x += 1.8) {
-    box(node, 0xb6d6dc, [1.6, 1.5, .04], [x, 1.48, back + .11], { roughness: .2, metalness: .14 });
-    box(node, 0xf5f1e7, [.045, 1.58, .07], [x, 1.48, back + .17]);
-    box(node, 0xf5f1e7, [1.65, .045, .08], [x, .73, back + .17]);
-  }
-  box(node, 0xd6d1c8, [1.65, 2.38, .18], [LIFT_X, 1.18, 1.5]);
-  for (const dx of [-.36, .36]) box(node, 0x939f9f, [.7, 1.9, .055], [LIFT_X + dx, .97, 1.61], { metalness: .55, roughness: .3 });
-  box(node, 0x535c5b, [.34, .14, .055], [LIFT_X, 2.12, 1.63]);
-  box(node, 0xd8b978, [.055, .09, .02], [LIFT_X, 2.12, 1.67], { emissive: 0xd8b978, emissiveIntensity: .4 });
-  for (const x of [left + .15, roomsLeft - .15]) box(node, colors.brass, [.05, FLOOR_HEIGHT, .05], [x, 1.6, 3.6], { metalness: .55 });
-  box(node, 0xb8c3bc, [1.45, 2, .1], [LIFT_X, 1.1, -2.6]);
-  plant(node, LIFT_X, -.6, 1.25);
-  const guides = group(node); node.userData.wayfinding = guides;
-  box(guides, 0x568b85, [right - LIFT_X - .5, .012, .065], [(right + LIFT_X - .5) / 2, .04, CORRIDOR_Z]);
-  for (let x = roomsLeft + .5; x < right - .6; x += 2.5) {
-    for (const sign of [-1, 1]) {
-      const arrow = box(guides, 0x568b85, [.28, .014, .05], [x, .045, CORRIDOR_Z + sign * .09]);
-      arrow.rotation.y = sign * .65;
-    }
-  }
-  for (const room of ROOMS.filter((item) => item.floor === floor)) {
-    const roomWidth = room.right - room.left;
-    const roomCenter = (room.left + room.right) / 2;
-    const depth = room.doorZ - back;
-    box(node, floor === 2 ? 0xe0ccb0 : floor === 3 ? 0xd2b99c : 0xe4d6c2, [roomWidth - .08, .025, depth - .1], [roomCenter, .018, (back + room.doorZ) / 2]);
-    for (let x = room.left + .45; x < room.right; x += .6) box(node, 0xc7b496, [.009, .004, depth - .2], [x, .034, (back + room.doorZ) / 2]);
-    box(guides, 0x568b85, [.065, .012, CORRIDOR_Z - room.doorZ], [room.x, .04, (CORRIDOR_Z + room.doorZ) / 2]);
-    cylinder(guides, 0x568b85, .12, .015, [room.x, .045, CORRIDOR_Z]);
-    for (const [start, end] of [[room.left, room.x - .65], [room.x + .65, room.right]]) {
-      const panelWidth = end - start;
-      box(node, 0xbcd4d0, [panelWidth, 1.45, .045], [(start + end) / 2, .74, room.doorZ], { transparent: true, opacity: .13, depthWrite: false, roughness: .18, metalness: .08 });
-      box(node, colors.brass, [panelWidth, .035, .05], [(start + end) / 2, 1.48, room.doorZ]);
-      box(node, colors.trim, [panelWidth, .08, .1], [(start + end) / 2, .07, room.doorZ]);
-    }
-    for (const x of [room.left, room.right, room.x - .65, room.x + .65]) box(node, colors.brass, [.045, 1.9, .06], [x, .95, room.doorZ]);
-    box(node, colors.brass, [1.34, .06, .08], [room.x, 1.9, room.doorZ]);
-    const door = group(node, room.x - .65, 0, room.doorZ); door.rotation.y = -.95;
-    box(door, 0xd7e6dd, [1.04, 1.8, .035], [.52, .94, 0], { transparent: true, opacity: .13, depthWrite: false });
-    box(door, colors.brass, [.045, 1.85, .05], [1.02, .94, 0]);
-    box(door, colors.brass, [.035, .32, .06], [.92, .95, .06]);
-  }
-  if (floor !== 2) {
-    box(node, colors.plaster, [.16, 2.15, 1.55 - back], [split, 1.07, (back + 1.55) / 2]);
-    box(node, colors.trim, [.19, .08, 1.55 - back], [split, 2.17, (back + 1.55) / 2]);
-  }
-  plant(node, right - .55, 3.55); plant(node, roomsLeft + .35, 3.6, .85);
-  return node;
-}
-function furnish(node, floor) {
-  if (floor === 1) {
-    const lounge = group(node, -4.15, 0, -2); const cafe = group(node, 5.1, 0, -2);
-    rounded(lounge, 0xd2c3b1, 3.5, .018, 2.65, -2.45, .048, -1.1);
-    sofa(lounge, -2.3, -2, 2.5); sofa(lounge, -4.1, -.8, 1.7, Math.PI / 2, 0x9eac98);
-    cylinder(lounge, colors.walnut, .6, .09, [-2.3, .48, -.7]); cylinder(lounge, colors.brass, .1, .4, [-2.3, .23, -.7]);
-    cylinder(lounge, 0xf4ebd8, .13, .17, [-2.3, .61, -.7]);
-    bookshelf(lounge, -1.7, -3.08, 2.2); plant(lounge, -4.4, -2.8);
-    box(cafe, 0x899c88, [5.4, .82, .64], [3.45, .44, -2.85]);
-    box(cafe, 0xf2e7d4, [5.55, .1, .77], [3.45, .9, -2.85]);
-    for (let x = 1.1; x < 6; x += .86) box(cafe, colors.brass, [.34, .025, .025], [x, .7, -2.51]);
-    box(cafe, 0x465554, [.55, .65, .45], [1.4, 1.25, -2.82]); box(cafe, 0xb5c6be, [.4, .14, .03], [1.4, 1.43, -2.58]);
-    cylinder(cafe, colors.walnut, .85, .1, [3.35, .8, -.35]); cylinder(cafe, colors.brass, .12, .75, [3.35, .4, -.35]);
-    for (let i = 0; i < 3; i += 1) { const a = i * Math.PI * 2 / 3; chair(cafe, 3.35 + Math.cos(a) * 1.2, -.35 + Math.sin(a) * 1.2, -a - Math.PI / 2, 0xa7b69c); }
-    plant(cafe, 6.1, -1.5, 1.3);
-    sofa(node, -12.3, -4, 2.3, 0, 0x9eac98); bookshelf(node, -12.5, -7.08, 2.1);
-    cylinder(node, colors.oak, .5, .1, [-12.2, .5, -.6]); plant(node, -.1, -2.8, 1.2);
-    rounded(node, colors.oak, 2.1, .12, .65, 3, .78, -.3); chair(node, 2.5, .55, Math.PI, 0xa7b69c); chair(node, 3.5, .55, Math.PI, 0xa7b69c);
-  } else if (floor === 2) {
-    for (const x of DESK_X) for (const z of [-4.8, -.5]) desk(node, x, z);
-    plant(node, -13.5, -6.9, 1.3); plant(node, 15.3, -6.9);
-    bookshelf(node, -7, -7.08, 3.5); bookshelf(node, 8, -7.08, 3.5);
-    const guides = node.userData.wayfinding;
-    box(guides, 0x568b85, [27, .012, .065], [0, .045, -3.25]);
-    box(guides, 0x568b85, [.065, .012, 6.05], [1.8, .045, -.225]);
-    rounded(node, 0xa2b5a5, 5.8, .02, 1.5, 1.8, .045, -6.2);
-    sofa(node, 1.8, -6.6, 3.6, 0, 0x8f9e8d);
-  } else {
-    const meeting = group(node, -4.15, 0, -2); const executive = group(node, 5.1, 0, -2);
-    rounded(meeting, 0xa4afa5, 4.25, .02, 3.6, -2.4, .045, -1.05);
-    rounded(meeting, colors.oak, 2.95, .13, 1.25, -2.35, .82, -1.05, .5);
-    for (const x of [-3.25, -1.45]) for (const z of [-2.15, .05]) chair(meeting, x, z, z < 0 ? 0 : Math.PI, 0x697d7a);
-    cylinder(meeting, colors.brass, .1, .74, [-3.2, .4, -1.05]); cylinder(meeting, colors.brass, .1, .74, [-1.5, .4, -1.05]);
-    box(meeting, 0xf2ede1, [.5, .025, .35], [-3, .91, -1.05]); box(meeting, 0x606f70, [.42, .035, .28], [-1.7, .91, -1.05]);
-    plant(meeting, -4.5, -2.8, 1.2);
-    rounded(executive, colors.walnut, 2.5, .14, 1.1, 3.6, .8, -1.8);
-    box(executive, colors.walnut, [2.25, .7, .12], [3.6, .4, -1.95]); monitor(executive, 3.6, -2.05, .9);
-    chair(executive, 3.6, -2.7, 0, 0x544d47); sofa(executive, 2.15, -.2, 1.5, 0, 0xb78773); sofa(executive, 4.8, -.2, 1.5, 0, 0xb78773);
-    cylinder(executive, colors.oak, .45, .09, [3.5, .49, .15]); cylinder(executive, colors.brass, .08, .43, [3.5, .25, .15]);
-    plant(executive, 6.15, -2.8, 1.55); bookshelf(executive, 1.6, -3.1, 1.65);
-    bookshelf(node, -12.3, -7.08, 2.6); sofa(node, -12.2, -3.7, 2.7, 0, 0x98a89f);
-    box(node, 0x596b68, [3.5, 1.25, .08], [-6.5, 1.45, -7.32]);
-    box(node, 0xf0ede3, [3.27, 1.02, .03], [-6.5, 1.45, -7.26]);
-    const presentation = group(node, 13.2, 0, -6.25);
-    rounded(presentation, colors.charcoal, 3.25, 1.85, .13, 0, 1.7, 0, .08);
-    box(presentation, 0xf8f2e4, [3.02, 1.62, .025], [0, 1.7, .08]);
-    for (const x of [-1.1, 1.1]) box(presentation, colors.brass, [.06, .8, .08], [x, .42, 0]);
-    const slide = group(presentation);
-    box(slide, colors.red, [1.85, .12, .025], [-.3, 2.22, .1]);
-    for (let line = 0; line < 3; line++) box(slide, 0x86938b, [1.5 - line * .2, .055, .025], [-.5, 1.88 - line * .2, .1]);
-    for (let bar = 0; bar < 3; bar++) box(slide, [0xb65a51, 0xc9a478, 0x718b92][bar], [.2, .32 + bar * .18, .025], [.65 + bar * .26, 1.31 + bar * .09, .1]);
-    node.userData.presentation = slide; slide.visible = false;
-    plant(node, -.2, -6.8, 1.1); bookshelf(node, 14.3, -7.08, 1.9);
-
-  }
-}
-function person(parent, index, commander = false) {
-  const root = group(parent); const skin = [0xe9c09d, 0xce9874, 0xf0cdb2, 0xb87b59][index % 4];
-  const shirt = commander ? colors.red : [0x718b92, 0xc6a16d, 0x986c65, 0x6e8970, 0x596675][index % 5];
-  const body = group(root); root.userData.body = body;
-  sphere(body, shirt, [.24, .32, .17], [0, .63, 0]);
-  sphere(body, skin, [.24, .27, .23], [0, 1.01, 0]);
-  sphere(body, [0x4e3930, 0x322c29, 0x805744][index % 3], [.245, .17, .235], [0, 1.17, -.025]);
-  for (const x of [-.085, .085]) sphere(body, 0x322d2d, [.023, .031, .015], [x, 1.035, .215]);
-  sphere(body, skin, [.045, .048, .047], [0, .98, .235]);
-  box(body, 0xf1e7db, [.12, .11, .025], [0, .82, .16]);
-  const limbs = [];
-  for (const sign of [-1, 1]) {
-    const arm = group(body, sign * .25, .77, 0); sphere(arm, shirt, [.075, .2, .08], [0, -.14, 0]); sphere(arm, skin, [.075, .07, .075], [0, -.33, 0]);
-    const leg = group(body, sign * .11, .4, 0); box(leg, 0x41494d, [.14, .3, .14], [0, -.12, 0]); rounded(leg, 0x333a3e, .15, .09, .25, 0, -.31, .04, .05);
-    limbs.push({ arm, leg, sign });
-  }
-  const shadow = new T.Mesh(new T.CircleGeometry(.31, 24), new T.MeshBasicMaterial({ color: 0x6f5845, transparent: true, opacity: .15, depthWrite: false }));
-  shadow.rotation.x = -Math.PI / 2; shadow.position.y = .028; root.add(shadow);
-  const notes = group(body, -.23, .57, .26); notes.rotation.x = -.35;
-  rounded(notes, 0x544d47, .24, .3, .035, 0, 0, 0, .025);
-  box(notes, 0xf8f2e4, [.2, .25, .01], [0, 0, .025]); notes.visible = false;
-  root.userData.notes = notes;
-  root.userData.limbs = limbs; return root;
-}
 const vec = (point) => new T.Vector3(point.x, point.y, point.z);
 
 // Fit the building's projected bounds, rather than a fixed pixel or camera size.
 export function officeCameraFrame(aspect, floor = 0) {
   const base = floor ? (floor - 1) * FLOOR_HEIGHT : 0;
   const low = floor ? base - .45 : -.35;
-  const high = floor ? base + 2.75 : 2 * FLOOR_HEIGHT + 2.75;
+  const high = floor ? base + BUILDING.wallHeight + .25 : 2 * FLOOR_HEIGHT + BUILDING.wallHeight + .25;
   const target = new T.Vector3(-.1, (low + high) / 2, (BUILDING.back + BUILDING.front) / 2);
-  const offset = new T.Vector3(floor ? 20 : 7, floor ? 30 : 10, 38);
+  const offset = new T.Vector3(26, floor ? 25 : 23, 44);
   const forward = offset.clone().normalize();
   const right = new T.Vector3(forward.z, 0, -forward.x).normalize();
   const up = new T.Vector3().crossVectors(forward, right).normalize();
@@ -247,33 +26,34 @@ export function officeCameraFrame(aspect, floor = 0) {
 
 export class OfficeScene {
   constructor(root) {
-    this.root = root; this.motion = true; this.view = 0; this.zoom = 1; this.pathsVisible = true; this.people = new Map(); this.lastTime = 0; this.elapsed = 0;
+    this.root = root; this.motion = true; this.view = 2; this.zoom = 1; this.pathsVisible = true; this.people = new Map(); this.lastTime = 0; this.elapsed = 0;
     this.labels = root.querySelector('#room-hotspots');
     try {
       this.renderer = new T.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
       this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
       this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = T.PCFShadowMap;
-      this.renderer.toneMapping = T.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.05;
+      this.renderer.toneMapping = T.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.1;
       this.renderer.domElement.setAttribute('aria-label', '층별 방과 복도, 움직이는 동료가 있는 입체 사무실');
       this.renderer.domElement.setAttribute('role', 'img');
       root.querySelector('#office-canvas').append(this.renderer.domElement);
       this.scene = new T.Scene();
-      this.scene.add(new T.HemisphereLight(0xfff5df, 0xa5a6a6, 1.8));
-      const light = new T.DirectionalLight(0xfff0d7, 3.1); light.position.set(-8, 20, 12); light.castShadow = true;
-      light.shadow.mapSize.set(2048, 2048); Object.assign(light.shadow.camera, { left: -22, right: 22, top: 18, bottom: -15, far: 80 });
+      this.scene.add(new T.HemisphereLight(0xb9d5ef, 0x3b302b, 2.1));
+      const light = new T.DirectionalLight(0xffd8a3, 3.5); light.position.set(-6, 24, 14); light.castShadow = true;
+      light.shadow.mapSize.set(2048, 2048); Object.assign(light.shadow.camera, { left: -24, right: 24, top: 25, bottom: -20, far: 90 });
       light.shadow.normalBias = .045; light.shadow.bias = -.0001; this.scene.add(light);
-      const fill = new T.DirectionalLight(0xd5e8f4, .9); fill.position.set(8, 9, -7); this.scene.add(fill);
-      this.floors = [1, 2, 3].map((floor) => { const node = floorArchitecture(this.scene, floor); furnish(node, floor); return node; });
-      this.actorRoot = group(this.scene);
-      this.commander = person(this.actorRoot, 0, true); this.commander.position.copy(vec(worldPoint(roomById('corridor'))));
-      this.cabin = group(this.scene); box(this.cabin, 0xbba98b, [1.5, .09, 1.55], [0, -.04, 0]); this.cabin.visible = false;
-      this.routeMaterial = new T.MeshBasicMaterial({ color: 0xb43d3e });
+      const fill = new T.DirectionalLight(0x86b6f0, 1.2); fill.position.set(8, 9, -7); this.scene.add(fill);
+      this.floors = [1, 2, 3].map((floor) => buildFloor(this.scene, floor));
+      this.actorRoot = new T.Group(); this.scene.add(this.actorRoot);
+      this.commander = createPerson(this.actorRoot, 0, true); this.commander.position.copy(vec(worldPoint(roomById('corridor-2'))));
+      this.cabin = createLiftPlatform(this.scene);
+      this.routeMaterial = new T.MeshBasicMaterial({ color: 0x9bebe1 });
       this.camera = new T.OrthographicCamera(-10, 10, 8, -8, .1, 150);
-      const frame = officeCameraFrame(2);
+      const frame = officeCameraFrame(2, 2);
       this.target = frame.target; this.eye = frame.eye; this.size = frame.size;
       this.camera.position.copy(this.eye); this.camera.lookAt(this.target);
       this.resize = new ResizeObserver(() => this.resizeScene()); this.resize.observe(root); this.resizeScene();
       this.renderer.domElement.addEventListener('webglcontextlost', (event) => { event.preventDefault(); this.fail(); });
+      this.focusFloor(2);
       root.dataset.rendering = 'ready'; root.querySelector('#scene-fallback').hidden = true;
       this.renderer.setAnimationLoop((time) => this.frame(time));
     } catch { this.fail(); }
@@ -290,6 +70,7 @@ export class OfficeScene {
     this.cameraGoal = officeCameraFrame(width / height, this.view);
     this.snapCamera();
     this.updateCamera();
+    this.renderer.render(this.scene, this.camera);
   }
   updateCamera() {
     const aspect = this.width / this.height; const span = this.size;
@@ -353,7 +134,7 @@ export class OfficeScene {
       const room = occupantRoom(occupant); const seat = used[room] || 0; used[room] = seat + 1;
       const home = occupantPosition(room, seat, occupant.sceneActivity?.pose);
       let item = this.people.get(key);
-      if (!item) { const model = person(this.actorRoot, index + 1); model.position.copy(vec(home)); item = { model, room, index, home, seat }; this.people.set(key, item); }
+      if (!item) { const model = createPerson(this.actorRoot, index + 1); model.position.copy(vec(home)); item = { model, room, index, home, seat }; this.people.set(key, item); }
       this.movePerson(item, room, home);
       if (!occupant.sceneActivity && ['disconnected', 'unknown', 'interrupted', 'paused', 'unavailable'].includes(occupant.status)) {
         item.room = room; item.home = home; item.model.position.copy(vec(home)); item.transfer = null; item.nextDestination = null;
@@ -425,26 +206,29 @@ export class OfficeScene {
         }
       } else if (['working', 'idle'].includes(item.status) && item.seat < 4 && item.room === 'office') {
         // A short corridor walk is a spatial animation, never a fabricated work event.
-        const phase = (this.elapsed + item.index * 8) % 48;
+        const phase = (this.elapsed + item.index * 16) % 64;
         if (phase < 18) {
           const room = roomById(item.room);
-          const hall = vec(worldPoint(room, room.x, CORRIDOR_Z)); const end = hall.clone(); end.x += item.index % 2 ? 9 : -11;
+          const hall = vec(worldPoint(room, room.x, CORRIDOR_Z)); const end = hall.clone(); end.x = item.index % 2 ? 10.7 : -9.7;
           const departure = pathToDoor(item.room, home).map(vec);
           const path = [...departure, hall, end, hall, ...departure.slice().reverse()];
-          const step = phase / 18 * (path.length - 1); const at = Math.min(path.length - 2, Math.floor(step)); const a = path[at]; const b = path[at + 1];
-          model.position.lerpVectors(a, b, step - at); model.rotation.y = Math.atan2(b.x - a.x, b.z - a.z); walking = true;
+          const lengths = path.slice(1).map((point, i) => point.distanceTo(path[i]));
+          let distance = phase / 18 * lengths.reduce((sum, length) => sum + length, 0);
+          let at = 0; while (at < lengths.length - 1 && distance > lengths[at]) distance -= lengths[at++];
+          const a = path[at]; const b = path[at + 1];
+          model.position.lerpVectors(a, b, lengths[at] ? distance / lengths[at] : 0); model.rotation.y = Math.atan2(b.x - a.x, b.z - a.z); walking = true;
         } else { model.position.copy(vec(home)); model.rotation.y = Math.PI; }
       }
-      if (!walking && !item.transfer && item.pose === 'discussing') model.rotation.y = Math.atan2(-6.5 - model.position.x, -2.9 - model.position.z);
-      if (!walking && !item.transfer && item.pose === 'presenting') model.rotation.y = -.5;
+      if (!walking && !item.transfer && item.pose === 'discussing') model.rotation.y = Math.atan2(MEETING_CENTER.x - model.position.x, MEETING_CENTER.z - model.position.z);
+      if (!walking && !item.transfer && item.pose === 'presenting') model.rotation.y = -.35;
       model.visible = !this.view || Math.abs(model.position.y - (this.view - 1) * FLOOR_HEIGHT) < .1;
       this.animatePerson(model, walking, this.elapsed + item.index, item.transfer ? 'still' : item.pose);
       const label = this.root.querySelector(`[data-person-id="${item.id}"]`);
-      this.placeLabel(label, model.position.clone().add(new T.Vector3(0, 1.48, 0)), model.visible);
+      this.placeLabel(label, model.position.clone().add(new T.Vector3(0, 2.05, 0)), model.visible && Boolean(this.view));
     }
-    for (const room of ROOMS) this.placeLabel(this.root.querySelector(`.room-hotspot[data-room="${room.id}"]`), new T.Vector3((room.left + room.right) / 2, (room.floor - 1) * FLOOR_HEIGHT + 2.5, this.view ? BUILDING.back + .7 : -.25), !this.view || room.floor === this.view);
+    for (const room of ROOMS) this.placeLabel(this.root.querySelector(`.room-hotspot[data-room="${room.id}"]`), new T.Vector3(room.id === 'office' ? -4.2 : room.id === 'executive' ? -4.7 : (room.left + room.right) / 2, (room.floor - 1) * FLOOR_HEIGHT + 3.75, this.view ? BUILDING.back + 1.4 : 1.6), !this.view || room.floor === this.view);
     for (let floor = 1; floor <= 3; floor += 1) this.placeLabel(this.root.querySelector(`[data-floor-label="${floor}"]`), new T.Vector3(BUILDING.left + .1, (floor - 1) * FLOOR_HEIGHT + .55, BUILDING.front), !this.view || floor === this.view);
-    this.placeLabel(this.root.querySelector('#commander-marker'), this.commander.position.clone().add(new T.Vector3(0, 1.52, 0)), this.commander.visible);
+    this.placeLabel(this.root.querySelector('#commander-marker'), this.commander.position.clone().add(new T.Vector3(0, 1.8, 0)), this.commander.visible);
     this.renderer.render(this.scene, this.camera);
   }
 }
