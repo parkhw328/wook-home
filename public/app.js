@@ -1,4 +1,5 @@
 import { apiRequest } from './api.mjs';
+import { connectionLocation, connectionSummary, connectionMarkup } from './staff-connections.mjs';
 import { OfficeWorkspace } from './workspace.mjs';
 import { occupantRoom } from './rooms.mjs';
 import {
@@ -8,7 +9,7 @@ import {
 import {
   escapeHtml as esc, statusLabel, statusClass, isOpenTask, needsAttention,
   officeCounts, taskUnavailableReason, filterTasks, displayTime, normalizeState, programUrl, providerLinks,
-  officeName, observedSessionStatus, sessionStatusLabel, characterMotion, orderedLocalSessions,
+  officeName, observedSessionStatus, sessionStatusLabel, characterMotion, orderedLocalSessions, unassignedLocalSessions,
 } from './model.mjs';
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -140,7 +141,7 @@ function renderStats() {
 }
 
 function officeOccupants() {
-  const sessions = orderedLocalSessions(state.localSessions).map((session) => ({
+  const sessions = unassignedLocalSessions(state).map((session) => ({
     ...session, source: 'session', status: observedSessionStatus(state.localSessions, session, connected),
   }));
   const agents = state.agents.map((agent) => ({ ...agent, source: 'agent' }));
@@ -177,14 +178,14 @@ function renderCharacters() {
 function renderAgents() {
   renderCharacters();
   $('#agent-list').innerHTML = state.agents.length ? state.agents.map((agent) => `<button type="button" class="agent-card" data-agent="${esc(agent.id)}">${avatar(agent)}<span class="agent-info"><strong>${esc(agent.name)}</strong><small>${esc(agent.role)}</small></span>${badge(agent.status)}</button>`).join('')
-    : emptyState('첫 동료를 기다리고 있어요', '체험용 직원을 채용해 업무 흐름을 시작해 보세요.', 'people');
+    : emptyState('첫 동료를 기다리고 있어요', '감지한 CLI·웹을 연결하거나 체험 직원을 채용해 보세요.', 'people');
   const signature = JSON.stringify(state.providers);
   if (signature === providersSignature) return;
   providersSignature = signature;
   const symbols = { openai: '◎', claude: '✳', gemini: '✧', meta: '∞' };
   $('#provider-list').innerHTML = state.providers.filter((provider) => provider.kind === 'external').map((provider) => {
     const links = providerLinks(provider);
-    return `<div class="provider-item"><div class="provider-heading"><span class="provider-symbol" aria-hidden="true">${symbols[provider.id] || '◇'}</span><strong>${esc(provider.name)}</strong></div><small>${provider.available ? '사무실 연결 가능' : '사무실 연동 준비 중'}</small>${links.webUrl || links.guideUrl ? `<div class="provider-actions">${links.webUrl ? `<a class="button button-small" href="${links.webUrl}" target="_blank" rel="noopener noreferrer" aria-label="${esc(links.label)} 공식 서비스 (새 탭)">${esc(links.label)} 열기 <span aria-hidden="true">↗</span></a>` : ''}${links.guideUrl ? `<a class="inline-link" href="${links.guideUrl}" target="_blank" rel="noopener noreferrer" aria-label="${esc(provider.name)} 연결 안내 (새 탭)">연결 안내 ↗</a>` : ''}</div>` : ''}</div>`;
+    return `<div class="provider-item"><div class="provider-heading"><span class="provider-symbol" aria-hidden="true">${symbols[provider.id] || '◇'}</span><strong>${esc(provider.name)}</strong></div><small>${provider.available ? '사무실 연결 가능' : '새 AI 실행 준비 중'}</small>${links.webUrl || links.guideUrl ? `<div class="provider-actions">${links.webUrl ? `<a class="button button-small" href="${links.webUrl}" target="_blank" rel="noopener noreferrer" aria-label="${esc(links.label)} 공식 서비스 (새 탭)">${esc(links.label)} 열기 <span aria-hidden="true">↗</span></a>` : ''}${links.guideUrl ? `<a class="inline-link" href="${links.guideUrl}" target="_blank" rel="noopener noreferrer" aria-label="${esc(provider.name)} 연결 안내 (새 탭)">연결 안내 ↗</a>` : ''}</div>` : ''}</div>`;
   }).join('');
 }
 
@@ -419,7 +420,7 @@ function updateProviderFields() {
 
 function openHire() {
   if (!connected) return;
-  openModal('새로운 동료를 맞이하세요', 'GROW YOUR LITTLE TEAM', `<form id="hire-form" class="form-stack"><div class="field-row"><div class="form-field"><label for="agent-name">직원 이름</label><input id="agent-name" name="name" placeholder="예: 모아" maxlength="40" required autocomplete="off"></div><div class="form-field"><label for="agent-role">담당 역할</label><input id="agent-role" name="role" placeholder="예: 아이디어 정리" maxlength="120" required autocomplete="off"></div></div><div class="form-field"><label for="agent-provider">AI 공급자</label><select id="agent-provider" name="provider">${providerOptions()}</select><p class="field-help" id="provider-help"></p></div><div class="field-row"><div class="form-field"><label for="agent-model">모델</label><select id="agent-model" name="model"></select></div><div class="form-field"><label for="agent-effort">추론 강도</label><select id="agent-effort" name="reasoningEffort"></select></div></div><div class="info-box">${icon('spark')}<span>직원의 이름과 역할은 나중에 바꿀 수 있어요. 연결 가능한 공급자의 실제 지원 옵션만 표시합니다.</span></div>${errorSlot()}<div class="form-actions"><button type="button" class="button" data-close>취소</button><button class="button button-primary" type="submit" data-mutation>직원 채용하기</button></div></form>`, { type: 'hire' });
+  openModal('새로운 동료를 맞이하세요', 'GROW YOUR LITTLE TEAM', `<p class="staff-hire-choice"><button type="button" class="button button-primary" data-open-staff-connection>감지한 CLI·웹으로 등록</button><span class="field-help">아래 양식은 체험 또는 연결 없는 직원 정보 등록입니다.</span></p><form id="hire-form" class="form-stack"><div class="field-row"><div class="form-field"><label for="agent-name">직원 이름</label><input id="agent-name" name="name" placeholder="예: 모아" maxlength="40" required autocomplete="off"></div><div class="form-field"><label for="agent-role">담당 역할</label><input id="agent-role" name="role" placeholder="예: 아이디어 정리" maxlength="120" required autocomplete="off"></div></div><div class="form-field"><label for="agent-provider">AI 공급자</label><select id="agent-provider" name="provider">${providerOptions()}</select><p class="field-help" id="provider-help"></p></div><div class="field-row"><div class="form-field"><label for="agent-model">모델</label><select id="agent-model" name="model"></select></div><div class="form-field"><label for="agent-effort">추론 강도</label><select id="agent-effort" name="reasoningEffort"></select></div></div><div class="info-box">${icon('spark')}<span>직원의 이름과 역할은 나중에 바꿀 수 있어요. 연결 가능한 공급자의 실제 지원 옵션만 표시합니다.</span></div>${errorSlot()}<div class="form-actions"><button type="button" class="button" data-close>취소</button><button class="button button-primary" type="submit" data-mutation>직원 채용하기</button></div></form>`, { type: 'hire' });
   updateProviderFields();
   $('#agent-name', body).focus();
 }
@@ -431,7 +432,7 @@ function openAgent(id) {
   const reason = taskUnavailableReason(state, agent);
   const tasks = filterTasks(state.tasks.filter((task) => task.agentId === id), 'all');
   const capabilities = { createSession: '새 업무 실행', observeSession: '세션 관찰', resumeSession: '세션 재개', interrupt: '업무 중단', changeModel: '모델 변경' };
-  openModal(agent.name, 'MEET YOUR TEAMMATE', `<div class="detail-heading">${avatar(agent)}<div><h3>${esc(agent.role)}</h3><p>${esc(provider?.name || agent.provider)}${provider?.kind === 'demo' ? ' · 체험용 직원' : ''}</p></div>${badge(agent.status)}</div><dl class="detail-facts"><div><dt>실행 위치</dt><dd>로컬 저장 공간</dd></div><div><dt>연결 상태</dt><dd>${provider?.kind === 'demo' ? '체험용 · 외부 AI 호출 없음' : '외부 AI 미연결'}</dd></div><div><dt>모델</dt><dd>${esc(agent.model || '연동 후 설정 가능')}</dd></div><div><dt>추론 강도</dt><dd>${agent.reasoningEffort === 'none' ? '해당 없음' : esc(agent.reasoningEffort || '지원 옵션 미확정')}</dd></div></dl><div class="capability-list">${Object.entries(capabilities).map(([key, label]) => `<span class="capability-tag ${provider?.capabilities?.[key] ? 'supported' : ''}">${label} · ${provider?.capabilities?.[key] ? '지원' : '미지원'}</span>`).join('')}</div>${reason ? `<p class="field-help">${esc(reason)}</p>` : '<p class="field-help">체험용 직원에게 업무를 맡겨 질문과 승인 흐름을 확인하세요.</p>'}<div class="detail-actions"><button type="button" class="button" data-edit-agent="${esc(id)}" data-mutation>직원 정보 수정</button><button type="button" class="button button-primary" data-new-task="${esc(id)}" data-mutation data-blocked="${Boolean(reason)}" ${reason ? 'disabled' : ''}>${icon('plus')}업무 지시</button></div><h3 class="detail-section-title">이 직원의 업무</h3>${tasks.length ? tasks.slice(0, 8).map(taskRow).join('') : emptyState('아직 맡은 업무가 없어요', '업무를 지시하면 진행 내용을 이곳에서 확인할 수 있습니다.')}`, { type: 'agent', id, signature: agentSignature(id) });
+  openModal(agent.name, 'MEET YOUR TEAMMATE', `<div class="detail-heading">${avatar(agent)}<div><h3>${esc(agent.role)}</h3><p>${esc(provider?.name || agent.provider)}${provider?.kind === 'demo' ? ' · 체험용 직원' : ''}</p></div>${badge(agent.status)}</div><dl class="detail-facts"><div><dt>실행 위치</dt><dd>${esc(connectionLocation(agent))}</dd></div><div><dt>연결 상태</dt><dd>${esc(connectionSummary(agent, provider))}</dd></div><div><dt>모델</dt><dd>${esc(agent.model || (agent.connection ? '사무실에서 확인 미지원' : '연동 후 설정 가능'))}</dd></div><div><dt>추론 강도</dt><dd>${agent.reasoningEffort === 'none' ? '해당 없음' : esc(agent.reasoningEffort || (agent.connection ? '사무실에서 변경 미지원' : '지원 옵션 미확정'))}</dd></div></dl>${connectionMarkup(agent, provider)}<div class="capability-list">${Object.entries(capabilities).map(([key, label]) => `<span class="capability-tag ${(key === 'observeSession' && agent.connection ? agent.connection.status === 'connected' : provider?.capabilities?.[key]) ? 'supported' : ''}">${label} · ${(key === 'observeSession' && agent.connection ? agent.connection.status === 'connected' : provider?.capabilities?.[key]) ? '지원' : '미지원'}</span>`).join('')}</div>${reason ? `<p class="field-help">${esc(reason)}</p>` : '<p class="field-help">체험용 직원에게 업무를 맡겨 질문과 승인 흐름을 확인하세요.</p>'}<div class="detail-actions"><button type="button" class="button" data-edit-agent="${esc(id)}" data-mutation>직원 정보 수정</button><button type="button" class="button button-primary" data-new-task="${esc(id)}" data-mutation data-blocked="${Boolean(reason)}" ${reason ? 'disabled' : ''}>${icon('plus')}업무 지시</button></div><h3 class="detail-section-title">이 직원의 업무</h3>${tasks.length ? tasks.slice(0, 8).map(taskRow).join('') : emptyState('아직 맡은 업무가 없어요', '업무를 지시하면 진행 내용을 이곳에서 확인할 수 있습니다.')}`, { type: 'agent', id, signature: agentSignature(id) });
 }
 
 function openSession(id) {
@@ -574,7 +575,7 @@ document.addEventListener('click', (event) => {
     return;
   }
   if (button.dataset.agent) { openAgent(button.dataset.agent); return; }
-  if (button.dataset.session) { location.hash = 'office'; void workspace.selectSession(button.dataset.session); return; }
+  if (button.dataset.session) { if (modal.open) closeModal(); location.hash = 'office'; void workspace.selectSession(button.dataset.session); return; }
   if (button.dataset.task) { openTask(button.dataset.task); return; }
   if (button.dataset.editAgent) { openEditAgent(button.dataset.editAgent); return; }
   if (button.dataset.newTask) { openNewTask(button.dataset.newTask); return; }
@@ -664,6 +665,10 @@ modal.addEventListener('close', () => {
 });
 window.addEventListener('hashchange', navigate);
 window.addEventListener('online', () => { void refresh(true); });
+document.addEventListener('office:staff-changed', async (event) => {
+  await refresh(true);
+  if (event.detail?.agentId) openAgent(event.detail.agentId);
+});
 document.addEventListener('visibilitychange', () => { if (!document.hidden) void refresh(true); });
 
 fillIcons();

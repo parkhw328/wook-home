@@ -1,5 +1,6 @@
 import { apiRequest } from './api.mjs';
 import { escapeHtml as esc, sessionStatusLabel, displayTime } from './model.mjs';
+import './staff-connections.mjs';
 
 const GUIDE = 'https://github.com/parkhw328/wook-home/wiki/Detection';
 const ENABLED_KEY = 'stackqueue.web-detection.enabled';
@@ -50,8 +51,8 @@ function initialize() {
     <div class="discovery-toolbar"><button type="button" id="discovery-check" class="button button-secondary">연결 점검 실행</button><a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/Connections" target="_blank" rel="noopener noreferrer">점검 안내 ↗</a></div>
     <p id="discovery-check-status" role="status">연결 점검 상태를 확인하고 있습니다.</p><div id="discovery-checks" class="discovery-list"></div>
     </div>`;
-  const programs = view.querySelector('[aria-labelledby="program-heading"]');
-  if (programs?.parentElement === view) view.insertBefore(panel, programs);
+  const team = view.querySelector('.team-section');
+  if (team) team.insertAdjacentElement('afterend', panel);
   else view.append(panel);
   const find = (selector) => panel.querySelector(selector);
   const tabs = [...panel.querySelectorAll('[role="tab"]')];
@@ -101,10 +102,17 @@ function initialize() {
     const next = JSON.stringify([entries, serverConnected]);
     if (next === signature) return;
     signature = next;
+    const focused = document.activeElement?.closest('#discovery-list button');
+    const focusedEntry = focused?.dataset.connectEntry;
+    const focusedAgent = focused?.dataset.agent;
     find('#discovery-list').innerHTML = entries.length ? entries.map((entry) => `<article class="discovery-card">
       <div><strong>${esc(entry.name)}</strong><p>${esc(entryDescription(entry))}</p><small>${entry.kind === 'process' && entry.status === 'exited' ? '종료 시각' : entry.source === 'web' || entry.kind === 'process' ? '마지막 확인' : '마지막 활동'} ${esc(displayTime(entry.endedAt || entry.updatedAt || entry.lastActivityAt))}<br>${entry.canControl ? '기존 CLI 목록에서 지시 가능' : '관찰 전용'}</small></div>
-      <span class="subtle-tag">${esc(serverConnected ? entryStatus(entry) : '연결 끊김')}</span></article>`).join('')
+      <div class="discovery-card-actions"><span class="subtle-tag">${esc(serverConnected ? entryStatus(entry) : '연결 끊김')}</span>
+      ${entry.linkedAgentId ? `<button type="button" class="button button-small" data-agent="${esc(entry.linkedAgentId)}" ${!serverConnected ? 'disabled' : ''}>${esc(entry.linkedAgentName)} 보기</button>`
+        : `<button type="button" class="button button-small" data-connect-entry="${esc(entry.id)}" ${!serverConnected || !entry.canRegister ? 'disabled' : ''}>직원 등록·연결</button>`}</div></article>`).join('')
       : '<p class="discovery-empty">조건에 맞는 감지 항목이 없습니다. 연결 상태와 선택한 필터를 확인하세요.</p>';
+    if (focusedEntry || focusedAgent) [...find('#discovery-list').querySelectorAll('button')]
+      .find((button) => focusedEntry ? button.dataset.connectEntry === focusedEntry : button.dataset.agent === focusedAgent)?.focus({ preventScroll: true });
   }
 
   async function read() {
@@ -188,6 +196,11 @@ function initialize() {
   }
   find('#discovery-toggle').addEventListener('click', () => setEnabled(!enabled));
   find('#discovery-refresh').addEventListener('click', () => { void read(); void collect(); });
+  find('#discovery-list').addEventListener('click', (event) => {
+    const button = event.target.closest('[data-connect-entry]');
+    if (button && !button.disabled) document.dispatchEvent(new CustomEvent('office:connect-entry', { detail: { entryId: button.dataset.connectEntry } }));
+  });
+  document.addEventListener('office:staff-changed', () => { void read(); });
   for (const id of ['#discovery-source', '#discovery-provider']) find(id).addEventListener('change', render);
   window.addEventListener('storage', (event) => { if (event.key === ENABLED_KEY) setEnabled(event.newValue === 'true'); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { void read(); void collect(); } });

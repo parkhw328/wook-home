@@ -10,6 +10,7 @@ export const STATUS_LABELS = Object.freeze({
   failed: '실패',
   paused: '일시 중지',
   unavailable: '미연결',
+  observing: '연결 관찰',
   disconnected: '연결 끊김',
   interrupted: '중단 관찰',
   unknown: '확인 필요',
@@ -123,6 +124,11 @@ export function officeName(office) {
 
 export function orderedLocalSessions(localSessions) {
   return [...(localSessions?.sessions || [])].sort((a, b) => a.id.localeCompare(b.id));
+}
+
+export function unassignedLocalSessions(state) {
+  const assigned = new Set(state.agents.map((agent) => agent.connection?.sessionId).filter(Boolean));
+  return orderedLocalSessions(state.localSessions).filter((session) => !assigned.has(session.id));
 }
 
 export function observedSessionStatus(localSessions, session, connection = true) {

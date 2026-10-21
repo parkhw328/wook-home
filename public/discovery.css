@@ -16,9 +16,21 @@
 .discovery-card p { margin: 6px 0; font-size: 13px; line-height: 1.6; }
 .discovery-card small, .discovery-empty { color: #755e62; line-height: 1.6; }
 .discovery-card .subtle-tag { flex-shrink: 0; }
+.discovery-card > div:first-child { min-width: 0; }
+.discovery-card .discovery-card-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; flex: 0 0 auto; max-width: 50%; }
+.discovery-card-actions .button { white-space: normal; overflow-wrap: anywhere; min-height: 44px; font-size: var(--font-control, 1rem); }
+.staff-connection-box { margin-block: 18px; padding: 16px; border: 1px solid #eedcdd; border-radius: 10px; background: #fffafa; }
+.staff-connection-box p { font-size: var(--font-small, .9375rem); line-height: 1.8; }
+.staff-connection-box .detail-actions { margin: 12px 0; }
+.staff-dialog .button { min-height: 44px; }
+.staff-dialog [hidden] { display: none !important; }
+.staff-dialog .form-error { overflow-wrap: anywhere; }
+.staff-hire-choice { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 22px; }
+.status.observing { color: #70504d; background: #f6e7e9; }
 @media (max-width: 600px) {
   .discovery-panel { padding: 16px; }
   .discovery-toolbar .button { min-height: 44px; }
   .discovery-card { flex-wrap: wrap; }
+  .discovery-card .discovery-card-actions { max-width: 100%; flex-direction: row; align-items: center; flex-wrap: wrap; }
   .discovery-panel .subtle-tag { white-space: normal; line-height: 1.6; }
 }

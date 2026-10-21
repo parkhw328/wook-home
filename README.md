@@ -10,6 +10,8 @@
 
 ## 빠른 시작
 
+열어 둔 CLI와 AI 웹 탭을 **직원 · 연결 관리**에서 찾아 직원으로 등록하거나 기존 직원에 연결하세요. 웹은 탭 상태를 관찰하며 메시지는 원래 서비스에서 작성합니다. [직원 연결 안내](https://github.com/parkhw328/wook-home/wiki/Staff).
+
 Docker Desktop의 Linux 컨테이너 환경과 Docker Compose를 준비한 후 저장소 루트에서 실행하세요.
 
 ```powershell

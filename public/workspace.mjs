@@ -1,7 +1,7 @@
 import { ROOMS, FLOORS, roomById, routeBetween, roomTasks, taskRoom, occupantRoom, isHall, hallForFloor } from './rooms.mjs';
 import { OfficeScene } from './office-3d.mjs';
 import { ConversationReader, conversationMarkup } from './conversation.mjs';
-import { escapeHtml as esc, statusLabel, statusClass, displayTime, orderedLocalSessions, observedSessionStatus, sessionStatusLabel, taskUnavailableReason } from './model.mjs';
+import { escapeHtml as esc, statusLabel, statusClass, displayTime, orderedLocalSessions, unassignedLocalSessions, observedSessionStatus, sessionStatusLabel, taskUnavailableReason } from './model.mjs';
 
 export class OfficeWorkspace {
   constructor(root, { request, onTaskAction }) {
@@ -128,7 +128,7 @@ export class OfficeWorkspace {
       button.setAttribute('aria-pressed', String(selected));
     }
     const tasks = roomTasks(this.room, this.state.tasks);
-    const sessions = orderedLocalSessions(this.state.localSessions);
+    const sessions = unassignedLocalSessions(this.state);
     for (const node of this.root.querySelectorAll('[data-room-count]')) {
       const id = node.dataset.roomCount;
       const count = id === 'office' ? sessions.length + this.state.agents.filter((agent) => occupantRoom(agent) === 'office').length
