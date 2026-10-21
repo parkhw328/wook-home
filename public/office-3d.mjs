@@ -1,4 +1,5 @@
 import * as T from './vendor/three/three.module.js';
+import { gesturePose } from './office-gestures.mjs';
 import { ROOMS, FLOOR_HEIGHT, CORRIDOR_Z, LIFT_X, BUILDING, DESK_X, roomById, worldPoint, occupantRoom, occupantPosition, routeBetween, pathToDoor } from './rooms.mjs';
 
 const colors = { plaster: 0xf2e9df, trim: 0xd8c9b7, oak: 0xc9a478, walnut: 0x735044, cream: 0xe6d6bf, red: 0xb84c4c, charcoal: 0x333d42, green: 0x6d8064, brass: 0xbea16c };
@@ -186,6 +187,15 @@ function furnish(node, floor) {
     bookshelf(node, -12.3, -7.08, 2.6); sofa(node, -12.2, -3.7, 2.7, 0, 0x98a89f);
     box(node, 0x596b68, [3.5, 1.25, .08], [-6.5, 1.45, -7.32]);
     box(node, 0xf0ede3, [3.27, 1.02, .03], [-6.5, 1.45, -7.26]);
+    const presentation = group(node, 13.2, 0, -6.25);
+    rounded(presentation, colors.charcoal, 3.25, 1.85, .13, 0, 1.7, 0, .08);
+    box(presentation, 0xf8f2e4, [3.02, 1.62, .025], [0, 1.7, .08]);
+    for (const x of [-1.1, 1.1]) box(presentation, colors.brass, [.06, .8, .08], [x, .42, 0]);
+    const slide = group(presentation);
+    box(slide, colors.red, [1.85, .12, .025], [-.3, 2.22, .1]);
+    for (let line = 0; line < 3; line++) box(slide, 0x86938b, [1.5 - line * .2, .055, .025], [-.5, 1.88 - line * .2, .1]);
+    for (let bar = 0; bar < 3; bar++) box(slide, [0xb65a51, 0xc9a478, 0x718b92][bar], [.2, .32 + bar * .18, .025], [.65 + bar * .26, 1.31 + bar * .09, .1]);
+    node.userData.presentation = slide; slide.visible = false;
     plant(node, -.2, -6.8, 1.1); bookshelf(node, 14.3, -7.08, 1.9);
 
   }
@@ -208,6 +218,10 @@ function person(parent, index, commander = false) {
   }
   const shadow = new T.Mesh(new T.CircleGeometry(.31, 24), new T.MeshBasicMaterial({ color: 0x6f5845, transparent: true, opacity: .15, depthWrite: false }));
   shadow.rotation.x = -Math.PI / 2; shadow.position.y = .028; root.add(shadow);
+  const notes = group(body, -.23, .57, .26); notes.rotation.x = -.35;
+  rounded(notes, 0x544d47, .24, .3, .035, 0, 0, 0, .025);
+  box(notes, 0xf8f2e4, [.2, .25, .01], [0, 0, .025]); notes.visible = false;
+  root.userData.notes = notes;
   root.userData.limbs = limbs; return root;
 }
 const vec = (point) => new T.Vector3(point.x, point.y, point.z);
@@ -337,16 +351,24 @@ export class OfficeScene {
     for (const [index, occupant] of occupants.slice(0, 16).entries()) {
       const key = `${occupant.source}:${occupant.id}`; keep.add(key);
       const room = occupantRoom(occupant); const seat = used[room] || 0; used[room] = seat + 1;
-      const home = occupantPosition(room, seat);
+      const home = occupantPosition(room, seat, occupant.sceneActivity?.pose);
       let item = this.people.get(key);
       if (!item) { const model = person(this.actorRoot, index + 1); model.position.copy(vec(home)); item = { model, room, index, home, seat }; this.people.set(key, item); }
-      if (item.room !== room) {
-        const path = [...pathToDoor(item.room, item.model.position).map(vec), ...routeBetween(item.room, room).slice(1).map(vec), ...pathToDoor(room, home).reverse().slice(1).map(vec)];
-        item.transfer = { path, at: 0 }; item.room = room;
+      this.movePerson(item, room, home);
+      if (!occupant.sceneActivity && ['disconnected', 'unknown', 'interrupted', 'paused', 'unavailable'].includes(occupant.status)) {
+        item.room = room; item.home = home; item.model.position.copy(vec(home)); item.transfer = null; item.nextDestination = null;
       }
-      Object.assign(item, { home, seat, status: occupant.status, source: occupant.source, id: occupant.id });
+      Object.assign(item, { seat, status: occupant.status, source: occupant.source, id: occupant.id, pose: occupant.sceneActivity?.pose || (occupant.status === 'working' ? 'typing' : 'still') });
     }
     for (const [key, item] of this.people) if (!keep.has(key)) { this.actorRoot.remove(item.model); this.people.delete(key); }
+    if (this.floors?.[2]?.userData.presentation) this.floors[2].userData.presentation.visible = occupants.some((actor) => actor.sceneActivity?.pose === 'presenting');
+  }
+  movePerson(item, room, home) {
+    const unchanged = item.room === room && ['x', 'y', 'z'].every((axis) => item.home[axis] === home[axis]);
+    if (item.transfer) { item.nextDestination = unchanged ? null : { room, home }; return; }
+    if (unchanged) return;
+    const path = [...pathToDoor(item.room, item.model.position).map(vec), ...routeBetween(item.room, room).slice(1).map(vec), ...pathToDoor(room, home).reverse().slice(1).map(vec)];
+    item.transfer = { path, at: 0 }; item.room = room; item.home = home;
   }
   placeLabel(element, position, visible = true) {
     if (!element) return;
@@ -354,12 +376,17 @@ export class OfficeScene {
     element.hidden = !visible || point.z < -1 || point.z > 1;
     element.style.left = `${(point.x + 1) * 50}%`; element.style.top = `${(1 - point.y) * 50}%`;
   }
-  animatePerson(model, walking, time, working) {
+  animatePerson(model, walking, time, pose = 'still') {
+    const gesture = gesturePose(pose, time, walking, this.motion);
     for (const { arm, leg, sign } of model.userData.limbs) {
-      leg.rotation.x = walking && this.motion ? Math.sin(time * 9) * .45 * sign : 0;
-      arm.rotation.x = walking && this.motion ? Math.sin(time * 9) * -.4 * sign : working && this.motion ? -.25 + Math.sin(time * 4) * .06 : 0;
+      const side = sign < 0 ? 'left' : 'right';
+      leg.rotation.x = gesture[`${side}Leg`];
+      arm.rotation.x = gesture[`${side}Arm`].x;
+      arm.rotation.z = gesture[`${side}Arm`].z;
     }
-    model.userData.body.position.y = walking && this.motion ? Math.abs(Math.sin(time * 9)) * .035 : 0;
+    model.userData.body.position.y = gesture.bob;
+    model.userData.body.rotation.z = gesture.lean;
+    model.userData.notes.visible = pose === 'presenting' && !walking;
   }
   frame(time) {
     if (this.lastTime && time - this.lastTime < 30) return;
@@ -379,13 +406,19 @@ export class OfficeScene {
     this.commander.visible = !this.view || Math.abs(this.commander.position.y - (this.view - 1) * FLOOR_HEIGHT) < .1;
     this.cabin.visible = this.commander.visible && Math.abs(this.commander.position.x - LIFT_X) < .03 && Math.abs(this.commander.position.z - CORRIDOR_Z) < .03;
     this.cabin.position.copy(this.commander.position);
-    this.animatePerson(this.commander, Boolean(this.walk), this.elapsed, false);
+    this.animatePerson(this.commander, Boolean(this.walk), this.elapsed);
     for (const item of this.people.values()) {
       const { model, home } = item; let walking = false;
-      if (!this.motion) { model.position.copy(vec(home)); item.transfer = null; }
+      if (!this.motion) {
+        if (item.nextDestination) { Object.assign(item, item.nextDestination); item.nextDestination = null; }
+        model.position.copy(vec(item.home)); item.transfer = null;
+      }
       else if (item.transfer) {
         const transfer = item.transfer; const next = transfer.path[transfer.at + 1];
-        if (!next) item.transfer = null;
+        if (!next) {
+          item.transfer = null;
+          if (item.nextDestination) { const destination = item.nextDestination; item.nextDestination = null; this.movePerson(item, destination.room, destination.home); }
+        }
         else { const direction = next.clone().sub(model.position); const distance = direction.length(); const speed = delta * 3;
           if (distance <= speed) { model.position.copy(next); transfer.at += 1; } else model.position.addScaledVector(direction.normalize(), speed);
           if (direction.x || direction.z) model.rotation.y = Math.atan2(direction.x, direction.z); walking = true;
@@ -402,8 +435,10 @@ export class OfficeScene {
           model.position.lerpVectors(a, b, step - at); model.rotation.y = Math.atan2(b.x - a.x, b.z - a.z); walking = true;
         } else { model.position.copy(vec(home)); model.rotation.y = Math.PI; }
       }
+      if (!walking && !item.transfer && item.pose === 'discussing') model.rotation.y = Math.atan2(-6.5 - model.position.x, -2.9 - model.position.z);
+      if (!walking && !item.transfer && item.pose === 'presenting') model.rotation.y = -.5;
       model.visible = !this.view || Math.abs(model.position.y - (this.view - 1) * FLOOR_HEIGHT) < .1;
-      this.animatePerson(model, walking, this.elapsed + item.index, !walking && item.status === 'working');
+      this.animatePerson(model, walking, this.elapsed + item.index, item.transfer ? 'still' : item.pose);
       const label = this.root.querySelector(`[data-person-id="${item.id}"]`);
       this.placeLabel(label, model.position.clone().add(new T.Vector3(0, 1.48, 0)), model.visible);
     }

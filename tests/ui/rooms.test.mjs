@@ -52,9 +52,9 @@ test('room reports prioritize approval, preserve failures, and do not mutate tas
   const tasks = ['failed', 'completed', 'waiting_input', 'waiting_approval', 'paused', 'working'].map((status) => ({ id: status, status, updatedAt: '2026-10-21' }));
   const before = structuredClone(tasks);
   assert.equal(roomTasks('executive', tasks)[0].status, 'waiting_approval');
-  assert.deepEqual(roomTasks('meeting', tasks).map((item) => item.id), ['waiting_input']);
+  assert.deepEqual(roomTasks('meeting', tasks), []);
   assert.equal(taskRoom(tasks[0]), 'executive');
-  assert.equal(taskRoom(tasks[2]), 'meeting');
+  assert.equal(taskRoom(tasks[2]), 'executive');
   assert.ok(roomTasks('executive', tasks).some((item) => item.status === 'failed'));
   assert.deepEqual(tasks, before);
 });

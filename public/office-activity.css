@@ -1,0 +1,13 @@
+@charset "UTF-8";
+
+.scene-activity-strip { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 0 20px 12px; color: var(--ink, #514337); font-size: var(--font-caption, .875rem); }
+.scene-activity-strip[hidden] { display: none; }
+.scene-activity-strip .button { min-height: 44px; font-size: var(--font-control, 1rem); }
+.scene-activity-strip > a { margin-left: auto; }
+.office-person[data-activity="collaborating"] { border-color: #4d827a; background: #edf5ec; }
+.office-person[data-activity="question"], .office-person[data-activity="approval"] { border-color: #ab4e44; background: #fff0e7; }
+.office-person[data-activity]:not([data-activity=""]) { max-width: 210px; }
+.office-person .person-activity { font-size: var(--font-caption, .875rem); padding-left: 5px; margin-left: 2px; border-left: 1px solid currentColor; }
+.activity-note { padding: 10px 8px; color: var(--muted, #705e53); font-size: var(--font-small, .9375rem); line-height: 1.8; }
+.activity-entry small { white-space: normal; overflow: visible; }
+@media (max-width: 600px) { .scene-activity-strip { padding-inline: 14px; } }

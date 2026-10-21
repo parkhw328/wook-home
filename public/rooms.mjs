@@ -11,8 +11,8 @@ export const FLOORS = Object.freeze([
 ]);
 export const ROOMS = Object.freeze([
   { id: 'office', name: '사무실', number: '201', floor: 2, subtitle: '업무 · CLI 세션', description: '동료의 책상에서 업무를 맡기고, CLI 대화를 이어서 확인하세요.', x: 1.8, z: .9, doorZ: 1.55, left: -14, right: 15.8 },
-  { id: 'meeting', name: '회의실', number: '301', floor: 3, subtitle: '질문 · 논의', description: '답변을 기다리는 업무를 열고 동료의 질문에 답하세요.', x: -6.5, z: .9, doorZ: 1.55, left: -14, right: .9 },
-  { id: 'executive', name: '대표이사실', number: '302', floor: 3, subtitle: '업무보고 · 승인', description: '진행 상황과 결과를 보고받고, 검토한 결과를 승인하세요.', x: 8.5, z: .9, doorZ: 1.55, left: 1.1, right: 15.8 },
+  { id: 'meeting', name: '회의실', number: '301', floor: 3, subtitle: '세션 협업 · 논의', description: '협업한 동료와 세션을 확인하고 관련 대화를 살펴보세요.', x: -6.5, z: .9, doorZ: 1.55, left: -14, right: .9 },
+  { id: 'executive', name: '대표이사실', number: '302', floor: 3, subtitle: '질문 · 발표 · 승인', description: 'Commander에게 하는 질문과 발표를 확인하고, 업무 결과를 검토하세요.', x: 8.5, z: .9, doorZ: 1.55, left: 1.1, right: 15.8 },
   { id: 'lounge', name: '휴게실', number: '101', floor: 1, subtitle: '휴식 · 대기', description: '업무를 기다리는 동료가 모이는 공간입니다. 입장과 퇴실은 실제 실행을 바꾸지 않습니다.', x: -6.5, z: .9, doorZ: 1.55, left: -14, right: .9 },
   { id: 'pantry', name: '다과실', number: '102', floor: 1, subtitle: '커피 · 사무실 소식', description: '잠시 쉬어 가며 사무실의 최근 소식을 확인하세요.', x: 8.5, z: .9, doorZ: 1.55, left: 1.1, right: 15.8 },
 ]);
@@ -38,25 +38,27 @@ export function routeBetween(fromId, toId) {
 }
 
 export function taskRoom(task) {
-  return task?.status === 'waiting_input' ? 'meeting'
-    : ['waiting_approval', 'completed', 'failed', 'cancelled', 'paused'].includes(task?.status) ? 'executive' : 'office';
+  return ['waiting_input', 'waiting_approval', 'completed', 'failed', 'cancelled', 'paused'].includes(task?.status) ? 'executive' : 'office';
 }
 export function roomTasks(roomId, tasks) {
-  if (roomId === 'meeting') return tasks.filter((task) => task.status === 'waiting_input');
+  if (roomId === 'meeting') return [];
   if (roomId === 'executive') return [...tasks].sort((a, b) => Number(b.status === 'waiting_approval') - Number(a.status === 'waiting_approval') || String(b.updatedAt).localeCompare(String(a.updatedAt)));
   if (roomId === 'office') return tasks.filter((task) => !['completed', 'cancelled', 'failed'].includes(task.status));
   return [];
 }
 export function occupantRoom(occupant) {
+  if (['meeting', 'executive'].includes(occupant.sceneActivity?.room)) return occupant.sceneActivity.room;
   if (occupant.source === 'session') return 'office';
-  if (occupant.status === 'waiting_input') return 'meeting';
-  if (occupant.status === 'waiting_approval') return 'executive';
+  if (['waiting_input', 'waiting_approval'].includes(occupant.status)) return 'executive';
   if (occupant.status === 'idle') return 'lounge';
   return 'office';
 }
-export function occupantPosition(roomId, index) {
+export function occupantPosition(roomId, index, pose) {
   const room = roomById(roomId);
+  const activitySeat = index % 4;
   if (roomId === 'office') return worldPoint(room, DESK_X[[0, 2, 4, 6, 8, 1, 3, 5, 7][index % DESK_X.length]] - .3, index < DESK_X.length ? .7 : -3.9);
+  if (roomId === 'meeting' && pose === 'discussing') return worldPoint(room, -6.5 + (activitySeat % 2 ? 2.2 : -2.2), -2.9 + Math.floor(activitySeat / 2) * 1.2);
+  if (roomId === 'executive' && pose === 'presenting') return worldPoint(room, 12.1 + (activitySeat % 2) * 1.45, -3.6 + Math.floor(activitySeat / 2) * 1.45);
   return worldPoint(room, room.x + (index % 2 ? 1.1 : -1.1), .9);
 }
 

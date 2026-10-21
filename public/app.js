@@ -1,5 +1,6 @@
 import { apiRequest } from './api.mjs';
 import { connectionLocation, connectionSummary, connectionMarkup } from './staff-connections.mjs';
+import { officeOccupants as observedOccupants } from './office-activity.mjs';
 import { OfficeWorkspace } from './workspace.mjs';
 import { occupantRoom } from './rooms.mjs';
 import {
@@ -9,7 +10,7 @@ import {
 import {
   escapeHtml as esc, statusLabel, statusClass, isOpenTask, needsAttention,
   officeCounts, taskUnavailableReason, filterTasks, displayTime, normalizeState, programUrl, providerLinks,
-  officeName, observedSessionStatus, sessionStatusLabel, characterMotion, orderedLocalSessions, unassignedLocalSessions,
+  officeName, observedSessionStatus, sessionStatusLabel, characterMotion, orderedLocalSessions,
 } from './model.mjs';
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -141,11 +142,7 @@ function renderStats() {
 }
 
 function officeOccupants() {
-  const sessions = unassignedLocalSessions(state).map((session) => ({
-    ...session, source: 'session', status: observedSessionStatus(state.localSessions, session, connected),
-  }));
-  const agents = state.agents.map((agent) => ({ ...agent, source: 'agent' }));
-  return [...sessions, ...agents];
+  return observedOccupants(state, connected);
 }
 
 function renderCharacters() {
@@ -154,9 +151,9 @@ function renderCharacters() {
   const displayed = occupants.filter((occupant) => {
     const room = occupantRoom(occupant);
     used[room] = (used[room] || 0) + 1;
-    return used[room] <= (room === 'office' ? 8 : 2);
+    return used[room] <= (room === 'office' ? 8 : ['meeting', 'executive'].includes(room) ? 4 : 2);
   }).slice(0, 16);
-  const signature = JSON.stringify([displayed.map(({ id, source, status, name }) => ({ id, source, status, name })), connected, state.office.paused]);
+  const signature = JSON.stringify([displayed.map(({ id, source, status, name, sceneActivity }) => ({ id, source, status, name, sceneActivity })), connected, state.office.paused]);
   $('#office-scene').classList.toggle('motion-disabled', !motionEnabled);
   $('#scene-empty').hidden = occupants.length > 0;
   $('#office-meta').textContent = `${state.localSessions?.sessions?.length || 0} CLI · ${state.agents.length} 직원${occupants.length > displayed.length ? ` · 화면 ${displayed.length}명 표시` : ''}`;
@@ -167,9 +164,9 @@ function renderCharacters() {
   const previousId = previousSource ? previous.dataset[previousSource] : null;
   $('#desk-grid').innerHTML = displayed.map((occupant) => {
     const isSession = occupant.source === 'session';
-    const label = isSession ? sessionStatusLabel(occupant.status) : statusLabel(occupant.status);
+    const label = occupant.sceneActivity?.label || (isSession ? sessionStatusLabel(occupant.status) : statusLabel(occupant.status));
     const compactName = isSession ? occupant.name.replace(/^Codex\s*·\s*/, '') : occupant.name;
-    return `<button type="button" class="office-person ${statusClass(occupant.status)}" data-person-id="${esc(occupant.id)}" data-${occupant.source}="${esc(occupant.id)}" aria-label="${esc(occupant.name)} · ${label} 상세 보기"><i aria-hidden="true"></i>${esc(compactName)}</button>`;
+    return `<button type="button" class="office-person ${statusClass(occupant.status)}" data-person-id="${esc(occupant.id)}" data-${occupant.source}="${esc(occupant.id)}" data-activity="${esc(occupant.sceneActivity?.kind || '')}" title="${esc(label)}" aria-label="${esc(occupant.name)} · ${label} 상세 보기"><i aria-hidden="true"></i>${esc(compactName)}${occupant.sceneActivity ? `<span class="person-activity" aria-hidden="true">${occupant.sceneActivity.kind === 'collaborating' ? '협업' : '발표'}</span>` : ''}</button>`;
   }).join('');
   workspace.scene.syncPeople(displayed);
   if (previousId) $$(`[data-${previousSource}]`, $('#desk-grid')).find((node) => node.dataset[previousSource] === previousId)?.focus({ preventScroll: true });

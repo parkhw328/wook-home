@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { OfficeScene, officeCameraFrame } from '../../public/office-3d.mjs';
-import { routeBetween, BUILDING, FLOOR_HEIGHT } from '../../public/rooms.mjs';
+import { routeBetween, BUILDING, FLOOR_HEIGHT, CORRIDOR_Z, LIFT_X, occupantRoom } from '../../public/rooms.mjs';
 import { Object3D, Scene, MeshBasicMaterial, OrthographicCamera, Vector3 } from '../../public/vendor/three/three.module.js';
 
 test('missing WebGL preserves room navigation and does not block entry with reduced motion', async () => {
@@ -44,4 +44,27 @@ test('zero-length walking requests finish without invalid route geometry', async
   await scene.moveCommander([{ x: 1, y: 0, z: 2 }, { x: 1, y: 0, z: 2 }]);
   assert.deepEqual(scene.commander.position.toArray(), [1, 0, 2]);
   assert.equal(scene.walk, undefined);
+});
+
+test('observed activities move actors through the lift and queue new destinations without cutting across floors', () => {
+  const scene = Object.create(OfficeScene.prototype);
+  Object.assign(scene, { actorRoot: new Object3D(), people: new Map() });
+  const actor = { source: 'session', id: 'session-a', status: 'working' };
+  scene.syncPeople([actor]);
+  const item = scene.people.get('session:session-a');
+  scene.syncPeople([{ ...actor, sceneActivity: { room: 'meeting', pose: 'discussing' } }]);
+  assert.equal(item.room, 'meeting'); assert.equal(item.pose, 'discussing');
+  for (let index = 1; index < item.transfer.path.length; index++) {
+    const [from, to] = [item.transfer.path[index - 1], item.transfer.path[index]];
+    if (from.y !== to.y) { assert.equal(from.x, LIFT_X); assert.equal(to.x, LIFT_X); assert.equal(from.z, CORRIDOR_Z); }
+  }
+  const route = item.transfer;
+  item.model.position.copy(route.path[2]);
+  scene.syncPeople([{ ...actor, sceneActivity: { room: 'executive', pose: 'presenting' } }]);
+  assert.equal(item.transfer, route, 'finish a valid traversal before changing destinations');
+  assert.equal(item.nextDestination.room, 'executive');
+  assert.equal(item.pose, 'presenting');
+  scene.syncPeople([actor]);
+  assert.equal(item.nextDestination.room, 'office', 'expiry clears the presentation destination');
+  assert.equal(occupantRoom({ source: 'session', status: 'working', sceneActivity: { room: 'executive' } }), 'executive');
 });
