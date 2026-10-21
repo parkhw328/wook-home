@@ -11,6 +11,8 @@ export const STATUS_LABELS = Object.freeze({
   paused: '일시 중지',
   unavailable: '미연결',
   disconnected: '연결 끊김',
+  interrupted: '중단 관찰',
+  unknown: '확인 필요',
 });
 
 const TERMINAL_STATUSES = new Set(['completed', 'cancelled', 'failed']);
@@ -90,8 +92,31 @@ const PROGRAM_URLS = Object.freeze({
   wShell: 'https://github.com/parkhw328/wook-shell',
   wPost: 'https://github.com/parkhw328/wook-post',
   wText: 'https://github.com/parkhw328/wook-text',
+  'StackQueue Blog': 'https://blog.naver.com/stack-queue',
 });
 
 export function programUrl(program) {
   return program?.url === PROGRAM_URLS[program?.name] ? program.url : null;
+}
+
+export function officeName(office) {
+  return typeof office?.name === 'string' && office.name.trim() ? office.name.trim() : 'StackQueue Office';
+}
+
+export function observedSessionStatus(localSessions, session, connection = true) {
+  if (!connection || localSessions?.status !== 'connected') return 'disconnected';
+  return ['working', 'idle', 'interrupted', 'unknown', 'disconnected'].includes(session.status) ? session.status : 'unknown';
+}
+
+export function sessionStatusLabel(status) {
+  const labels = { working: '활동 관찰', idle: '턴 종료 관찰', interrupted: '중단 관찰', unknown: '확인 필요', disconnected: '관찰 연결 끊김' };
+  return Object.hasOwn(labels, status) ? labels[status] : '확인 필요';
+}
+
+export function characterMotion(status, connected = true) {
+  if (!connected) return 'still';
+  if (status === 'working' || status === 'running') return 'typing';
+  if (status === 'waiting_input' || status === 'waiting_approval') return 'attention';
+  if (status === 'idle') return 'idle';
+  return 'still';
 }

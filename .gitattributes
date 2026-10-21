@@ -1,0 +1,4 @@
+# Preserve the exact upstream license bytes and their published checksums.
+# Upstream OFL files contain intentional trailing spaces.
+public/fonts/*-OFL.txt text eol=lf -whitespace
+public/fonts/*.woff2 binary

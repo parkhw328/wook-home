@@ -75,7 +75,8 @@ export function createHttpServer(office, { publicDir = resolve('public'), bridge
       let data;
       try { data = await readFile(file); }
       catch { throw new ApiError(404, 'NOT_FOUND', '요청한 파일이 없습니다.'); }
-      response.writeHead(200, { ...headers, 'Content-Type': contentTypes[extname(file)], 'Content-Length': data.length });
+      const cache = ['.woff2', '.ttf'].includes(extname(file)) ? 'public, max-age=86400' : 'no-store';
+      response.writeHead(200, { ...headers, 'Cache-Control': cache, 'Content-Type': contentTypes[extname(file)], 'Content-Length': data.length });
       response.end(method === 'HEAD' ? undefined : data);
     } catch (error) {
       if (response.destroyed || response.headersSent) return;

@@ -12,6 +12,7 @@ async function fixture(t) {
   const directory = mkdtempSync(join(tmpdir(), 'wook-home-http-'));
   writeFileSync(join(directory, 'index.html'), '<!doctype html><title>Office</title>');
   writeFileSync(join(directory, 'app.mjs'), 'export const ready = true;');
+  writeFileSync(join(directory, 'test.woff2'), 'font-header-fixture');
   const store = createStore(':memory:');
   const server = createHttpServer(createOffice(store), { publicDir: directory });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -52,6 +53,10 @@ test('HTTP contract supports hire, demo workflow, handoff and static modules', a
   const module = await fetch(base + '/app.mjs');
   assert.equal(module.status, 200);
   assert.match(module.headers.get('content-type'), /javascript/);
+  assert.equal(module.headers.get('cache-control'), 'no-store');
+  const font = await fetch(base + '/test.woff2');
+  assert.equal(font.headers.get('content-type'), 'font/woff2');
+  assert.equal(font.headers.get('cache-control'), 'public, max-age=86400');
 });
 
 test('cross-origin and non-local Host requests cannot reach state or mutations', async (t) => {

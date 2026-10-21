@@ -1,0 +1,37 @@
+{
+  "retrievedAt": "2026-10-21",
+  "assets": [
+    {
+      "file": "NotoSansKR-Variable.woff2",
+      "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/notosanskr/NotoSansKR%5Bwght%5D.ttf",
+      "sourceSha256": "194018e6b2b293a7964f037b25c0249ce1418bc9ab3c971060a03aa57861e252",
+      "sha256": "18de418f81adc48e95ba420e968323c12bbeb7122d1c8409488233572b67313e",
+      "bytes": 3908276,
+      "transformation": "Lossless WOFF2 container conversion; all glyphs and variation axes retained"
+    },
+    {
+      "file": "JetBrainsMono-Variable.woff2",
+      "source": "https://raw.githubusercontent.com/JetBrains/JetBrainsMono/master/fonts/webfonts/JetBrainsMono%5Bwght%5D.woff2",
+      "sourceSha256": "31ec365b93e4bad6f202ce23352a56d01ca4462b2afc782ed2cf6fa42ca9ac0e",
+      "sha256": "31ec365b93e4bad6f202ce23352a56d01ca4462b2afc782ed2cf6fa42ca9ac0e",
+      "bytes": 113672,
+      "transformation": "Unmodified"
+    },
+    {
+      "file": "NotoSansKR-OFL.txt",
+      "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/notosanskr/OFL.txt",
+      "sourceSha256": "1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9",
+      "sha256": "1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9",
+      "bytes": 4388,
+      "transformation": "Unmodified"
+    },
+    {
+      "file": "JetBrainsMono-OFL.txt",
+      "source": "https://raw.githubusercontent.com/JetBrains/JetBrainsMono/master/OFL.txt",
+      "sourceSha256": "a76abf002c49097d146e86740a3105a5d00450b1592e820a1109a8c5680cd697",
+      "sha256": "a76abf002c49097d146e86740a3105a5d00450b1592e820a1109a8c5680cd697",
+      "bytes": 4399,
+      "transformation": "Unmodified"
+    }
+  ]
+}

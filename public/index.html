@@ -3,10 +3,12 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#f5f6f2">
-    <meta name="description" content="AI 직원과 함께 일하는 나만의 가상 회사, wook-home.">
-    <title>wook-home · 나의 사무실</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%232d5142'/%3E%3Cpath d='M12 22l8 23 12-19 12 19 8-23' fill='none' stroke='%23e5f0d2' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <meta name="theme-color" content="#b43d3e">
+    <meta name="description" content="AI 직원과 함께 일하는 나만의 가상 회사, StackQueue Office.">
+    <title>StackQueue Office · 나의 사무실</title>
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="preload" href="/fonts/NotoSansKR-Variable.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/fonts.css">
     <link rel="stylesheet" href="/styles.css">
     <script type="module" src="/app.js"></script>
   </head>
@@ -14,28 +16,29 @@
     <a class="skip-link" href="#main">본문으로 이동</a>
     <div class="app-shell">
       <aside class="sidebar" aria-label="작업 공간 탐색">
-        <a class="brand" href="#office" aria-label="wook-home 사무실"><span class="brand-icon" aria-hidden="true">w.</span><span>wook<span class="brand-light">-home</span><small>YOUR LITTLE AI COMPANY</small></span></a>
-        <div class="workspace-card"><span class="workspace-icon" aria-hidden="true">W</span><div><strong>나의 작업 공간</strong><span>Local workspace</span></div><span class="workspace-dot" aria-hidden="true"></span></div>
+        <a class="brand" href="#office" id="brand-link" aria-label="StackQueue Office"><span class="brand-icon" aria-hidden="true">SQ<span></span></span><span class="brand-copy"><span data-office-name>StackQueue Office</span><small>YOUR LOCAL AI WORKSPACE</small></span></a>
+        <div class="workspace-card"><span class="workspace-icon" aria-hidden="true">SQ</span><div><strong data-office-name>StackQueue Office</strong><span>Local workspace</span></div><span class="workspace-dot" aria-hidden="true"></span></div>
         <div class="nav-label">WORKSPACE</div>
         <nav class="main-nav">
           <a href="#office" class="nav-link active" data-view="office" aria-current="page"><span data-icon="office"></span>나의 사무실</a>
           <a href="#tasks" class="nav-link" data-view="tasks"><span data-icon="task"></span>업무 보드<span class="nav-count" id="nav-task-count">0</span></a>
           <a href="#handoff" class="nav-link" data-view="handoff"><span data-icon="handoff"></span>작업 인계</a>
+          <a href="https://github.com/parkhw328/wook-home/wiki" class="nav-link help-link" target="_blank" rel="noopener noreferrer"><span data-icon="message"></span>도움말<span class="external-arrow" aria-hidden="true">↗</span></a>
         </nav>
         <div class="sidebar-note"><span class="note-spark" aria-hidden="true">✳</span><strong>작은 팀, 더 큰 가능성.</strong><p>각자의 역할이 모여<br>하나의 일을 완성합니다.</p></div>
         <div class="sidebar-bottom"><span class="commander-avatar" aria-hidden="true">C</span><div><strong>Commander</strong><span>이 공간의 방향을 정하는 사람</span></div></div>
       </aside>
 
       <div class="main-shell">
-        <header class="topbar"><div class="breadcrumb"><span>나의 작업 공간</span><span aria-hidden="true">/</span><strong id="page-label">나의 사무실</strong></div><div class="topbar-actions"><span class="connection-pill" id="connection-status" role="status"><i aria-hidden="true"></i>서버 연결 중</span><span class="local-label">LOCAL</span></div></header>
+        <header class="topbar"><div class="breadcrumb"><span data-office-name>StackQueue Office</span><span aria-hidden="true">/</span><strong id="page-label">나의 사무실</strong></div><div class="topbar-actions"><span class="connection-pill" id="connection-status" role="status"><i aria-hidden="true"></i>서버 연결 중</span><span class="local-label">LOCAL</span></div></header>
         <main id="main" tabindex="-1">
           <div class="page-heading"><div><p class="eyebrow" id="page-eyebrow">A PLACE TO MAKE THINGS HAPPEN</p><h1 id="page-title">오늘도, 함께 만드는 일.</h1><p class="page-description" id="page-description">동료를 모으고, 일을 나누고, 다음 한 걸음을 만들어 보세요.</p></div><button class="button button-primary" type="button" id="hire-button"><span data-icon="plus"></span>직원 채용</button></div>
           <div id="connection-error" class="notice notice-error" role="alert" hidden><span data-icon="alert"></span><div><strong>서버와 연결이 끊어졌습니다.</strong><p>마지막으로 받은 상태입니다. 연결되면 자동으로 갱신합니다.</p></div><button class="button button-small button-quiet" id="retry-button" type="button">다시 연결</button></div>
-          <div id="paused-notice" class="notice notice-paused" hidden><span data-icon="pause"></span><div><strong>사무실이 일시 중지되었습니다.</strong><p>저장된 업무를 확인하고 준비되면 다시 시작하세요.</p></div><button class="button button-small" id="resume-banner-button" type="button">업무 재개</button></div>
+          <div id="paused-notice" class="notice notice-paused" hidden><span data-icon="pause"></span><div><strong>사무실 내부 업무가 일시 중지되었습니다.</strong><p>저장된 내부 업무는 재개할 수 있습니다. 외부 CLI는 중지되지 않으며 상태 관찰은 계속됩니다.</p></div><button class="button button-small" id="resume-banner-button" type="button">업무 재개</button></div>
           <section class="stat-grid" aria-label="사무실 현황" id="stat-grid">
             <div class="stat-card"><span class="stat-icon" data-icon="people"></span><div><span>함께하는 직원</span><strong id="stat-agents">—<small>명</small></strong></div></div>
             <div class="stat-card"><span class="stat-icon" data-icon="activity"></span><div><span>진행 중인 업무</span><strong id="stat-working">—<small>건</small></strong></div></div>
-            <div class="stat-card"><span class="stat-icon stat-amber" data-icon="message"></span><div><span>나의 응답을 기다려요</span><strong id="stat-waiting">—<small>건</small></strong></div></div>
+            <div class="stat-card"><span class="stat-icon stat-amber" data-icon="message"></span><div><span>응답·승인 대기</span><strong id="stat-waiting">—<small>건</small></strong></div></div>
             <div class="stat-card"><span class="stat-icon stat-green" data-icon="check"></span><div><span>완료한 업무</span><strong id="stat-completed">—<small>건</small></strong></div></div>
           </section>
 
@@ -43,26 +46,34 @@
             <div class="office-layout">
               <div class="office-main">
                 <section class="panel office-panel" aria-labelledby="office-heading"><div class="panel-heading"><div class="panel-title"><span class="live-dot" aria-hidden="true"></span><h2 id="office-heading">우리의 사무실</h2><span class="subtle-tag">1F · WORK LOUNGE</span></div><span class="office-meta" id="office-meta">문을 여는 중</span></div>
-                  <div class="office-scene" id="office-scene"><div class="scene-wall"></div><div class="scene-window"><i></i><i></i><i></i></div><div class="wall-sign">MAKE ROOM<br>FOR GOOD IDEAS<span>✳</span></div><div class="scene-floor"></div><div class="scene-rug"></div><div class="scene-plant plant-one"><i></i><i></i><i></i><b></b></div><div class="scene-plant plant-two"><i></i><i></i><i></i><b></b></div><div class="desk-grid" id="desk-grid" aria-label="사무실 직원"></div><div class="scene-empty" id="scene-empty"><span>좋은 일은, 좋은 동료로부터.</span><button type="button" class="scene-invite" id="scene-hire-button">첫 동료를 맞이해 보세요 <span aria-hidden="true">↗</span></button></div><span class="scene-caption">WOOK-HOME OFFICE</span></div>
+                  <div class="office-scene" id="office-scene">
+                    <div class="scene-art" aria-hidden="true"></div>
+                    <div class="scene-coordinate scene-coordinate-top" aria-hidden="true">01 / WORK LOUNGE</div>
+                    <div class="desk-grid" id="desk-grid" aria-label="사무실 캐릭터"></div>
+                    <div class="scene-empty" id="scene-empty"><span>좋은 일은, 좋은 동료로부터.</span><button type="button" class="scene-invite" id="scene-hire-button">첫 동료를 맞이해 보세요 <span aria-hidden="true">↗</span></button></div>
+                    <span class="scene-caption" data-office-name>StackQueue Office</span>
+                    <button class="motion-toggle" id="motion-toggle" type="button" aria-pressed="true" aria-label="캐릭터 움직임">움직임 켜짐</button>
+                  </div>
                   <div class="office-legend"><span><i class="legend-dot idle"></i>업무 대기</span><span><i class="legend-dot working"></i>진행 중</span><span><i class="legend-dot waiting_input"></i>응답·승인 대기</span><span><i class="legend-dot unavailable"></i>미연결</span></div>
                 </section>
                 <section class="team-section" aria-labelledby="team-heading"><div class="section-heading"><h2 id="team-heading">함께하는 직원 <span id="team-count">0</span></h2><span class="muted">동료를 선택해 업무를 확인하세요</span></div><div id="agent-list" class="agent-grid"><div class="empty-state"><span class="empty-icon" data-icon="people"></span><strong>첫 동료를 기다리고 있어요</strong><p>체험용 직원을 채용해 업무 흐름을 시작해 보세요.</p></div></div></section>
-                <section class="panel provider-panel" aria-labelledby="provider-heading"><div class="panel-heading"><h2 id="provider-heading">AI 공급자 연결</h2><span class="subtle-tag">연동 준비 중</span></div><div id="provider-list" class="provider-list"></div><p class="panel-footnote">현재는 체험용 직원으로 업무 흐름을 사용할 수 있습니다. 외부 AI 호출과 기존 세션 연결은 준비 중입니다.</p></section>
+                <section class="panel sessions-panel" aria-labelledby="sessions-heading"><div class="panel-heading"><h2 id="sessions-heading">이 PC의 CLI 세션</h2><span id="sessions-connection" class="subtle-tag">관찰 연결 대기</span></div><div id="session-list" class="session-list"></div><p class="panel-footnote">CLI의 최근 이벤트를 관찰합니다. 이 화면에서 명령을 보내거나 외부 CLI를 중지하지 않습니다. <a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/CLI" target="_blank" rel="noopener noreferrer">연결 방법 보기 ↗</a></p></section>
+                <section class="panel provider-panel" aria-labelledby="provider-heading"><div class="panel-heading"><h2 id="provider-heading">AI 공급자 연결</h2><span class="subtle-tag">연동 준비 중</span></div><div id="provider-list" class="provider-list"></div><p class="panel-footnote">현재는 체험용 직원으로 업무 흐름을 사용할 수 있습니다. 외부 AI 실행은 준비 중이며, 로컬 CLI는 상태 연결기로 관찰할 수 있습니다.</p></section>
               </div>
               <aside class="commander-panel" aria-label="Commander 확인 사항"><section class="panel inbox-panel"><div class="panel-heading"><h2>Commander의 데스크</h2><span class="inbox-count" id="inbox-count">0</span></div><p class="panel-intro">당신의 한마디가 필요한 순간.</p><div id="inbox-list"></div><button class="text-link inbox-footer" type="button" id="all-tasks-button">업무 보드에서 모두 보기 <span aria-hidden="true">↗</span></button></section><section class="panel activity-panel"><div class="panel-heading"><h2>사무실 소식</h2><span class="muted">최근 활동</span></div><div id="event-list" class="event-list"></div></section><div class="mode-note"><span data-icon="spark"></span><div><strong>먼저, 가볍게 경험해 보세요.</strong><p>체험용 직원은 실제 AI를 호출하지 않습니다. 질문부터 결과 승인까지 차근차근 살펴보세요.</p></div></div></aside>
             </div>
-            <section class="program-section" aria-labelledby="program-heading"><div class="section-heading"><div><p class="eyebrow">MORE FROM WOOK</p><h2 id="program-heading">작업에 작은 편리함을 더하는 도구들</h2></div><span class="muted">함께 만드는 프로그램</span></div><div class="program-grid" id="program-list"></div></section>
+            <section class="program-section" aria-labelledby="program-heading"><div class="section-heading"><div><p class="eyebrow">FROM STACK TO QUEUE</p><h2 id="program-heading">작업에 작은 편리함을 더하는 도구들</h2></div><span class="muted">함께 만드는 프로그램</span></div><div class="program-grid" id="program-list"></div></section>
           </section>
 
           <section id="view-tasks" class="view" hidden><div class="panel task-board"><div class="panel-heading"><h2>모든 업무 <span class="muted" id="task-total">0</span></h2><button type="button" class="button button-primary button-small" id="new-task-button"><span data-icon="plus"></span>업무 지시</button></div><div class="task-filters"><label for="task-filter">업무 상태</label><select id="task-filter"><option value="all">전체 상태</option><option value="attention">응답·승인 대기</option><option value="active">미완료</option><option value="completed">완료</option><option value="cancelled">취소됨</option></select></div><div id="task-list" class="task-list"></div></div></section>
 
-          <section id="view-handoff" class="view" hidden><div class="handoff-grid"><section class="panel handoff-panel"><span class="large-icon" data-icon="handoff"></span><h2>다음 공간에서도 이어갈 수 있도록.</h2><p>먼저 사무실을 중지해 진행 중인 업무를 저장하세요. 직원과 업무 기록을 파일로 내려받아 다음 작업을 준비할 수 있습니다.</p><ol class="handoff-steps"><li><span>01</span><div><strong>업무를 잠시 멈추기</strong><p>새 업무 접수와 진행을 중지하고 현재 상태를 보존합니다.</p></div></li><li><span>02</span><div><strong>인계 기록 내려받기</strong><p>직원, 업무, 대화, 결과를 포함한 JSON 파일을 저장합니다.</p></div></li><li><span>03</span><div><strong>내용을 검토한 뒤 공유하기</strong><p>입력한 내용이 포함됩니다. 공유할 정보인지 먼저 확인하세요.</p></div></li></ol><div class="handoff-actions"><button class="button button-primary" type="button" id="pause-button"><span data-icon="pause"></span>사무실 일시 중지</button><button class="button button-secondary" type="button" id="download-button"><span data-icon="download"></span>인계 기록 다운로드</button></div><p class="panel-footnote">파일 가져오기, 다른 PC의 원래 세션 복원, GitHub 자동 전송은 아직 지원하지 않습니다.</p></section><section class="panel handoff-status"><div class="panel-heading"><h2>현재 작업 상태</h2></div><dl id="handoff-summary"></dl><p class="panel-footnote">중단된 업무는 완료 처리되지 않습니다. 같은 저장소로 서버를 다시 실행하면 저장된 상태를 확인할 수 있습니다.</p></section></div></section>
-          <footer class="page-footer"><span>wook-home <span class="footer-dot">·</span> Make good things, together.</span><span id="app-version">로컬 작업 공간</span></footer>
+          <section id="view-handoff" class="view" hidden><div class="handoff-grid"><section class="panel handoff-panel"><span class="large-icon" data-icon="handoff"></span><h2>다음 공간에서도 이어갈 수 있도록.</h2><p>먼저 사무실을 중지해 진행 중인 업무를 저장하세요. 직원과 업무 기록을 파일로 내려받아 다음 작업을 준비할 수 있습니다.</p><ol class="handoff-steps"><li><span>01</span><div><strong>업무를 잠시 멈추기</strong><p>새 업무 접수와 진행을 중지하고 현재 상태를 보존합니다.</p></div></li><li><span>02</span><div><strong>인계 기록 내려받기</strong><p>직원, 업무, 대화, 결과를 포함한 JSON 파일을 저장합니다.</p></div></li><li><span>03</span><div><strong>내용을 검토한 뒤 공유하기</strong><p>입력한 내용이 포함됩니다. 공유할 정보인지 먼저 확인하세요.</p></div></li></ol><div class="handoff-actions"><button class="button button-primary" type="button" id="pause-button"><span data-icon="pause"></span>사무실 일시 중지</button><button class="button button-secondary" type="button" id="download-button"><span data-icon="download"></span>인계 기록 다운로드</button></div><p class="panel-footnote">사무실 중지는 내부 업무에만 적용되며 외부 CLI를 중지하지 않습니다. 파일 가져오기, 다른 PC의 세션 복원, GitHub 자동 전송은 준비 중입니다.</p></section><section class="panel handoff-status"><div class="panel-heading"><h2>현재 작업 상태</h2></div><dl id="handoff-summary"></dl><p class="panel-footnote">중단된 업무는 완료 처리되지 않습니다. 같은 저장소로 서버를 다시 실행하면 저장된 상태를 확인할 수 있습니다.</p></section></div></section>
+          <footer class="page-footer"><span><span data-office-name>StackQueue Office</span> <span class="footer-dot">·</span> Make good things, together.</span><a class="inline-link footer-help" href="https://github.com/parkhw328/wook-home/wiki/UI" target="_blank" rel="noopener noreferrer">화면 사용법 ↗</a><span id="app-version">로컬 작업 공간</span></footer>
         </main>
       </div>
     </div>
     <dialog id="modal" class="modal"><div class="modal-header"><div><p class="eyebrow" id="modal-eyebrow"></p><h2 id="modal-title"></h2></div><button class="icon-button" id="close-modal" type="button" aria-label="대화상자 닫기"><span data-icon="close"></span></button></div><div id="modal-body"></div></dialog>
     <div class="toast" id="toast" role="status" hidden></div>
-    <noscript><div class="noscript">wook-home을 사용하려면 브라우저에서 JavaScript를 활성화해 주세요.</div></noscript>
+    <noscript><div class="noscript">StackQueue Office를 사용하려면 브라우저에서 JavaScript를 활성화해 주세요.</div></noscript>
   </body>
 </html>

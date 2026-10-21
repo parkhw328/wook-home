@@ -2,6 +2,7 @@ import { apiRequest } from './api.mjs';
 import {
   escapeHtml as esc, statusLabel, statusClass, isOpenTask, needsAttention,
   officeCounts, taskUnavailableReason, filterTasks, displayTime, normalizeState, programUrl,
+  officeName, observedSessionStatus, sessionStatusLabel, characterMotion,
 } from './model.mjs';
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -53,6 +54,10 @@ let toastTimer;
 let currentView = 'office';
 let modalContext = null;
 let modalTrigger = null;
+let sceneSignature = '';
+let sessionsSignature = '';
+const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+let motionEnabled = !motionPreference.matches;
 const modal = $('#modal');
 const body = $('#modal-body');
 
@@ -68,6 +73,8 @@ function setConnection(value) {
     $('#connection-error p').textContent = '마지막으로 받은 상태입니다. 연결되면 자동으로 갱신합니다.';
   }
   updateControls();
+  renderCharacters();
+  renderSessions();
 }
 
 function toast(message, isError = false) {
@@ -101,18 +108,85 @@ function renderStats() {
   $('#paused-notice').hidden = !state.office.paused;
   $('#office-meta').textContent = state.office.paused ? '업무 일시 중지' : '로컬 사무실';
   $('#app-version').textContent = `v${state.office.version || '개발 중'} · 로컬 작업 공간`;
+  const name = officeName(state.office);
+  $$('[data-office-name]').forEach((node) => { node.textContent = name; });
+  $('#brand-link').setAttribute('aria-label', `${name} 사무실`);
+  document.title = `${name} · ${VIEW_COPY[currentView][0]}`;
+  $('meta[name="description"]').content = `${name} · AI 직원과 로컬 CLI의 작업 상태를 확인하는 사무실`;
+}
+
+function officeOccupants() {
+  const sessions = (state.localSessions?.sessions || []).map((session) => ({
+    ...session, source: 'session', status: observedSessionStatus(state.localSessions, session, connected),
+  }));
+  const agents = state.agents.map((agent) => ({ ...agent, source: 'agent' }));
+  return [...sessions, ...agents];
+}
+
+function renderCharacters() {
+  const occupants = officeOccupants();
+  const displayed = occupants.slice(0, 6);
+  const signature = JSON.stringify([displayed.map(({ id, source, status, name }) => ({ id, source, status, name })), connected, state.office.paused]);
+  $('#office-scene').classList.toggle('motion-disabled', !motionEnabled);
+  $('#scene-empty').hidden = occupants.length > 0;
+  $('#office-meta').textContent = `${occupants.length}명${occupants.length > 6 ? ' · 사무실에는 6명 표시' : ' · 현재 사무실'}`;
+  if (signature === sceneSignature) return;
+  sceneSignature = signature;
+  const previous = document.activeElement?.closest('#desk-grid') ? document.activeElement : null;
+  const previousSource = previous?.dataset.session ? 'session' : previous?.dataset.agent ? 'agent' : null;
+  const previousId = previousSource ? previous.dataset[previousSource] : null;
+  $('#desk-grid').innerHTML = displayed.map((occupant, index) => {
+    const isSession = occupant.source === 'session';
+    const label = isSession ? sessionStatusLabel(occupant.status) : statusLabel(occupant.status);
+    const movement = characterMotion(occupant.status, connected && (isSession || !state.office.paused));
+    const provider = state.providers.find((item) => item.id === occupant.provider);
+    const source = isSession ? 'CLI 관찰' : provider?.kind === 'demo' ? '체험 직원' : '등록 직원';
+    const compactName = isSession ? occupant.name.replace(/^Codex\s*·\s*/, '') : occupant.name;
+    return `<button type="button" class="office-character station-${index} variant-${index % 3} motion-${movement} ${statusClass(occupant.status)}" data-${occupant.source}="${esc(occupant.id)}" aria-label="${esc(occupant.name)} · ${source} · ${label} 상세 보기">
+      <span class="character-shadow" aria-hidden="true"></span>
+      <span class="character-body" aria-hidden="true"><span class="character-head"><i></i></span><span class="character-shirt"></span><span class="character-arm arm-left"></span><span class="character-arm arm-right"></span><span class="character-leg leg-left"></span><span class="character-leg leg-right"></span></span>
+      <span class="character-indicator" aria-hidden="true">${movement === 'typing' ? '···' : movement === 'attention' ? '?' : isSession ? '>_' : '·'}</span>
+      <span class="character-label"><strong><span class="character-name">${esc(occupant.name)}</span><span class="compact-character-name" aria-hidden="true">${esc(compactName)}</span></strong><small>${source}</small></span>
+    </button>`;
+  }).join('');
+  if (previousId) $$(`[data-${previousSource}]`, $('#desk-grid')).find((node) => node.dataset[previousSource] === previousId)?.focus({ preventScroll: true });
 }
 
 function renderAgents() {
-  $('#desk-grid').innerHTML = Array.from({ length: 6 }, (_, index) => {
-    const agent = state.agents[index];
-    return `<div class="desk ${agent ? '' : 'desk-empty'}"><span class="desk-chair" aria-hidden="true"></span>${agent ? `<button class="desk-person ${statusClass(agent.status)}" type="button" data-agent="${esc(agent.id)}" aria-label="${esc(agent.name)} · ${statusLabel(agent.status)} 상세 보기">${esc(Array.from(agent.name)[0])}</button><span class="desk-name">${esc(agent.name)}</span>` : ''}</div>`;
-  }).join('');
-  $('#scene-empty').hidden = state.agents.length > 0;
+  renderCharacters();
   $('#agent-list').innerHTML = state.agents.length ? state.agents.map((agent) => `<button type="button" class="agent-card" data-agent="${esc(agent.id)}">${avatar(agent)}<span class="agent-info"><strong>${esc(agent.name)}</strong><small>${esc(agent.role)}</small></span>${badge(agent.status)}</button>`).join('')
     : emptyState('첫 동료를 기다리고 있어요', '체험용 직원을 채용해 업무 흐름을 시작해 보세요.', 'people');
   const symbols = { openai: '◎', claude: '✳', gemini: '✧', meta: '∞' };
   $('#provider-list').innerHTML = state.providers.filter((provider) => provider.kind === 'external').map((provider) => `<div class="provider-item" title="${esc(provider.reason)}"><span class="provider-symbol" aria-hidden="true">${symbols[provider.id] || '◇'}</span><strong>${esc(provider.name)}</strong><small>${provider.available ? '연결 가능' : '연동 준비 중'}</small></div>`).join('');
+}
+
+function renderSessions() {
+  const local = state.localSessions;
+  const label = !connected ? '서버 연결 끊김' : local?.status === 'connected' ? '관찰 연결됨' : local?.status === 'disconnected' ? '관찰 연결 끊김' : '관찰 연결 대기';
+  $('#sessions-connection').textContent = label;
+  const sessions = local?.sessions || [];
+  const signature = JSON.stringify([label, sessions.map(({ id, name, status }) => ({ id, name, status }))]);
+  const focused = document.activeElement?.closest('#session-list') ? document.activeElement.dataset.session : null;
+  if (signature !== sessionsSignature) {
+    sessionsSignature = signature;
+    $('#session-list').innerHTML = sessions.length ? sessions.map((session) => {
+    const status = observedSessionStatus(local, session, connected);
+    return `<button type="button" class="session-card" data-session="${esc(session.id)}"><span class="session-symbol" aria-hidden="true">&gt;_</span><span class="session-info"><strong>${esc(session.name)}</strong><small>Codex · 읽기 전용 관찰</small></span><span class="status ${statusClass(status)}">${sessionStatusLabel(status)}</span></button>`;
+    }).join('') : emptyState('로컬 CLI의 상태를 연결하세요', 'PC에서 상태 연결기를 실행하면 현재 작업 공간의 Codex 세션이 나타납니다. 대화 내용은 전송하지 않습니다.', 'activity');
+    if (focused) $$('[data-session]', $('#session-list')).find((node) => node.dataset.session === focused)?.focus({ preventScroll: true });
+  }
+  if (modalContext?.type === 'session' && modal.open) {
+    const session = sessions.find((item) => item.id === modalContext.id);
+    if (session) {
+      const status = observedSessionStatus(local, session, connected);
+      if ($('#observed-status', body)) $('#observed-status', body).textContent = sessionStatusLabel(status);
+      if ($('#observed-last-event', body)) $('#observed-last-event', body).textContent = displayTime(session.lastActivityAt);
+      if ($('#observed-connection', body)) $('#observed-connection', body).textContent = label;
+    } else {
+      if ($('#observed-status', body)) $('#observed-status', body).textContent = '확인 필요 · 관찰 목록에서 사라짐';
+      if ($('#observed-connection', body)) $('#observed-connection', body).textContent = '이 세션의 현재 상태를 확인할 수 없습니다.';
+    }
+  }
 }
 
 function renderInbox() {
@@ -146,17 +220,21 @@ function renderHandoff() {
 }
 
 function renderPrograms() {
-  const titles = { wShell: '서버 접속과 파일 전송을 한곳에서', wPost: 'API 요청과 응답을 간편하게', wText: '문서 편집과 차이 비교를 한곳에서' };
-  const marks = { wShell: '&gt;_', wPost: '{ }', wText: 'Tt' };
-  $('#program-list').innerHTML = state.programs.filter((program) => programUrl(program)).map((program) => `<a class="program-card" href="${programUrl(program)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(program.name)} GitHub 저장소 (새 탭)"><header><span class="program-icon" aria-hidden="true">${marks[program.name]}</span><h3>${esc(program.name)}</h3><span class="external-arrow" aria-hidden="true">↗</span></header><strong>${titles[program.name]}</strong><p>${esc(program.description)}</p><span class="program-link-label">GitHub에서 살펴보기 <span aria-hidden="true">→</span></span></a>`).join('');
+  const titles = { wShell: '서버 접속과 파일 전송을 한곳에서', wPost: 'API 요청과 응답을 간편하게', wText: '문서 편집과 차이 비교를 한곳에서', 'StackQueue Blog': 'StackQueue 네이버 블로그' };
+  const marks = { wShell: '&gt;_', wPost: '{ }', wText: 'Tt', 'StackQueue Blog': 'SQ' };
+  $('#program-list').innerHTML = state.programs.filter((program) => programUrl(program)).map((program) => {
+    const isBlog = program.name === 'StackQueue Blog';
+    return `<a class="program-card ${isBlog ? 'blog-card' : ''}" href="${programUrl(program)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(program.name)} ${isBlog ? '네이버 블로그' : 'GitHub 저장소'} (새 탭)"><header><span class="program-icon" aria-hidden="true">${marks[program.name]}</span><h3>${esc(program.name)}</h3><span class="external-arrow" aria-hidden="true">↗</span></header><strong>${titles[program.name]}</strong><p>${esc(program.description)}</p><span class="program-link-label">${isBlog ? '블로그에서' : 'GitHub에서'} 살펴보기 <span aria-hidden="true">→</span></span></a>`;
+  }).join('');
 }
 
 function render() {
   const focus = document.activeElement;
-  const focusToken = focus?.dataset.agent ? { kind: 'agent', id: focus.dataset.agent } : focus?.dataset.task ? { kind: 'task', id: focus.dataset.task } : null;
-  const focusContainer = focus?.closest('#desk-grid, #agent-list, #inbox-list, #task-list')?.id;
+  const focusToken = ['agent', 'task', 'session'].map((kind) => focus?.dataset[kind] ? { kind, id: focus.dataset[kind] } : null).find(Boolean);
+  const focusContainer = focus?.closest('#desk-grid, #agent-list, #session-list, #inbox-list, #task-list')?.id;
   renderStats();
   renderAgents();
+  renderSessions();
   renderInbox();
   renderTasks();
   renderHandoff();
@@ -210,7 +288,7 @@ function navigate() {
   $('#page-eyebrow').textContent = eyebrow;
   $('#page-title').textContent = title;
   $('#page-description').textContent = description;
-  document.title = `wook-home · ${label}`;
+  document.title = `${officeName(state.office)} · ${label}`;
   $$('.view').forEach((node) => { node.hidden = node.id !== `view-${currentView}`; });
   $$('.nav-link').forEach((node) => {
     const active = node.dataset.view === currentView;
@@ -318,6 +396,17 @@ function openAgent(id) {
   const tasks = filterTasks(state.tasks.filter((task) => task.agentId === id), 'all');
   const capabilities = { createSession: '새 업무 실행', observeSession: '세션 관찰', resumeSession: '세션 재개', interrupt: '업무 중단', changeModel: '모델 변경' };
   openModal(agent.name, 'MEET YOUR TEAMMATE', `<div class="detail-heading">${avatar(agent)}<div><h3>${esc(agent.role)}</h3><p>${esc(provider?.name || agent.provider)}${provider?.kind === 'demo' ? ' · 체험용 직원' : ''}</p></div>${badge(agent.status)}</div><dl class="detail-facts"><div><dt>실행 위치</dt><dd>로컬 저장 공간</dd></div><div><dt>연결 상태</dt><dd>${provider?.kind === 'demo' ? '체험용 · 외부 AI 호출 없음' : '외부 AI 미연결'}</dd></div><div><dt>모델</dt><dd>${esc(agent.model || '연동 후 설정 가능')}</dd></div><div><dt>추론 강도</dt><dd>${agent.reasoningEffort === 'none' ? '해당 없음' : esc(agent.reasoningEffort || '지원 옵션 미확정')}</dd></div></dl><div class="capability-list">${Object.entries(capabilities).map(([key, label]) => `<span class="capability-tag ${provider?.capabilities?.[key] ? 'supported' : ''}">${label} · ${provider?.capabilities?.[key] ? '지원' : '미지원'}</span>`).join('')}</div>${reason ? `<p class="field-help">${esc(reason)}</p>` : '<p class="field-help">체험용 직원에게 업무를 맡겨 질문과 승인 흐름을 확인하세요.</p>'}<div class="detail-actions"><button type="button" class="button" data-edit-agent="${esc(id)}" data-mutation>직원 정보 수정</button><button type="button" class="button button-primary" data-new-task="${esc(id)}" data-mutation data-blocked="${Boolean(reason)}" ${reason ? 'disabled' : ''}>${icon('plus')}업무 지시</button></div><h3 class="detail-section-title">이 직원의 업무</h3>${tasks.length ? tasks.slice(0, 8).map(taskRow).join('') : emptyState('아직 맡은 업무가 없어요', '업무를 지시하면 진행 내용을 이곳에서 확인할 수 있습니다.')}`, { type: 'agent', id, signature: agentSignature(id) });
+}
+
+function openSession(id) {
+  const session = state.localSessions?.sessions?.find((item) => item.id === id);
+  if (!session) return;
+  const status = observedSessionStatus(state.localSessions, session, connected);
+  openModal(session.name, 'LOCAL CLI · OBSERVATION ONLY', `<div class="info-box">${icon('activity')}<span>이 PC의 Codex CLI에서 발생한 상태 이벤트를 관찰합니다. 대화와 실행 권한을 가져오지 않습니다.</span></div>
+    <dl class="detail-facts session-facts"><div><dt>관찰된 상태</dt><dd id="observed-status">${sessionStatusLabel(status)}</dd></div><div><dt>마지막 활동</dt><dd id="observed-last-event">${displayTime(session.lastActivityAt)}</dd></div><div><dt>연결 상태</dt><dd id="observed-connection">${state.localSessions.status === 'connected' && connected ? '관찰 연결됨' : '관찰 연결 끊김'}</dd></div><div><dt>작업 공간</dt><dd>${esc(state.localSessions.workspace || '현재 작업 공간')}</dd></div></dl>
+    <p class="field-help">활동 관찰은 최근 이벤트가 있었다는 뜻이며 프로세스가 지금도 실행 중이라는 보장은 아닙니다. 턴 종료 관찰은 CLI 턴이 끝났다는 뜻으로, 사무실 업무의 완료와는 별개입니다.</p>
+    <p class="field-help session-help">일정 시간 활동이 없거나 연결이 끊기면 확인이 필요한 상태로 표시합니다. 사무실 일시 중지는 외부 CLI를 중지하지 않습니다.</p>
+    <div class="detail-actions"><button type="button" class="button" disabled>명령 전송 미지원</button><button type="button" class="button" disabled>CLI 중지 미지원</button></div>`, { type: 'session', id });
 }
 
 function agentSignature(id) {
@@ -428,7 +517,7 @@ async function downloadHandoff() {
     const url = URL.createObjectURL(new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' }));
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `wook-home-handoff-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.download = `stackqueue-handoff-${new Date().toISOString().slice(0, 10)}.json`;
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
@@ -448,6 +537,7 @@ document.addEventListener('click', (event) => {
   if (!button || button.disabled) return;
   if (button.hasAttribute('data-close')) { closeModal(); return; }
   if (button.dataset.agent) { openAgent(button.dataset.agent); return; }
+  if (button.dataset.session) { openSession(button.dataset.session); return; }
   if (button.dataset.task) { openTask(button.dataset.task); return; }
   if (button.dataset.editAgent) { openEditAgent(button.dataset.editAgent); return; }
   if (button.dataset.newTask) { openNewTask(button.dataset.newTask); return; }
@@ -503,6 +593,19 @@ $('#retry-button').addEventListener('click', () => { void refresh(true); });
 $('#pause-button').addEventListener('click', () => { void toggleOffice(); });
 $('#resume-banner-button').addEventListener('click', () => { void toggleOffice(true); });
 $('#download-button').addEventListener('click', () => { void downloadHandoff(); });
+function updateMotionPreference() {
+  if (motionPreference.matches) motionEnabled = false;
+  $('#motion-toggle').setAttribute('aria-pressed', String(motionEnabled));
+  $('#motion-toggle').textContent = motionEnabled ? '움직임 켜짐' : '움직임 꺼짐';
+  $('#motion-toggle').disabled = motionPreference.matches;
+  $('#motion-toggle').title = motionPreference.matches ? '시스템의 동작 줄이기 설정을 따릅니다.' : '캐릭터의 장식 움직임을 켜거나 끕니다.';
+  renderCharacters();
+}
+$('#motion-toggle').addEventListener('click', () => {
+  motionEnabled = !motionEnabled;
+  updateMotionPreference();
+});
+motionPreference.addEventListener('change', updateMotionPreference);
 modal.addEventListener('cancel', (event) => { if (pending) event.preventDefault(); });
 modal.addEventListener('click', (event) => {
   if (event.target !== modal || pending) return;
@@ -519,6 +622,7 @@ window.addEventListener('online', () => { void refresh(true); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) void refresh(true); });
 
 fillIcons();
+updateMotionPreference();
 navigate();
 updateControls();
 void refresh(true);

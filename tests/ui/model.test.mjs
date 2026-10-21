@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   escapeHtml, statusLabel, statusClass, officeCounts, taskUnavailableReason,
   filterTasks, normalizeState, programUrl,
+  officeName, observedSessionStatus, sessionStatusLabel, characterMotion,
 } from '../../public/model.mjs';
 
 function fixture() {
@@ -80,4 +81,35 @@ test('an invalid state response is a connection failure rather than an empty suc
   for (const value of [null, {}, { ...state, office: {} }, { ...state, tasks: null }, { ...state, providers: {} }]) {
     assert.throws(() => normalizeState(value), /서버 상태/);
   }
+});
+
+test('observed CLI states cannot claim task completion or keep activity after losing connection', () => {
+  const session = { status: 'working' };
+  assert.equal(observedSessionStatus({ status: 'connected' }, session), 'working');
+  assert.equal(observedSessionStatus({ status: 'disconnected' }, session), 'disconnected');
+  assert.equal(observedSessionStatus({ status: 'connected' }, session, false), 'disconnected');
+  assert.equal(observedSessionStatus({ status: 'connected' }, { status: 'completed' }), 'unknown');
+  assert.equal(sessionStatusLabel('idle'), '턴 종료 관찰');
+  assert.equal(sessionStatusLabel('working'), '활동 관찰');
+  assert.equal(sessionStatusLabel('constructor'), '확인 필요');
+  const state = fixture();
+  state.localSessions = { status: 'connected', sessions: [{ status: 'working' }, { status: 'idle' }] };
+  assert.equal(officeCounts(state).completed, 0);
+  assert.equal(officeCounts(state).working, 0);
+});
+
+test('character movement stops on interruption, unknown status, and loss of connection', () => {
+  assert.equal(characterMotion('working'), 'typing');
+  assert.equal(characterMotion('waiting_input'), 'attention');
+  assert.equal(characterMotion('waiting_approval'), 'attention');
+  assert.equal(characterMotion('idle'), 'idle');
+  for (const status of ['working', 'idle', 'waiting_approval']) assert.equal(characterMotion(status, false), 'still');
+  for (const status of ['paused', 'unknown', 'interrupted', 'failed', 'completed', 'unavailable']) assert.equal(characterMotion(status), 'still');
+});
+
+test('the configured office name and the agreed blog URL are supported without broadening links', () => {
+  assert.equal(officeName({ name: '  나의 개발실  ' }), '나의 개발실');
+  assert.equal(officeName({ name: '' }), 'StackQueue Office');
+  assert.equal(programUrl({ name: 'StackQueue Blog', url: 'https://blog.naver.com/stack-queue' }), 'https://blog.naver.com/stack-queue');
+  assert.equal(programUrl({ name: 'StackQueue Blog', url: 'https://blog.naver.com/another-account' }), null);
 });
