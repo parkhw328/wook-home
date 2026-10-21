@@ -31,7 +31,12 @@ function initialize() {
   const panel = document.createElement('section');
   panel.className = 'panel discovery-panel';
   panel.setAttribute('aria-labelledby', 'discovery-heading');
-  panel.innerHTML = `<div class="panel-heading"><h2 id="discovery-heading">감지된 CLI · 웹 탭</h2><span id="discovery-counts" class="subtle-tag">확인 중</span></div>
+  panel.innerHTML = `<div class="panel-heading"><h2 id="discovery-heading">연결 관리</h2><span id="discovery-counts" class="subtle-tag">확인 중</span></div>
+    <div class="discovery-tabs" role="tablist" aria-label="연결 관리 보기">
+      <button type="button" id="discovery-tab-detected" role="tab" aria-controls="discovery-panel-detected" aria-selected="true" tabindex="0">감지</button>
+      <button type="button" id="discovery-tab-checks" role="tab" aria-controls="discovery-panel-checks" aria-selected="false" tabindex="-1">연결 점검</button>
+    </div>
+    <div id="discovery-panel-detected" role="tabpanel" aria-labelledby="discovery-tab-detected" tabindex="0">
     <p class="discovery-intro">실행 중인 CLI, 프로젝트의 CLI 기록, 브라우저에서 열린 AI 탭을 확인하세요.</p>
     <div class="discovery-toolbar"><label>종류 <select id="discovery-source"><option value="all">전체</option><option value="cli">CLI</option><option value="web">웹 탭</option></select></label>
     <label>공급자 <select id="discovery-provider"><option value="all">전체</option><option value="openai">OpenAI</option><option value="claude">Claude</option><option value="gemini">Gemini</option><option value="meta">Meta AI</option></select></label>
@@ -40,12 +45,34 @@ function initialize() {
     <p id="discovery-connection" class="discovery-connection" role="status"></p><p id="discovery-sources" class="session-scope"></p>
     <div id="discovery-list" class="discovery-list"></div>
     <p class="panel-footnote">웹 감지는 연결한 브라우저 프로필의 지원 사이트를 확인합니다. 탭 열림은 로그인이나 작업 실행 여부를 뜻하지 않습니다. 대화 제목과 본문은 가져오지 않습니다.</p>
-    <div class="discovery-check-heading"><h3>전체 연결 점검</h3><button type="button" id="discovery-check" class="button button-secondary">연결 점검 실행</button><a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/Connections" target="_blank" rel="noopener noreferrer">점검 안내 ↗</a></div>
-    <p id="discovery-check-status" role="status">연결 점검 상태를 확인하고 있습니다.</p><div id="discovery-checks" class="discovery-list"></div>`;
+    </div>
+    <div id="discovery-panel-checks" role="tabpanel" aria-labelledby="discovery-tab-checks" tabindex="0" hidden>
+    <div class="discovery-toolbar"><button type="button" id="discovery-check" class="button button-secondary">연결 점검 실행</button><a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/Connections" target="_blank" rel="noopener noreferrer">점검 안내 ↗</a></div>
+    <p id="discovery-check-status" role="status">연결 점검 상태를 확인하고 있습니다.</p><div id="discovery-checks" class="discovery-list"></div>
+    </div>`;
   const programs = view.querySelector('[aria-labelledby="program-heading"]');
   if (programs?.parentElement === view) view.insertBefore(panel, programs);
   else view.append(panel);
   const find = (selector) => panel.querySelector(selector);
+  const tabs = [...panel.querySelectorAll('[role="tab"]')];
+  function selectTab(selected) {
+    for (const tab of tabs) {
+      const active = tab === selected;
+      tab.setAttribute('aria-selected', String(active));
+      tab.tabIndex = active ? 0 : -1;
+      find(`#${tab.getAttribute('aria-controls')}`).hidden = !active;
+    }
+  }
+  for (const [index, tab] of tabs.entries()) {
+    tab.addEventListener('click', () => selectTab(tab));
+    tab.addEventListener('keydown', (event) => {
+      const next = { ArrowRight: (index + 1) % tabs.length, ArrowLeft: (index + tabs.length - 1) % tabs.length, Home: 0, End: tabs.length - 1 }[event.key];
+      if (next === undefined) return;
+      event.preventDefault();
+      selectTab(tabs[next]);
+      tabs[next].focus();
+    });
+  }
   let enabled = false;
   let clientId = null;
   try { enabled = localStorage.getItem(ENABLED_KEY) === 'true'; clientId = localStorage.getItem(CLIENT_KEY); } catch { /* Optional preferences. */ }

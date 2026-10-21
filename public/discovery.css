@@ -1,6 +1,11 @@
 .discovery-panel { margin-top: 24px; padding: 24px; }
-.discovery-check-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 28px; padding-top: 16px; border-top: 1px solid #eedcdd; }
 .discovery-panel .panel-heading { flex-wrap: wrap; gap: 12px; }
+.discovery-panel [hidden] { display: none !important; }
+.discovery-tabs { display: flex; gap: 4px; margin: 12px 0 16px; border-bottom: 1px solid #eedcdd; }
+.discovery-tabs [role="tab"] { min-height: 44px; padding: 10px 18px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: #755e62; font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.discovery-tabs [role="tab"]:hover { background: #fff5f5; color: #8f2838; }
+.discovery-tabs [aria-selected="true"] { border-bottom-color: #b52d44; color: #9c263b; background: #fff5f5; }
+.discovery-tabs [role="tab"]:focus-visible, .discovery-panel [role="tabpanel"]:focus-visible { outline: 2px solid #b52d44; outline-offset: 3px; border-radius: 4px; }
 .discovery-intro, .discovery-connection { margin: 10px 0; line-height: 1.7; }
 .discovery-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 18px 0; }
 .discovery-toolbar label { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
