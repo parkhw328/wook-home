@@ -28,5 +28,12 @@ export function readCliProcesses(value, bridgeConnected, now = Date.now()) {
   }
   const events = value.events.filter((event) => event && /^cli-event-\d+$/.test(event.id) && ['detected', 'exited'].includes(event.type)
     && seen.has(event.processId) && validTime(event.at)).map(({ id, type, processId, at }) => ({ id, type, processId, at }));
-  return { status, scope: 'this_pc', updatedAt: validTime(value.updatedAt) ? value.updatedAt : null, items, events };
+  const platform = ['win32', 'linux'].includes(value.platform) ? value.platform : 'unknown';
+  const scope = platform === 'linux' ? 'same_user' : platform === 'win32' ? 'login_session' : 'this_pc';
+  return { status, platform, scope, updatedAt: validTime(value.updatedAt) ? value.updatedAt : null, items, events };
+}
+
+export function cliProcessScope(processes) {
+  return processes?.platform === 'linux' ? '이 PC · Linux 같은 사용자'
+    : processes?.platform === 'win32' ? '이 PC · Windows 로그인 세션' : '이 PC';
 }

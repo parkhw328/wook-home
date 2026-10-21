@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { linuxProcessRows } from './linux-processes.mjs';
 
 const execute = promisify(execFile);
 const timestamp = (value) => typeof value === 'string' && Number.isFinite(Date.parse(value));
@@ -35,8 +36,8 @@ export function windowsArguments(commandLine) {
 }
 
 export function isInteractiveCodex(commandLine) {
-  if (typeof commandLine !== 'string' || !commandLine.trim()) return false;
-  const args = windowsArguments(commandLine).slice(1);
+  if (!Array.isArray(commandLine) && (typeof commandLine !== 'string' || !commandLine.trim())) return false;
+  const args = (Array.isArray(commandLine) ? commandLine : windowsArguments(commandLine)).slice(1);
   let command = null;
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -50,11 +51,11 @@ export function isInteractiveCodex(commandLine) {
 }
 
 export function identifyCliProcess(row) {
-  const args = windowsArguments(row.commandLine);
+  const args = row.argv || windowsArguments(row.commandLine);
   const executable = String(row.name || '').toLowerCase();
-  let provider = { 'codex.exe': 'openai', 'claude.exe': 'claude', 'gemini.exe': 'gemini' }[executable];
+  let provider = { codex: 'openai', claude: 'claude', gemini: 'gemini', 'codex.exe': 'openai', 'claude.exe': 'claude', 'gemini.exe': 'gemini' }[executable];
   let input = args.slice(1);
-  if (executable === 'node.exe') {
+  if (['node.exe', 'node', 'nodejs'].includes(executable)) {
     // Codex's npm launcher starts a native child; count only that child.
     // Restrict Node entry points to official package paths, not script names.
     let entry = -1;
@@ -66,13 +67,14 @@ export function identifyCliProcess(row) {
       if (arg === '--') { entry = index + 1; break; }
       if (!arg.startsWith('-')) { entry = index; break; }
     }
-    const file = input[entry]?.replaceAll('\\', '/').toLowerCase();
+    const entryPath = row.entryPoint || input[entry];
+    const file = row.argv ? entryPath : entryPath?.replaceAll('\\', '/').toLowerCase();
     if (file?.endsWith('/node_modules/@anthropic-ai/claude-code/cli.js')) provider = 'claude';
     if (/\/node_modules\/@google\/gemini-cli\/(?:bundle\/gemini|dist\/index)\.js$/.test(file || '')) provider = 'gemini';
     input = input.slice(entry + 1);
   }
   if (!provider) return null;
-  if (provider === 'openai') return isInteractiveCodex(row.commandLine) ? provider : null;
+  if (provider === 'openai') return isInteractiveCodex(args) ? provider : null;
   const skipped = new Set(provider === 'claude'
     ? ['auth', 'auto-mode', 'daemon', 'doctor', 'gateway', 'help', 'install', 'mcp', 'plugin', 'remote-control', 'setup-token', 'update']
     : ['extensions', 'hooks', 'mcp', 'policies', 'skills']);
@@ -105,7 +107,8 @@ export function sanitizeProcessRows(rows) {
   if (!Array.isArray(rows) || rows.length > 512) throw new Error('CLI process scan unavailable.');
   const result = [];
   for (const row of rows) {
-    if (!Number.isSafeInteger(row?.pid) || row.pid <= 0 || !timestamp(row.startedAt) || typeof row.commandLine !== 'string' || !row.commandLine) {
+    const hasArgs = Array.isArray(row?.argv) && row.argv.length > 0 && row.argv.every((arg) => typeof arg === 'string') && row.argv[0];
+    if (!Number.isSafeInteger(row?.pid) || row.pid <= 0 || !timestamp(row.startedAt) || (!hasArgs && (typeof row.commandLine !== 'string' || !row.commandLine))) {
       // A partially unreadable inventory must not be interpreted as an exit.
       throw new Error('CLI process scan incomplete.');
     }
@@ -117,9 +120,10 @@ export function sanitizeProcessRows(rows) {
   return result;
 }
 
-export async function scanCliProcesses({ platform = process.platform, run = execute } = {}) {
-  if (platform !== 'win32') return { status: 'unsupported', items: [] };
+export async function scanCliProcesses({ platform = process.platform, run = execute, ...linuxOptions } = {}) {
+  if (!['win32', 'linux'].includes(platform)) return { status: 'unsupported', items: [] };
   try {
+    if (platform === 'linux') return { status: 'connected', items: sanitizeProcessRows(await linuxProcessRows({ run, ...linuxOptions })) };
     const executable = join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
     const { stdout } = await run(executable, ['-NoProfile', '-NonInteractive', '-Command', scanScript], {
       timeout: 4000, maxBuffer: 1024 * 1024, windowsHide: true,
@@ -133,7 +137,7 @@ export async function scanCliProcesses({ platform = process.platform, run = exec
 
 const instanceId = (pid, startedAt) => `cli-${createHash('sha256').update(`${pid}\n${startedAt}`).digest('hex').slice(0, 24)}`;
 
-export function createCliLifecycle({ scan = scanCliProcesses, clock = Date.now, retentionMs = 10 * 60000 } = {}) {
+export function createCliLifecycle({ scan = scanCliProcesses, clock = Date.now, retentionMs = 10 * 60000, platform = process.platform } = {}) {
   const known = new Map();
   let events = [];
   let sequence = 0;
@@ -175,7 +179,8 @@ export function createCliLifecycle({ scan = scanCliProcesses, clock = Date.now, 
       events = events.filter((event) => retained.has(event.processId) && now - Date.parse(event.at) <= retentionMs).slice(-50);
       return {
         status: connected ? 'connected' : snapshot.status === 'unsupported' ? 'unsupported' : 'unavailable',
-        scope: 'this_pc', updatedAt,
+        platform: ['win32', 'linux'].includes(platform) ? platform : 'unsupported',
+        scope: platform === 'linux' ? 'same_user' : platform === 'win32' ? 'login_session' : 'this_pc', updatedAt,
         items: items.map((item) => !connected && item.status === 'running' ? { ...item, status: 'unknown' } : { ...item }),
         events: events.map((event) => ({ ...event })),
       };

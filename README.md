@@ -16,7 +16,7 @@ CLI 세션을 누르면 대화기록이 모달로 바로 열립니다. **자료 
 
 열어 둔 CLI와 AI 웹 탭을 **직원 · 연결 관리**에서 찾아 직원으로 등록하거나 기존 직원에 연결하세요. 웹은 탭 상태를 관찰하며 메시지는 원래 서비스에서 작성합니다. [직원 연결 안내](https://github.com/parkhw328/wook-home/wiki/Staff).
 
-Docker Desktop의 Linux 컨테이너 환경과 Docker Compose를 준비한 후 저장소 루트에서 실행하세요.
+Windows는 Docker Desktop의 Linux 컨테이너 환경, Linux는 Docker Engine과 Compose를 준비한 후 저장소 루트에서 실행하세요.
 
 ```powershell
 docker compose up --build -d
@@ -25,6 +25,8 @@ docker compose up --build -d
 브라우저에서 **http://localhost:8080**을 열고 `체험 직원`을 등록하세요. 사무실 입장 → 업무 지시 → 대표이사실 질문·답변 → 보고·승인을 경험할 수 있습니다. AI 계정이나 API 키는 필요하지 않습니다. 지원되는 Codex의 협업·질문 이벤트는 [회의와 발표 동작](https://github.com/parkhw328/wook-home/wiki/Activity)으로 연결됩니다.
 
 사무실 이름은 `.env`의 `OFFICE_NAME=StackQueue Office`로 바꿀 수 있습니다. `.env.example`을 참고하고 변경 후 `docker compose up -d`로 적용하세요.
+
+**CLI·웹 감지는 Windows와 Linux에서 사용할 수 있습니다.** 호스트의 별도 터미널에서 `npm run bridge:codex -- --workspace .`를 실행하면 지원 CLI의 추가·종료를 확인합니다. Linux에서는 같은 사용자 계정의 프로세스를 감지합니다. 웹 탭은 Chrome/Chromium에 [감지 확장프로그램](https://github.com/parkhw328/wook-home/wiki/Detection)을 설치하고 화면에서 **웹 탭 감지 켜기**를 누르세요. [Linux 실행과 권한 안내](https://github.com/parkhw328/wook-home/wiki/Linux).
 
 이미 실행 중인 Codex에 지시하려면 호스트에 Node.js 24.14 이상(27 미만)과 `codex queue`를 지원하는 CLI를 준비하고 별도 터미널에서 실행하세요. [Wiki의 연결·명령 안내](https://github.com/parkhw328/wook-home/wiki/CLI)를 확인할 수 있습니다.
 

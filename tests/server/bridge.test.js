@@ -27,7 +27,8 @@ test('bridge starts before any saved session, owns its output and stops without 
   assert.equal(published, true);
   const initial = JSON.parse(await readFile(join(output, 'codex.json'), 'utf8'));
   assert.deepEqual(initial.sessions, []);
-  assert.equal(initial.processes.scope, 'this_pc');
+  assert.equal(initial.processes.scope, process.platform === 'linux' ? 'same_user' : process.platform === 'win32' ? 'login_session' : 'this_pc');
+  assert.equal(initial.processes.platform, ['linux', 'win32'].includes(process.platform) ? process.platform : 'unsupported');
   assert.ok(['connected', 'unavailable', 'unsupported'].includes(initial.processes.status));
   await assert.rejects(promisify(execFile)(process.execPath,
     [script, '--workspace', root, '--sessions-dir', sessions, '--output-dir', output, '--once'],

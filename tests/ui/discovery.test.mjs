@@ -9,6 +9,7 @@ test('web pages and chats never claim work execution, login or CLI control', () 
   assert.equal(entryStatus({ ...page, status: 'disconnected' }), '감지 연결 끊김');
   assert.match(entryDescription({ ...page, kind: 'conversation' }), /대화 탭/);
   assert.equal(entryStatus({ source: 'cli', kind: 'process', status: 'exited' }), '종료 감지');
+  assert.match(entryDescription({ source: 'cli', kind: 'process', scope: '이 PC · Linux 같은 사용자' }), /Linux 같은 사용자/);
 });
 
 test('source and provider filters retain every matching entry without mixing CLI and web identities', () => {

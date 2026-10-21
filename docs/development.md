@@ -36,6 +36,8 @@ Three.js는 유지보수 중인 [공식 프로젝트](https://github.com/mrdoob/
 
 ## Docker
 
+Windows는 Docker Desktop의 Linux 컨테이너, Linux는 Docker Engine과 Compose를 사용한다. 호스트 감지는 컨테이너 밖에서 실행하며 [Linux 실행 안내](wiki/Linux.md)에 계정·권한·확장 설치 절차를 정리한다.
+
 ```powershell
 docker compose config --quiet
 docker compose up --build -d
@@ -43,7 +45,11 @@ docker compose ps
 docker compose stop
 ```
 
-컨테이너는 비루트 사용자로 실행하며 정적 파일과 서버 코드만 이미지에 복사한다. 데이터 볼륨·지시 폴더·임시 디렉터리만 쓰기를 허용한다. 호스트의 `data/bridge`는 `/app/bridge`에 읽기 전용으로, `data/bridge/commands`는 `/app/commands`에 읽기·쓰기로 마운트한다. 지시 본문은 CLI 호출 전에 제거한다. Compose 포트는 127.0.0.1에만 바인딩한다. 현재 외부 접속용 인증 기능은 없다.
+컨테이너는 비루트 사용자로 실행하며 정적 파일과 서버 코드만 이미지에 복사한다. 데이터 볼륨·지시 폴더·임시 디렉터리만 쓰기를 허용한다. 호스트의 `data/bridge`는 `/app/bridge`에 읽기 전용으로, `data/bridge/commands`는 `/app/commands`에 읽기·쓰기로 마운트한다. 두 바인드 마운트의 `z` 옵션은 Linux SELinux의 공유 레이블을 지정한다. 지시 본문은 CLI 호출 전에 제거한다. Compose 포트는 127.0.0.1에만 바인딩한다. 현재 외부 접속용 인증 기능은 없다.
+
+Linux 프로세스 감지기는 `scripts/lib/linux-processes.mjs`다. `/proc/<pid>/status`의 유효 UID로 범위를 제한하고 `stat`의 시작 tick과 부팅 시각, `getconf CLK_TCK`로 실행 시각을 계산한다. NUL 구분 인수와 공식 npm 심볼릭 링크는 분류 중 메모리에서만 확인한다. 인수·경로·사용자 이름은 상태 파일/API에 넣지 않는다. 최대 32,768 PID·512 후보·64 CLI, 파일별 읽기 한도와 조회 시간 한도를 두며 불완전한 조회는 종료로 처리하지 않는다. 자동 검증은 `tests/server/linux-processes.test.js`와 기존 lifecycle·bridge·discovery 테스트에 포함한다.
+
+근거: [Linux procfs](https://docs.kernel.org/filesystems/proc.html), [Compose bind 마운트](https://docs.docker.com/reference/compose-file/services/#volumes).
 
 ## 테스트와 완료 기준
 

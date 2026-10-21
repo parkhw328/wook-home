@@ -166,12 +166,13 @@ test('one fresh browser profile cannot hide another disconnected profile as no t
 test('CLI process detection wins over PATH absence without claiming session control', () => {
   const { connections, cli } = fixture();
   cli.status = 'connected';
-  cli.processes = { status: 'connected', updatedAt: '2026-10-21T12:00:00Z', items: [{ provider: 'claude', status: 'running' }] };
+  cli.processes = { status: 'connected', platform: 'linux', updatedAt: '2026-10-21T12:00:00Z', items: [{ provider: 'claude', status: 'running' }] };
   cli.cliTools = [{ id: 'claude', installed: false }, { id: 'gemini', installed: true }];
   const checked = connections.snapshot();
   assert.equal(checked.checks.find((row) => row.id === 'cli:claude').status, 'process_detected');
   assert.equal(checked.checks.find((row) => row.id === 'cli:claude').canControl, false);
   assert.equal(checked.checks.find((row) => row.id === 'cli:gemini').status, 'not_running');
+  assert.match(checked.checks.find((row) => row.id === 'cli:processes').message, /Linux 같은 사용자/);
   cli.processes.status = 'unavailable';
   assert.equal(connections.snapshot().checks.find((row) => row.id === 'cli:processes').status, 'unavailable');
 });

@@ -4,7 +4,7 @@ Commander는 직원을 등록하고 업무를 맡긴 뒤, 질문에 답하고 �
 
 ## 1. 사무실 열기
 
-Docker Desktop을 실행하고 저장소에서 다음 명령을 입력합니다.
+Windows에서는 Docker Desktop, Linux에서는 Docker Engine을 실행하고 저장소에서 다음 명령을 입력합니다. [Linux CLI·웹 감지 준비](Linux.md)도 참고하세요.
 
 ```powershell
 docker compose up --build -d

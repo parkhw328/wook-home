@@ -1,6 +1,7 @@
 **StackQueue Office 도움말**
 
 - [설치·설정·문제 해결](Home.md)
+- [Linux 실행·CLI·웹 감지](Linux.md)
 - [빠른 사무실 사용 안내](OfficeGuide.md)
 - [화면 사용법](UI.md)
 - [기존 Codex 연결](CLI.md)

@@ -1,4 +1,5 @@
 import { ApiError } from './office.js';
+import { cliProcessScope } from './cli-processes.js';
 
 const UUID = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
 const HASH = /^[a-f0-9]{64}$/;
@@ -53,7 +54,7 @@ export function createDiscovery({ observer, clock = Date.now }) {
       for (const item of cli.processes?.items || []) {
         entries.push({
           id: `process:${item.id}`, name: item.name, provider: item.provider, source: 'cli', kind: 'process',
-          status: item.status, scope: '이 PC', startedAt: item.startedAt, endedAt: item.endedAt,
+          status: item.status, scope: cliProcessScope(cli.processes), startedAt: item.startedAt, endedAt: item.endedAt,
           lastActivityAt: null, updatedAt: cli.processes.updatedAt, tabCount: 0, canControl: false,
         });
       }
@@ -79,7 +80,8 @@ export function createDiscovery({ observer, clock = Date.now }) {
       const liveWeb = entries.filter((entry) => entry.source === 'web' && entry.status === 'open');
       return {
         sources: { cli: { status: cli.status, workspace: cli.workspace, updatedAt: cli.updatedAt },
-          processes: { status: cli.processes?.status || 'not_connected', updatedAt: cli.processes?.updatedAt || null }, browsers }, entries,
+          processes: { status: cli.processes?.status || 'not_connected', updatedAt: cli.processes?.updatedAt || null,
+            platform: cli.processes?.platform || 'unknown', scope: cliProcessScope(cli.processes) }, browsers }, entries,
         counts: { cli: cli.sessions.length, cliProcesses: entries.filter((entry) => entry.kind === 'process' && entry.status === 'running').length,
           webTabs: liveWeb.reduce((sum, item) => sum + item.tabCount, 0),
           webConversations: liveWeb.filter((item) => item.kind === 'conversation').length,

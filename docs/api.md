@@ -67,7 +67,7 @@
 
 ## CLI 프로세스 추가·종료
 
-- `localSessions.processes`: `{ status, scope: "this_pc", updatedAt, items, events }`. `status`는 connected / unavailable / unsupported / disconnected다. 같은 Windows 로그인 세션의 지원 CLI 실행을 약 5초마다 확인하며, 현재 프로젝트의 저장 대화 목록인 `sessions`와 분리한다.
+- `localSessions.processes`: `{ status, platform, scope, updatedAt, items, events }`. `status`는 connected / unavailable / unsupported / disconnected다. `platform`은 win32 / linux / unknown, `scope`는 각각 login_session / same_user / this_pc다. 플랫폼 정보가 없는 이전 연결기도 받는다. 같은 Windows 로그인 세션 또는 Linux 연결 프로그램과 같은 유효 UID의 지원 CLI 실행을 약 5초마다 확인하며, 현재 프로젝트의 저장 대화 목록인 `sessions`와 분리한다. 계정 이름과 UID는 전달하지 않는다.
 - `items`: `{ id, pid, provider, name, status, startedAt, firstSeenAt, lastSeenAt, endedAt }`. ID는 PID·시작 시각에서 만든 `cli-` 접두사 식별자이며 UUID가 아니다. provider는 openai / claude / gemini, 상태는 running / exited / unknown이다. 첫 대화 이전도 감지한다. 종료 시각은 프로세스 부재를 확인한 시각이며 업무 완료를 의미하지 않는다.
 - `events`: `{ id, type: "detected" | "exited", processId, at }`. 중복 관찰은 같은 이벤트를 반복 생성하지 않는다. 최대 50개, 최근 10분만 보관한다. 실행 중 최대 64개와 최근 종료 최대 24개를 제공한다.
 - 프로세스 목록 조회에 실패하면 이전 실행을 unknown으로 표시하고 마지막 성공 시각을 유지한다. 20초 이상 갱신이 멈추면 disconnected다. 미지원 OS는 unsupported이며 저장 대화 관찰은 계속 가능하다.

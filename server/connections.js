@@ -1,4 +1,5 @@
 import { ApiError } from './office.js';
+import { cliProcessScope } from './cli-processes.js';
 
 const PROVIDERS = [
   { id: 'openai', name: 'OpenAI', webName: 'ChatGPT', keys: ['OPENAI_API_KEY'], url: 'https://api.openai.com/v1/models' },
@@ -107,8 +108,8 @@ function localChecks(observer, discovery, now) {
       connected ? 'CLI 창·프로세스·기록의 상태를 개별 세션에서 확인하세요.' : '호스트에서 같은 프로젝트의 연결 프로그램을 실행하세요.', { checkedAt: cli.updatedAt }),
     checkRow('cli:processes', 'cli', 'CLI 실행·종료 감지', connected ? processStatus : cli.status,
       !connected ? '미연결' : processStatus === 'connected' ? '감지 정상' : processStatus === 'unsupported' ? '감지 미지원' : '감지 확인 필요',
-      connected && processStatus === 'connected' ? '이 PC의 지원 CLI 프로세스 시작·종료를 확인합니다. 프로젝트 소속은 추정하지 않습니다.' : 'CLI 프로세스의 최신 실행·종료 정보를 확인할 수 없습니다.',
-      'Windows 호스트에서 최신 연결 프로그램을 실행하고 통합 감지 목록을 확인하세요.', { checkedAt: cli.processes?.updatedAt || null }),
+      connected && processStatus === 'connected' ? `${cliProcessScope(cli.processes)} 범위의 지원 CLI 프로세스 시작·종료를 확인합니다. 프로젝트 소속은 추정하지 않습니다.` : 'CLI 프로세스의 최신 실행·종료 정보를 확인할 수 없습니다.',
+      'Windows 또는 Linux 호스트에서 CLI를 사용하는 계정으로 연결 프로그램을 실행하세요. Linux에서는 /proc 접근 권한도 확인하세요.', { checkedAt: cli.processes?.updatedAt || null }),
     checkRow('cli:codex', 'cli', 'Codex CLI 지시 연결', !connected ? 'not_connected' : cli.control?.enabled ? 'ready' : 'disabled',
       !connected ? '미연결' : cli.control?.enabled ? '지시 연결 준비됨' : '관찰만 가능',
       cli.control?.enabled ? '공식 큐 전송이 활성화되어 있습니다. 접수와 실행 완료는 별개입니다.' : '공식 큐로 지시를 보내는 연결이 활성화되지 않았습니다.',

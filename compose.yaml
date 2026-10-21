@@ -19,8 +19,8 @@ services:
       - "127.0.0.1:${WOOK_PORT:-8080}:8080"
     volumes:
       - office-data:/app/data
-      - ./data/bridge:/app/bridge:ro
-      - ./data/bridge/commands:/app/commands
+      - ./data/bridge:/app/bridge:ro,z
+      - ./data/bridge/commands:/app/commands:z
     restart: "no"
     stop_grace_period: 15s
     read_only: true

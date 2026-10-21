@@ -8,7 +8,7 @@ const CLIENT_KEY = 'stackqueue.web-detection.client';
 
 export function entryDescription(entry) {
   if (entry.source === 'web') return `${entry.kind === 'conversation' ? '대화 탭' : '서비스·새 대화 화면'} · ${entry.tabCount}개 탭 · ${entry.scope}`;
-  if (entry.kind === 'process') return 'CLI 프로세스 · 이 PC · 대화 연결 확인 전';
+  if (entry.kind === 'process') return `CLI 프로세스 · ${entry.scope || '이 PC'} · 대화 연결 확인 전`;
   return `CLI 기록 · ${entry.scope || '선택한 프로젝트'} · 실행 중인 프로세스와 별도`;
 }
 
@@ -97,7 +97,7 @@ function initialize() {
       ? `CLI 실행 ${counts.cliProcesses} · 기록 ${counts.cli} · 웹 ${counts.webTabs}개 탭`
       : '서버 연결 끊김 · 마지막 수신 상태';
     const status = { connected: '연결됨', disconnected: '연결 끊김', not_connected: '연결 대기', unavailable: '확인 불가', unsupported: '미지원' };
-    find('#discovery-sources').textContent = `CLI 기록 ${status[state.sources.cli.status] || '확인 필요'} · 프로세스 ${status[state.sources.processes.status] || '확인 필요'} · 웹 감지 ${state.sources.browsers.length ? state.sources.browsers.map((browser) => `${status[browser.status]}${browser.truncated ? ' (128개 한도)' : ''}`).join(', ') : '연결 대기'}`;
+    find('#discovery-sources').textContent = `CLI 기록 ${status[state.sources.cli.status] || '확인 필요'} · 프로세스 ${status[state.sources.processes.status] || '확인 필요'} (${state.sources.processes.scope || '이 PC'}) · 웹 감지 ${state.sources.browsers.length ? state.sources.browsers.map((browser) => `${status[browser.status]}${browser.truncated ? ' (128개 한도)' : ''}`).join(', ') : '연결 대기'}`;
     const entries = filterEntries(state.entries, find('#discovery-source').value, find('#discovery-provider').value);
     const next = JSON.stringify([entries, serverConnected]);
     if (next === signature) return;

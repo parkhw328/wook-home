@@ -10,7 +10,7 @@
 
 ## 설치와 접속
 
-1. Docker Desktop에서 Linux 컨테이너 환경을 시작합니다.
+1. Windows는 Docker Desktop의 Linux 컨테이너, Linux는 Docker Engine과 Compose를 시작합니다. [Linux 준비·감지 안내](Linux.md).
 2. 저장소 루트에서 `docker compose up --build -d`를 실행합니다.
 3. 브라우저에서 http://localhost:8080 에 접속합니다.
 

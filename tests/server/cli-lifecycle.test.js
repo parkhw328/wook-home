@@ -112,7 +112,7 @@ test('OS scanner bounds input, contains failures and marks unsupported platforms
   assert.throws(() => sanitizeProcessRows(Array.from({ length: 65 }, (_, index) => ({ name: 'codex.exe', pid: index + 1, startedAt: start, commandLine: 'codex.exe' }))));
   const unavailable = await scanCliProcesses({ platform: 'win32', run: async () => { throw new Error('private command'); } });
   assert.deepEqual(unavailable, { status: 'unavailable', items: [] });
-  assert.deepEqual(await scanCliProcesses({ platform: 'linux' }), { status: 'unsupported', items: [] });
+  assert.deepEqual(await scanCliProcesses({ platform: 'darwin' }), { status: 'unsupported', items: [] });
   const result = await scanCliProcesses({ platform: 'win32', run: async (_file, _args, options) => {
     assert.equal(options.windowsHide, true);
     return { stdout: JSON.stringify([{ name: 'codex.exe', pid: 1234, startedAt: start, commandLine: 'codex.exe' }]) };
@@ -135,6 +135,11 @@ test('HTTP contract strips private fields and treats stale observations as unkno
   assert.equal(stale.items[0].status, 'unknown');
   assert.equal(stale.items[0].endedAt, null);
   assert.equal(readCliProcesses(snapshot, false, now).status, 'disconnected');
+  assert.equal(readCliProcesses({ ...snapshot, platform: 'win32' }, true, now).scope, 'login_session');
+  const legacy = readCliProcesses({ ...snapshot, platform: undefined }, true, now);
+  assert.equal(legacy.scope, 'this_pc');
+  assert.equal(legacy.platform, 'unknown');
+  assert.equal(readCliProcesses({ ...snapshot, platform: 'private-host', scope: 'private-user' }, true, now).platform, 'unknown');
   assert.equal(readCliProcesses({ ...snapshot, items: Array(89).fill(snapshot.items[0]) }, true, now).status, 'unavailable');
 });
 
