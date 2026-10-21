@@ -31,8 +31,8 @@ export function connectionMarkup(agent, provider) {
   return `<section class="staff-connection-box" aria-label="직원 연결"><p>${esc(explanation)}</p>
     ${link?.source === 'web' && link.tabCount ? `<p class="field-help">같은 감지 항목의 탭 ${esc(link.tabCount)}개</p>` : ''}
     <div class="detail-actions"><button type="button" class="button" data-connect-agent="${esc(agent.id)}" data-mutation>${link ? '연결 변경·다시 연결' : 'CLI·웹 연결'}</button>
-    ${link ? `<button type="button" class="button" data-disconnect-agent="${esc(agent.id)}" data-mutation>연결 해제</button>` : ''}
-    ${link?.sessionId ? `<button type="button" class="button button-primary" data-${link.canControl ? 'session-command' : 'session'}="${esc(link.sessionId)}" data-mutation>${link.canControl ? 'CLI 지시 보내기' : 'CLI 대화 보기'}</button>` : ''}
+    ${link ? `<button type="button" class="button button-caution" data-disconnect-agent="${esc(agent.id)}" data-mutation>연결 해제</button>` : ''}
+    ${link?.sessionId ? `<button type="button" class="button ${link.canControl ? 'button-primary' : 'button-secondary'}" data-${link.canControl ? 'session-command' : 'session'}="${esc(link.sessionId)}" data-mutation>${link.canControl ? 'CLI 지시 보내기' : 'CLI 대화 보기'}</button>` : ''}
     ${link?.source === 'web' && service.webUrl ? `<a class="button" href="${service.webUrl}" target="_blank" rel="noopener noreferrer">${esc(service.label)} 열기 ↗</a>` : ''}</div>
     <p class="field-help">연결 해제는 직원·CLI·웹 탭을 삭제하거나 종료하지 않습니다.</p></section>`;
 }

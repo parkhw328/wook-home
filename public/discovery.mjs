@@ -48,7 +48,7 @@ function initialize() {
     <p class="panel-footnote">웹 감지는 연결한 브라우저 프로필의 지원 사이트를 확인합니다. 탭 열림은 로그인이나 작업 실행 여부를 뜻하지 않습니다. 대화 제목과 본문은 가져오지 않습니다.</p>
     </div>
     <div id="discovery-panel-checks" role="tabpanel" aria-labelledby="discovery-tab-checks" tabindex="0" hidden>
-    <div class="discovery-toolbar"><button type="button" id="discovery-check" class="button button-secondary">연결 점검 실행</button><a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/Connections" target="_blank" rel="noopener noreferrer">점검 안내 ↗</a></div>
+    <div class="discovery-toolbar"><button type="button" id="discovery-check" class="button button-primary">연결 점검 실행</button><a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/Connections" target="_blank" rel="noopener noreferrer">점검 안내 ↗</a></div>
     <p id="discovery-check-status" role="status">연결 점검 상태를 확인하고 있습니다.</p><div id="discovery-checks" class="discovery-list"></div>
     </div>`;
   const team = view.querySelector('.team-section');
