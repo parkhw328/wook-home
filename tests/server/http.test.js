@@ -78,7 +78,7 @@ test('invalid JSON, unsupported fields and non-public files are rejected', async
   const contentType = await fetch(base + '/api/agents', { method: 'POST', body: '{}' });
   assert.equal(contentType.status, 415);
   assert.equal((await post('/api/agents', { apiKey: 'test-only' })).status, 400);
-  for (const path of ['/resources/sample.jpg', '/server/index.js', '/.env', '/%2e%2e%2fpackage.json', '/api/missing']) {
+  for (const path of ['/private/reference.jpg', '/server/index.js', '/.env', '/%2e%2e%2fpackage.json', '/api/missing']) {
     assert.equal((await fetch(base + path)).status, 404);
   }
 });
