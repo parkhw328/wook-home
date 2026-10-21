@@ -8,6 +8,9 @@
 
 - 프로젝트별 기존 Codex 세션을 읽기 전용으로 관찰하는 호스트 연결 프로그램과 상태 API. 대화 본문 없이 최근 활동·턴 종료·연결 끊김을 구분.
 - `OFFICE_NAME` 실행 설정과 기본 이름 `StackQueue Office`, StackQueue 네이버 블로그 배너 데이터.
+- 레드 테마의 등각투영 사무실, 상태에 따른 캐릭터 동작, 동작 줄이기와 움직임 전환.
+- 자체 호스팅 Noto Sans KR·JetBrains Mono, 출처·라이선스·파일 검증 정보.
+- 기존 Codex 세션 관찰 화면과 GitHub Wiki 도움말 연결.
 - Docker Compose로 실행하는 로컬 사무실과 SQLite 영속 저장.
 - 사무실·직원 상세·업무 보드·인계 화면과 wShell·wPost·wText 프로그램 배너.
 - 직원 등록·수정, 체험 업무의 질문·답변·승인·취소 API.
@@ -21,6 +24,7 @@
 ### 변경
 
 - README에 프로젝트 소개, 현재 개발 상태와 문서 탐색 링크 추가.
+- 사용자 도움말을 GitHub Wiki의 Home·OfficeGuide·UI·CLI와 공통 메뉴로 관리.
 
 ### 수정
 
