@@ -136,12 +136,15 @@ function localChecks(observer, discovery, now) {
     const live = entries.filter((entry) => entry.status === 'open');
     const count = live.reduce((sum, entry) => sum + entry.tabCount, 0);
     const hasConnected = browsers.some((client) => client.status === 'connected');
-    const status = count ? 'detected' : hasConnected ? 'no_tabs' : browsers.length ? 'disconnected' : 'not_connected';
+    const partial = hasConnected && browsers.some((client) => client.status !== 'connected');
+    const status = partial ? 'partial' : count ? 'detected' : hasConnected ? 'no_tabs' : browsers.length ? 'disconnected' : 'not_connected';
     const latest = browsers.map((client) => client.updatedAt).filter(Boolean).sort().at(-1) || null;
-    const labels = { detected: '탭 감지', no_tabs: '열린 탭 없음', disconnected: '감지 연결 끊김', not_connected: '브라우저 미연결' };
+    const labels = { detected: '탭 감지', partial: '일부 연결 끊김', no_tabs: '열린 탭 없음', disconnected: '감지 연결 끊김', not_connected: '브라우저 미연결' };
     checks.push(checkRow(`web:${provider.id}`, 'web', `${provider.webName} 웹`, status, labels[status],
-      count ? `연결한 브라우저에서 탭 ${count}개를 감지했습니다. 로그인·실행 상태는 확인하지 않습니다.` : '연결한 브라우저 프로필에서 이 서비스의 열린 탭을 확인할 수 없습니다.',
-      hasConnected ? '연결한 프로필에서 서비스를 열고 감지 목록을 확인하세요.' : '브라우저 감지 확장프로그램을 설치하고 이 사무실에 연결하세요.',
+      partial ? `현재 탭 ${count}개를 감지했습니다. 일부 브라우저의 최신 상태는 확인할 수 없습니다.`
+        : count ? `연결한 브라우저에서 탭 ${count}개를 감지했습니다. 로그인·실행 상태는 확인하지 않습니다.` : '연결한 브라우저 프로필에서 이 서비스의 열린 탭을 확인할 수 없습니다.',
+      partial ? '연결이 끊긴 브라우저 프로필에서 사무실 페이지와 감지를 다시 확인하세요.'
+        : hasConnected ? '연결한 프로필에서 서비스를 열고 감지 목록을 확인하세요.' : '브라우저 감지 확장프로그램을 설치하고 이 사무실에 연결하세요.',
       { provider: provider.id, checkedAt: latest }));
   }
   return checks;

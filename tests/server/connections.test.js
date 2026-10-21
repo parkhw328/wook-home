@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
 import { createConnections } from '../../server/connections.js';
 import { collectCliTools } from '../../scripts/lib/cli-tools.mjs';
 import { readCliTools } from '../../server/cli-tools.js';
@@ -113,6 +114,18 @@ test('success status alone cannot validate an HTML, malformed or oversized body'
   }
 });
 
+test('the timeout also covers a real HTTP response whose JSON body never finishes', async (t) => {
+  const server = createServer((_request, response) => {
+    response.writeHead(200, { 'Content-Type': 'application/json' });
+    response.write('{"data":[');
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(async () => { server.closeAllConnections(); await new Promise((resolve) => server.close(resolve)); });
+  const { connections } = fixture({ env: { OPENAI_API_KEY: 'local-test-only' }, timeoutMs: 60,
+    fetchImpl: (_url, options) => fetch(`http://127.0.0.1:${server.address().port}`, options) });
+  assert.equal(rows(await connections.check({}))[0].status, 'timeout');
+});
+
 test('invalid local credentials are not sent and documented aliases work', async () => {
   const { connections } = fixture({ env: { OPENAI_API_KEY: 'invalid\nvalue' } });
   assert.equal(rows(await connections.check({}))[0].status, 'config_invalid');
@@ -141,6 +154,13 @@ test('web presence, bridge freshness and CLI capabilities are not API authentica
   checked = connections.snapshot();
   assert.equal(checked.checks.find((row) => row.id === 'web:claude').status, 'disconnected');
   assert.equal(checked.checks.find((row) => row.id === 'cli:codex').canControl, false);
+});
+
+test('one fresh browser profile cannot hide another disconnected profile as no tabs', () => {
+  const { connections, browser } = fixture();
+  browser.sources.browsers.push({ status: 'connected' }, { status: 'disconnected' });
+  const web = connections.snapshot().checks.filter((check) => check.source === 'web');
+  assert.ok(web.every((check) => check.status === 'partial' && !check.canControl));
 });
 
 test('CLI process detection wins over PATH absence without claiming session control', () => {
