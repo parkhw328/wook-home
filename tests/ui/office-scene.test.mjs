@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildFloor } from '../../public/office-models.mjs';
-import { OfficeScene, officeCameraFrame } from '../../public/office-3d.mjs';
+import { OfficeScene, officeCameraFrame, arrangePersonLabels } from '../../public/office-3d.mjs';
 import { routeBetween, BUILDING, FLOOR_HEIGHT, CORRIDOR_Z, LIFT_X, occupantRoom } from '../../public/rooms.mjs';
 import { Object3D, Scene, MeshBasicMaterial, OrthographicCamera, Vector3, Box3 } from '../../public/vendor/three/three.module.js';
 
@@ -80,5 +80,19 @@ test('furnished floors stay inside the building envelope and retain route and pr
     assert.ok(bounds.max.y <= (floor - 1) * FLOOR_HEIGHT + BUILDING.wallHeight + .2);
     assert.ok(model.userData.wayfinding.children.length > 0);
     if (floor === 3) assert.equal(model.userData.presentation.visible, false, 'no presentation slide before an actual activity');
+  }
+});
+
+
+test('crowded person labels separate within the scene without shrinking controls or changing anchor data', () => {
+  const labels = Array.from({ length: 16 }, (_, index) => ({ id: index, x: 360, y: 220, width: 90, height: 44 }));
+  const before = structuredClone(labels);
+  const arranged = arrangePersonLabels(labels, 820, 560);
+  assert.deepEqual(labels, before);
+  assert.deepEqual(arranged.map((item) => item.id), labels.map((item) => item.id));
+  for (const [index, item] of arranged.entries()) {
+    assert.equal(item.width, 90); assert.equal(item.height, 44);
+    assert.ok(item.x >= 53 && item.x <= 767 && item.y >= 30 && item.y <= 530);
+    for (const other of arranged.slice(index + 1)) assert.ok(Math.abs(item.x - other.x) >= 96 || Math.abs(item.y - other.y) >= 50, 'names remain independently clickable');
   }
 });

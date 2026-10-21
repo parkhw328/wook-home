@@ -24,6 +24,28 @@ export function officeCameraFrame(aspect, floor = 0) {
   return { target, eye: target.clone().add(offset), size: Math.max(vertical * 2 + .8, (horizontal * 2 + 1.2) / Math.max(.1, aspect)) };
 }
 
+// Keep moving name buttons legible without scaling their text. Positions are
+// independent of DOM so dense groups and viewport boundaries can be verified.
+export function arrangePersonLabels(items, width, height) {
+  const placed = [];
+  const fits = (candidate) => candidate.x - candidate.width / 2 >= 8 && candidate.x + candidate.width / 2 <= width - 8
+    && candidate.y - candidate.height / 2 >= 8 && candidate.y + candidate.height / 2 <= height - 8
+    && placed.every((other) => Math.abs(candidate.x - other.x) >= (candidate.width + other.width) / 2 + 6
+      || Math.abs(candidate.y - other.y) >= (candidate.height + other.height) / 2 + 6);
+  for (const item of items) {
+    const home = { ...item, x: Math.max(item.width / 2 + 8, Math.min(width - item.width / 2 - 8, item.x)),
+      y: Math.max(item.height / 2 + 8, Math.min(height - item.height / 2 - 8, item.y)) };
+    if (fits(home)) { placed.push(home); continue; }
+    const candidates = [];
+    for (let ring = 1; ring <= 8; ring++) {
+      const dx = ring * (item.width + 8); const dy = ring * (item.height + 8);
+      for (const [x, y] of [[0, -dy], [-dx, 0], [dx, 0], [-dx, -dy], [dx, -dy], [0, dy], [-dx, dy], [dx, dy]]) candidates.push({ ...home, x: home.x + x, y: home.y + y });
+    }
+    placed.push(candidates.find(fits) || home);
+  }
+  return placed;
+}
+
 export class OfficeScene {
   constructor(root) {
     this.root = root; this.motion = true; this.view = 2; this.zoom = 1; this.pathsVisible = true; this.people = new Map(); this.lastTime = 0; this.elapsed = 0;
@@ -37,6 +59,7 @@ export class OfficeScene {
       this.renderer.domElement.setAttribute('role', 'img');
       root.querySelector('#office-canvas').append(this.renderer.domElement);
       this.scene = new T.Scene();
+      this.leaderRoot = document.createElement('div'); this.leaderRoot.className = 'person-label-leaders'; this.leaderRoot.setAttribute('aria-hidden', 'true'); root.append(this.leaderRoot);
       this.scene.add(new T.HemisphereLight(0xb9d5ef, 0x3b302b, 2.1));
       const light = new T.DirectionalLight(0xffd8a3, 3.5); light.position.set(-6, 24, 14); light.castShadow = true;
       light.shadow.mapSize.set(2048, 2048); Object.assign(light.shadow.camera, { left: -24, right: 24, top: 25, bottom: -20, far: 90 });
@@ -141,7 +164,7 @@ export class OfficeScene {
       }
       Object.assign(item, { seat, status: occupant.status, source: occupant.source, id: occupant.id, pose: occupant.sceneActivity?.pose || (occupant.status === 'working' ? 'typing' : 'still') });
     }
-    for (const [key, item] of this.people) if (!keep.has(key)) { this.actorRoot.remove(item.model); this.people.delete(key); }
+    for (const [key, item] of this.people) if (!keep.has(key)) { this.actorRoot.remove(item.model); item.leader?.remove(); this.people.delete(key); }
     if (this.floors?.[2]?.userData.presentation) this.floors[2].userData.presentation.visible = occupants.some((actor) => actor.sceneActivity?.pose === 'presenting');
   }
   movePerson(item, room, home) {
@@ -156,6 +179,7 @@ export class OfficeScene {
     const point = position.clone().project(this.camera);
     element.hidden = !visible || point.z < -1 || point.z > 1;
     element.style.left = `${(point.x + 1) * 50}%`; element.style.top = `${(1 - point.y) * 50}%`;
+    return { x: (point.x + 1) * this.width / 2, y: (1 - point.y) * this.height / 2 };
   }
   animatePerson(model, walking, time, pose = 'still') {
     const gesture = gesturePose(pose, time, walking, this.motion);
@@ -188,6 +212,7 @@ export class OfficeScene {
     this.cabin.visible = this.commander.visible && Math.abs(this.commander.position.x - LIFT_X) < .03 && Math.abs(this.commander.position.z - CORRIDOR_Z) < .03;
     this.cabin.position.copy(this.commander.position);
     this.animatePerson(this.commander, Boolean(this.walk), this.elapsed);
+    const personLabels = [];
     for (const item of this.people.values()) {
       const { model, home } = item; let walking = false;
       if (!this.motion) {
@@ -224,11 +249,32 @@ export class OfficeScene {
       model.visible = !this.view || Math.abs(model.position.y - (this.view - 1) * FLOOR_HEIGHT) < .1;
       this.animatePerson(model, walking, this.elapsed + item.index, item.transfer ? 'still' : item.pose);
       const label = this.root.querySelector(`[data-person-id="${item.id}"]`);
-      this.placeLabel(label, model.position.clone().add(new T.Vector3(0, 2.05, 0)), model.visible && Boolean(this.view));
+      const anchor = this.placeLabel(label, model.position.clone().add(new T.Vector3(0, 2.05, 0)), model.visible && Boolean(this.view));
+      if (label && !label.hidden) personLabels.push({ item, label, ...anchor });
+      else if (item.leader) item.leader.hidden = true;
     }
     for (const room of ROOMS) this.placeLabel(this.root.querySelector(`.room-hotspot[data-room="${room.id}"]`), new T.Vector3(room.id === 'office' ? -4.2 : room.id === 'executive' ? -4.7 : (room.left + room.right) / 2, (room.floor - 1) * FLOOR_HEIGHT + 3.75, this.view ? BUILDING.back + 1.4 : 1.6), !this.view || room.floor === this.view);
     for (let floor = 1; floor <= 3; floor += 1) this.placeLabel(this.root.querySelector(`[data-floor-label="${floor}"]`), new T.Vector3(BUILDING.left + .1, (floor - 1) * FLOOR_HEIGHT + .55, BUILDING.front), !this.view || floor === this.view);
     this.placeLabel(this.root.querySelector('#commander-marker'), this.commander.position.clone().add(new T.Vector3(0, 1.8, 0)), this.commander.visible);
+    this.layoutPersonLabels(personLabels);
     this.renderer.render(this.scene, this.camera);
+  }
+
+  layoutPersonLabels(items) {
+    const measured = items.map((entry) => ({ ...entry, width: entry.label.offsetWidth, height: entry.label.offsetHeight }));
+    const arranged = arrangePersonLabels(measured, this.width, this.height);
+    for (let i = 0; i < arranged.length; i++) {
+      const placed = arranged[i]; const anchor = measured[i];
+      placed.label.style.left = `${placed.x}px`; placed.label.style.top = `${placed.y}px`;
+      const shifted = Math.hypot(placed.x - anchor.x, placed.y - anchor.y) > 2;
+      if (shifted && !placed.item.leader) { placed.item.leader = document.createElement('i'); this.leaderRoot.append(placed.item.leader); }
+      const leader = placed.item.leader;
+      if (!leader) continue;
+      leader.hidden = !shifted;
+      if (shifted) {
+        const dx = anchor.x - placed.x; const dy = anchor.y + anchor.height / 2 - placed.y;
+        Object.assign(leader.style, { left: `${placed.x}px`, top: `${placed.y}px`, height: `${Math.hypot(dx, dy)}px`, transform: `rotate(${Math.atan2(dy, dx) - Math.PI / 2}rad)` });
+      }
+    }
   }
 }

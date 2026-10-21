@@ -173,3 +173,7 @@ body:has(#view-office:not([hidden])) .nav-link:hover { color: #e0e7f1; backgroun
 #office-workspace .terminal-toolbar { background: #192536; }
 #office-workspace :is(.terminal-filters label,.terminal-toolbar > strong,.terminal-notice,.terminal-footer) { color: #b8c7d9; }
 body:has(#view-office:not([hidden])) .cli-dialog-log .terminal-limit { color: #dfc59a; }
+
+.person-label-leaders { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.person-label-leaders > i { position: absolute; display: block; width: 1px; background: #a3c3d7; transform-origin: top center; opacity: .8; }
+.person-label-leaders > i[hidden] { display: none; }
