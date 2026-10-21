@@ -8,6 +8,13 @@ services:
       OFFICE_NAME: "${OFFICE_NAME:-StackQueue Office}"
       CODEX_BRIDGE_FILE: /app/bridge/codex.json
       CODEX_COMMANDS_DIR: /app/commands
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      ANTHROPIC_WORKSPACE_ID: "${ANTHROPIC_WORKSPACE_ID:-}"
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      GOOGLE_API_KEY: "${GOOGLE_API_KEY:-}"
+      MODEL_API_KEY: "${MODEL_API_KEY:-}"
+      META_API_KEY: "${META_API_KEY:-}"
     ports:
       - "127.0.0.1:${WOOK_PORT:-8080}:8080"
     volumes:
