@@ -40,7 +40,9 @@ test('HTTP contract supports hire, demo workflow, handoff and static modules', a
   assert.equal((await post(`/api/tasks/${task.id}/approve`, {})).status, 200);
   const state = await (await fetch(base + '/api/state')).json();
   assert.equal(state.tasks[0].status, 'completed');
-  assert.equal(state.programs.length, 3);
+  assert.equal(state.programs.length, 4);
+  assert.equal(state.programs[0].url, 'https://blog.naver.com/stack-queue');
+  assert.equal(state.localSessions.status, 'not_connected');
   const handoff = await fetch(base + '/api/handoff');
   assert.match(handoff.headers.get('content-disposition'), /attachment/);
   assert.equal((await handoff.json()).tasks[0].id, task.id);

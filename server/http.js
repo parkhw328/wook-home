@@ -3,12 +3,13 @@ import { readFile } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 import { ApiError } from './office.js';
 import { VERSION, providers } from './catalog.js';
+import { createSessionObserver } from './sessions.js';
 
 const contentTypes = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp',
-  '.ico': 'image/x-icon', '.woff2': 'font/woff2',
+  '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.ttf': 'font/ttf',
 };
 
 const headers = {
@@ -37,8 +38,9 @@ async function bodyOf(request) {
   catch { throw new ApiError(400, 'INVALID_JSON', '올바른 JSON을 입력해 주세요.'); }
 }
 
-export function createHttpServer(office, { publicDir = resolve('public') } = {}) {
+export function createHttpServer(office, { publicDir = resolve('public'), bridgeFile, clock } = {}) {
   const root = resolve(publicDir);
+  const observer = createSessionObserver({ file: bridgeFile, clock });
   return createServer({ requestTimeout: 15000, headersTimeout: 10000 }, async (request, response) => {
     try {
       const host = request.headers.host;
@@ -49,7 +51,7 @@ export function createHttpServer(office, { publicDir = resolve('public') } = {})
       const protectedRequest = path.startsWith('/api/') || !['GET', 'HEAD'].includes(method);
       if (protectedRequest && (request.headers['sec-fetch-site'] === 'cross-site' || (request.headers.origin && request.headers.origin !== `http://${host}`))) throw new ApiError(403, 'ORIGIN_REJECTED', '사무실 화면에서 다시 요청해 주세요.');
       if (method === 'GET' && path === '/api/health') return json(response, 200, { status: 'ok', version: VERSION });
-      if (method === 'GET' && path === '/api/state') return json(response, 200, office.snapshot());
+      if (method === 'GET' && path === '/api/state') return json(response, 200, { ...office.snapshot(), localSessions: observer.snapshot() });
       if (method === 'GET' && path === '/api/providers') return json(response, 200, providers);
       if (method === 'GET' && path === '/api/handoff') return json(response, 200, office.handoff(), { 'Content-Disposition': 'attachment; filename="wook-home-handoff.json"' });
       if (method === 'POST' && path === '/api/agents') return json(response, 201, office.hire(await bodyOf(request)));

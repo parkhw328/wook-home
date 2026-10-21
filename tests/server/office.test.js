@@ -14,6 +14,20 @@ function fixture(t) {
   return { office, hire };
 }
 
+test('office name is configurable across restarts without replacing saved work', (t) => {
+  const store = createStore(':memory:');
+  t.after(() => store.close());
+  let office = createOffice(store);
+  assert.equal(office.snapshot().office.name, 'StackQueue Office');
+  const agent = office.hire({ name: '직원', role: '개발', provider: 'demo' });
+  office = createOffice(store, { name: '  새로운 사무실  ' });
+  assert.equal(office.snapshot().office.name, '새로운 사무실');
+  assert.equal(office.snapshot().agents[0].id, agent.id);
+  assert.equal(office.handoff().office.name, '새로운 사무실');
+  assert.throws(() => createOffice(store, { name: ' ' }), { code: 'VALIDATION_ERROR' });
+  assert.throws(() => createOffice(store, { name: 'x'.repeat(81) }), { code: 'VALIDATION_ERROR' });
+});
+
 test('demo task requires an answer then approval before completion', (t) => {
   const { office, hire } = fixture(t);
   const agent = hire();

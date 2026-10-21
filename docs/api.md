@@ -12,12 +12,13 @@
 
 ```json
 {
-  "office": { "name": "wook-home", "paused": false, "mode": "local", "version": "0.1.0-dev" },
+  "office": { "name": "StackQueue Office", "paused": false, "mode": "local", "version": "0.1.0-dev" },
   "providers": [],
   "agents": [],
   "tasks": [],
   "events": [],
-  "programs": []
+  "programs": [],
+  "localSessions": { "status": "not_connected", "updatedAt": null, "workspace": "", "sessions": [] }
 }
 ```
 
@@ -45,12 +46,22 @@
 
 ## 사무실·인계
 
+- `office.name`은 실행 시 `OFFICE_NAME`으로 지정한다. 기본값은 `StackQueue Office`, 앞뒤 공백을 제외한 1~80자다. 재시작하면 기존 DB에도 새 이름이 적용되며 직원·업무는 유지된다.
 - `POST /api/office/pause`: `{}`. 새 업무와 진행을 중지하고 미완료 업무를 paused로 저장. 이전 상태를 내부 보관한다.
 - `POST /api/office/resume`: `{}`. 이전 상태 복원. 위 두 응답은 office 객체.
 - `GET /api/handoff`: 검토용 JSON 파일 다운로드. `{ schemaVersion, exportedAt, office, agents, tasks }`. tasks는 제목·설명·상태·결과·messages를 포함한다. 내용에 사용자 입력이 포함되므로 공개 전 검토가 필요하며 자동 커밋·푸시하지 않는다. 인계 가져오기는 후속 기능이다.
 - SIGTERM 종료 시 업무 상태를 저장하며 미완료 작업은 paused로 남긴다. 재시작 후 Commander가 resume을 눌러 이어간다.
-- 프로그램: `{ name, description, url }` 세 개(wShell, wPost, wText).
+- 프로그램: `{ name, description, url }` 네 개(StackQueue Blog, wShell, wPost, wText).
+
+## 로컬 Codex 관찰
+
+- `localSessions`는 호스트의 읽기 전용 연결 프로그램이 생성한 상태를 보여준다. `status`는 connected / disconnected / not_connected, `updatedAt`은 마지막 상태 수집 시각, `workspace`는 선택한 작업 폴더의 이름이다.
+- `sessions`: `{ id, name, provider: "openai", status, lastActivityAt }` 배열. ID는 Codex 세션 UUID, 이름은 ID 일부로 만든 중립적인 별칭이다. 사용자 대화 제목·내용·인증 정보·절대 경로는 전달하지 않는다.
+- 세션 상태: working(최근 활동 기록), idle(턴 종료 기록), interrupted(중단 기록), unknown(확인 필요), disconnected(연결 프로그램 갱신 중단).
+- 5초마다 수집한다. 연결 프로그램의 스냅샷이 20초 이상 갱신되지 않으면 disconnected, working 기록이 120초 이상 오래되면 unknown으로 표시한다. 프로세스 생존이나 프로젝트 완료를 판정하지 않는다.
+- 직원·업무 집계, SQLite 저장과 인계 JSON에는 관찰 세션을 넣지 않는다. 세션에 업무를 지시하거나 중단하는 API는 없다. 사무실 pause/resume도 호스트 CLI를 제어하지 않는다.
+- Docker는 상태 JSON 전용 폴더만 읽기 전용으로 연결한다. 상세 실행법과 관찰 범위는 [CLI 연결 안내](wiki/CLI.md)를 따른다.
 
 ## 현재 범위
 
-외부 AI 호출, 토큰·비용 측정, 호스트 프로세스 감지, GitHub 자동 인계, 클라우드 인증은 이 API 버전에서 지원하지 않는다. 별도의 진짜 세션이 감지된 것처럼 표시하지 않는다.
+외부 AI 호출·제어, 토큰·비용 측정, 임의 호스트 프로세스 감지, GitHub 자동 인계, 클라우드 인증은 지원하지 않는다. Codex 로컬 기록 관찰과 공급자 실행 연결을 구분한다.

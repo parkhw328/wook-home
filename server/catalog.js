@@ -43,6 +43,7 @@ export const providers = [
 ];
 
 export const programs = [
+  { name: 'StackQueue Blog', description: 'StackQueue의 네이버 블로그를 방문해 보세요.', url: 'https://blog.naver.com/stack-queue' },
   { name: 'wShell', description: 'SSH 접속과 SFTP 파일 전송을 한 창에서 관리하세요.', url: 'https://github.com/parkhw328/wook-shell' },
   { name: 'wPost', description: 'API 요청과 응답을 확인하고 컬렉션으로 관리하세요.', url: 'https://github.com/parkhw328/wook-post' },
   { name: 'wText', description: '문서를 탭으로 편집하고 파일과 텍스트의 차이를 비교하세요.', url: 'https://github.com/parkhw328/wook-text' },

@@ -4,10 +4,14 @@ services:
   office:
     build: .
     init: true
+    environment:
+      OFFICE_NAME: "${OFFICE_NAME:-StackQueue Office}"
+      CODEX_BRIDGE_FILE: /app/bridge/codex.json
     ports:
       - "127.0.0.1:${WOOK_PORT:-8080}:8080"
     volumes:
       - office-data:/app/data
+      - ./data/bridge:/app/bridge:ro
     restart: "no"
     stop_grace_period: 15s
     read_only: true

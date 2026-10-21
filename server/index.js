@@ -5,8 +5,11 @@ import { createOffice } from './office.js';
 import { createHttpServer } from './http.js';
 
 const store = createStore(process.env.DATA_DIR || resolve('data'));
-const office = createOffice(store);
-const server = createHttpServer(office, { publicDir: fileURLToPath(new URL('../public/', import.meta.url)) });
+const office = createOffice(store, { name: process.env.OFFICE_NAME || 'StackQueue Office' });
+const server = createHttpServer(office, {
+  publicDir: fileURLToPath(new URL('../public/', import.meta.url)),
+  bridgeFile: process.env.CODEX_BRIDGE_FILE || resolve('data/bridge/codex.json'),
+});
 const port = Number(process.env.PORT || 8080);
 const host = process.env.HOST || '127.0.0.1';
 let closing = false;

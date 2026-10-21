@@ -59,13 +59,14 @@ function pauseState(state, reason) {
   event(state, 'office.paused', reason);
 }
 
-export function createOffice(store) {
+export function createOffice(store, { name = 'StackQueue Office' } = {}) {
+  const officeName = text(name, '사무실 이름', 80);
   let state = store.load();
   if (state && state.schemaVersion !== 1) throw new Error('Unsupported database schema');
   if (!state) {
     state = {
       schemaVersion: 1,
-      office: { name: 'wook-home', paused: false, mode: 'local', version: VERSION },
+      office: { name: officeName, paused: false, mode: 'local', version: VERSION },
       agents: [], tasks: [], events: [],
     };
     event(state, 'office.created', '새 사무실이 준비되었습니다. 체험 직원을 등록해 보세요.');
@@ -73,6 +74,7 @@ export function createOffice(store) {
     pauseState(state, '이전 실행의 미완료 업무를 일시 중지했습니다. 확인 후 재개해 주세요.');
   }
   state.office.version = VERSION;
+  state.office.name = officeName;
   store.save(state);
 
   function update(action) {
