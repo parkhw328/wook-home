@@ -2,3 +2,5 @@
 # Upstream OFL files contain intentional trailing spaces.
 public/fonts/*-OFL.txt text eol=lf -whitespace
 public/fonts/*.woff2 binary
+# Keep vendored Three.js modules byte-for-byte reproducible from npm.
+public/vendor/three/*.js text eol=lf -whitespace

@@ -4,13 +4,19 @@
   "private": true,
   "description": "Local AI office and Commander workspace",
   "type": "module",
-  "engines": { "node": ">=24.14.0 <27" },
+  "engines": {
+    "node": ">=24.14.0 <27"
+  },
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
     "bridge:codex": "node scripts/codex-bridge.mjs",
     "test": "node --test",
-    "test:server": "node --test tests/server/*.test.js"
+    "test:server": "node --test tests/server/*.test.js",
+    "vendor:three": "node scripts/sync-three.mjs"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "three": "0.186.1"
+  }
 }

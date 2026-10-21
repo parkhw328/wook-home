@@ -1,4 +1,5 @@
-import { ROOMS, HALL, roomById, routeBetween, roomTasks, taskRoom, occupantRoom } from './rooms.mjs';
+import { ROOMS, FLOORS, roomById, routeBetween, roomTasks, taskRoom, occupantRoom, isHall, hallForFloor } from './rooms.mjs';
+import { OfficeScene } from './office-3d.mjs';
 import { ConversationReader, conversationMarkup } from './conversation.mjs';
 import { escapeHtml as esc, statusLabel, statusClass, displayTime, orderedLocalSessions, observedSessionStatus, sessionStatusLabel, taskUnavailableReason } from './model.mjs';
 
@@ -13,8 +14,10 @@ export class OfficeWorkspace {
     this.moving = false;
     this.reader = new ConversationReader(request, () => this.renderConversation());
     this.find = (selector) => root.querySelector(selector);
-    this.find('#room-navigation').innerHTML = ROOMS.map((room) => `<button type="button" class="room-nav-button" data-room="${room.id}" aria-pressed="false"><span>${room.number}</span>${room.name}</button>`).join('');
-    this.find('#room-hotspots').innerHTML = ROOMS.map((room) => `<button type="button" class="room-hotspot room-${room.id}" data-room="${room.id}" aria-label="${room.name} 입장"><strong>${room.name}</strong><small>${room.subtitle}</small><span class="room-count" data-room-count="${room.id}">0</span></button>`).join('');
+    this.find('#room-navigation').innerHTML = ROOMS.map((room) => `<button type="button" class="room-nav-button" data-room="${room.id}" aria-pressed="false"><span>${room.floor}F</span>${room.name}</button>`).join('');
+    this.find('#floor-navigation').innerHTML = '<button type="button" data-floor="0" class="floor-tab is-current" aria-pressed="true"><strong>전체 층</strong><span>사무실 둘러보기</span></button>' + FLOORS.map((floor) => `<button type="button" data-floor="${floor.id}" class="floor-tab" aria-pressed="false"><strong>${floor.id}F <span>${floor.title}</span></strong><span>${floor.description}</span></button>`).join('');
+    this.find('#room-hotspots').innerHTML = ROOMS.map((room) => `<button type="button" class="room-hotspot room-${room.id}" data-room="${room.id}" aria-label="${room.floor}층 ${room.name} 입장"><span>${room.number}</span><strong>${room.name}</strong><span class="room-count" data-room-count="${room.id}">0</span></button>`).join('');
+    this.scene = new OfficeScene(this.find('#office-scene'));
     this.find('#terminal-search').addEventListener('input', () => this.renderConversation(true));
     this.find('#terminal-role').addEventListener('change', () => this.renderConversation(true));
     this.find('#terminal-latest').addEventListener('click', () => { const log = this.find('#terminal-log'); log.scrollTop = log.scrollHeight; });
@@ -22,7 +25,8 @@ export class OfficeWorkspace {
       const button = event.target.closest('button');
       if (!button || button.disabled) return;
       if (button.dataset.room) void this.enter(button.dataset.room);
-      if (button.hasAttribute('data-leave-room')) void this.enter('corridor');
+      if (button.hasAttribute('data-floor')) this.focusFloor(Number(button.dataset.floor));
+      if (button.hasAttribute('data-leave-room')) void this.enter(hallForFloor(roomById(this.room).floor).id);
       if (button.dataset.workspaceTask) void this.selectTask(button.dataset.workspaceTask);
       if (button.dataset.workspaceSession) void this.selectSession(button.dataset.workspaceSession);
       if (button.dataset.reportAction) this.onTaskAction(button.dataset.reportAction, button.dataset.id);
@@ -37,7 +41,7 @@ export class OfficeWorkspace {
       }
     });
     root.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && !event.target.closest('input, textarea, select, dialog')) { event.preventDefault(); void this.enter('corridor'); }
+      if (event.key === 'Escape' && !event.target.closest('input, textarea, select, dialog')) { event.preventDefault(); void this.enter(hallForFloor(roomById(this.room).floor).id); }
     });
     this.find('#report-answer-form').addEventListener('submit', (event) => {
       event.preventDefault();
@@ -51,9 +55,18 @@ export class OfficeWorkspace {
     this.connected = connected;
     this.motion = motion;
     this.pending = pending;
-    if (!motion) this.animation?.finish();
+    this.scene.setMotion(motion);
     this.renderRoom();
     this.renderSelection();
+  }
+
+  focusFloor(floor) {
+    this.scene.focusFloor(floor);
+    for (const button of this.root.querySelectorAll('[data-floor]')) {
+      const active = Number(button.dataset.floor) === floor;
+      button.classList.toggle('is-current', active); button.setAttribute('aria-pressed', String(active));
+    }
+    this.find('#floor-view-title').textContent = floor ? `${floor}층 · ${FLOORS.find((item) => item.id === floor).title}` : '세 개의 층, 하나의 팀';
   }
 
   async enter(id, selection = null) {
@@ -66,30 +79,16 @@ export class OfficeWorkspace {
       this.selection = null;
       this.reader.select(null);
       this.renderSelection();
-      this.find('#room-location').textContent = `${room.name} 이동 중 · 복도를 따라 문으로 이동합니다`;
+      const betweenFloors = roomById(this.room).floor !== room.floor;
+      this.find('#room-location').textContent = `${room.floor}층 ${room.name} 이동 중 · ${betweenFloors ? '엘리베이터와 복도' : '복도'}를 따라 이동합니다`;
       this.find('#leave-room').disabled = false;
       this.find('#room-panel').setAttribute('aria-busy', 'true');
-      const route = routeBetween(this.room, room.id);
-      const line = this.find('#walking-route');
-      line.setAttribute('points', route.map((point) => `${point.x},${point.y}`).join(' '));
-      const marker = this.find('#commander-marker');
-      marker.classList.add('walking');
-      for (let i = 1; i < route.length; i += 1) {
-        const from = route[i - 1];
-        const to = route[i];
-        const end = { left: `${to.x / 10}%`, top: `${to.y / 6.2}%` };
-        if (this.motion) {
-          this.animation = marker.animate([{ left: `${from.x / 10}%`, top: `${from.y / 6.2}%` }, end], { duration: Math.max(100, Math.hypot(to.x - from.x, to.y - from.y) * 1.5), easing: 'linear' });
-          await this.animation.finished;
-        }
-        Object.assign(marker.style, end);
-      }
-      this.animation = null;
-      marker.classList.remove('walking');
-      line.setAttribute('points', '');
+      if (betweenFloors) this.focusFloor(0);
+      await this.scene.moveCommander(routeBetween(this.room, room.id));
       this.room = room.id;
       this.moving = false;
       this.find('#room-panel').setAttribute('aria-busy', 'false');
+      this.focusFloor(room.floor);
     }
     if (this.nextVisit) {
       const next = this.nextVisit;
@@ -118,11 +117,11 @@ export class OfficeWorkspace {
   renderRoom() {
     if (!this.state) return;
     const room = roomById(this.room);
-    if (!this.moving) this.find('#room-location').textContent = this.room === 'corridor' ? '현재 위치 · 복도 — 방을 선택해 입장하세요' : `현재 위치 · ${room.name} — 입장 완료`;
-    this.find('#room-number').textContent = room.number ? `ROOM ${room.number} / 1F` : 'WELCOME / 1F';
+    if (!this.moving) this.find('#room-location').textContent = isHall(this.room) ? `현재 위치 · ${room.name} — 방을 선택해 입장하세요` : `현재 위치 · ${room.floor}층 ${room.name} — 입장 완료`;
+    this.find('#room-number').textContent = room.number ? `${room.floor}F / ROOM ${room.number}` : `${room.floor}F / CORRIDOR`;
     this.find('#room-heading').textContent = room.name;
     this.find('#room-description').textContent = room.description;
-    this.find('#leave-room').disabled = this.room === 'corridor' && !this.moving;
+    this.find('#leave-room').disabled = isHall(this.room) && !this.moving;
     for (const button of this.root.querySelectorAll('[data-room]')) {
       const selected = button.dataset.room === this.room;
       button.classList.toggle('is-current', selected);
@@ -137,8 +136,8 @@ export class OfficeWorkspace {
       node.textContent = `${count}${id === 'office' || id === 'lounge' ? '명' : '건'}`;
     }
     let content = '';
-    if (this.room === 'corridor') {
-      content = '<div class="room-welcome"><span aria-hidden="true">↳</span><strong>오늘의 업무, 문을 열고 시작하세요.</strong><p>지도나 위의 방 이름을 선택하면 Commander가 복도를 따라 이동합니다.</p><p class="room-key-hint">Tab · 방 선택 &nbsp; Enter · 입장<br>Esc · 복도로 나오기</p></div>';
+    if (isHall(this.room)) {
+      content = '<div class="room-welcome"><span aria-hidden="true">↳</span><strong>같은 건물에서, 함께하는 일.</strong><p>층을 둘러보고 동료의 방을 선택하세요. Commander가 엘리베이터와 복도를 따라 찾아갑니다.</p><p class="room-key-hint">Tab · 방 선택<br>Enter · 입장 / Esc · 퇴실</p></div>';
     } else if (this.room === 'office') {
       content = `<div class="room-section-label">CLI 세션 <span>${sessions.length}</span></div>` + (sessions.map((session) => `<button class="room-entry" type="button" data-workspace-session="${esc(session.id)}" aria-pressed="${this.selection?.id === session.id}"><span class="entry-symbol">&gt;_</span><span><strong>${esc(session.name)}</strong><small>${sessionStatusLabel(observedSessionStatus(this.state.localSessions, session, this.connected))}</small></span><span aria-hidden="true">↗</span></button>`).join('') || '<p class="room-empty">연결된 CLI 세션이 없습니다. 아래 연결 관리에서 작업 폴더와 연결 방법을 확인하세요.</p>');
       content += `<div class="room-section-label">직원 <span>${this.state.agents.length}</span></div>` + this.state.agents.map((agent) => `<button class="room-entry" type="button" data-agent="${esc(agent.id)}"><span class="entry-symbol">${esc(Array.from(agent.name)[0])}</span><span><strong>${esc(agent.name)}</strong><small>${esc(agent.role)} · ${statusLabel(agent.status)}</small></span><span aria-hidden="true">↗</span></button>`).join('');
@@ -179,7 +178,7 @@ export class OfficeWorkspace {
     this.find('#workbench-empty').hidden = Boolean(valid);
     this.find('#workbench-detail').hidden = !valid;
     if (!valid) {
-      this.find('#workbench-empty-text').textContent = this.moving ? '목적지로 이동하고 있습니다.' : this.room === 'corridor' ? '방에 입장하면 업무보고와 대화기록이 이곳에 열립니다.' : '이 공간의 직원·세션·업무를 선택해 내용을 확인하세요.';
+      this.find('#workbench-empty-text').textContent = this.moving ? '목적지로 이동하고 있습니다.' : isHall(this.room) ? '방에 입장하면 업무보고와 대화기록이 이곳에 열립니다.' : '이 공간의 직원·세션·업무를 선택해 내용을 확인하세요.';
       return;
     }
     const isTask = selected.type === 'task';

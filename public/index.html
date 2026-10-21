@@ -40,33 +40,35 @@
           <div class="page-heading"><div><p class="eyebrow" id="page-eyebrow">A PLACE TO MAKE THINGS HAPPEN</p><h1 id="page-title">오늘도, 함께 만드는 일.</h1><p class="page-description" id="page-description">동료를 모으고, 일을 나누고, 다음 한 걸음을 만들어 보세요.</p></div><button class="button button-primary" type="button" id="hire-button"><span data-icon="plus"></span>직원 채용</button></div>
           <div id="connection-error" class="notice notice-error" role="alert" hidden><span data-icon="alert"></span><div><strong>서버와 연결이 끊어졌습니다.</strong><p>마지막으로 받은 상태입니다. 연결되면 자동으로 갱신합니다.</p></div><button class="button button-small button-quiet" id="retry-button" type="button">다시 연결</button></div>
           <div id="paused-notice" class="notice notice-paused" hidden><span data-icon="pause"></span><div><strong>사무실 내부 업무가 일시 중지되었습니다.</strong><p>저장된 내부 업무는 재개할 수 있습니다. 외부 CLI는 중지되지 않으며 상태 관찰은 계속됩니다.</p></div><button class="button button-small" id="resume-banner-button" type="button">업무 재개</button></div>
-          <section class="stat-grid" aria-label="사무실 현황" id="stat-grid">
-            <div class="stat-card"><span class="stat-icon" data-icon="people"></span><div><span>함께하는 직원</span><strong id="stat-agents">—<small>명</small></strong></div></div>
-            <div class="stat-card"><span class="stat-icon" data-icon="activity"></span><div><span>진행 중인 업무</span><strong id="stat-working">—<small>건</small></strong></div></div>
-            <div class="stat-card"><span class="stat-icon stat-amber" data-icon="message"></span><div><span>응답·승인 대기</span><strong id="stat-waiting">—<small>건</small></strong></div></div>
-            <div class="stat-card"><span class="stat-icon stat-green" data-icon="check"></span><div><span>완료한 업무</span><strong id="stat-completed">—<small>건</small></strong></div></div>
-          </section>
+
 
           <section id="view-office" class="view">
             <div id="office-workspace" class="office-workspace">
               <div class="floor-workspace">
-                <section class="panel floor-panel" aria-labelledby="office-heading">
-                  <div class="panel-heading"><div><p class="eyebrow">THE OFFICE / FIRST FLOOR</p><h2 id="office-heading">일이 모이는 공간</h2></div><span class="office-meta" id="office-meta">사무실을 여는 중</span></div>
+                <section class="panel floor-panel" aria-labelledby="floor-view-title">
+                  <div class="panel-heading"><div><p class="eyebrow">STACKQUEUE / THE OFFICE</p><h2 id="floor-view-title">세 개의 층, 하나의 팀</h2></div><span class="office-meta" id="office-meta">사무실을 여는 중</span></div>
+                  <nav id="floor-navigation" class="floor-navigation" aria-label="층별 보기"></nav>
                   <nav id="room-navigation" class="room-navigation" aria-label="방 선택"></nav>
-                  <div class="floor-scroll" tabindex="0" aria-label="사무실 지도. 좁은 화면에서는 좌우로 이동할 수 있습니다.">
+                  <div class="floor-scroll" tabindex="0" aria-label="입체 사무실. 좁은 화면에서는 좌우로 이동할 수 있습니다.">
                     <div class="office-scene" id="office-scene">
-                      <div class="scene-art" aria-hidden="true"></div>
+                      <div id="office-canvas" class="office-canvas"></div>
+                      <p id="scene-fallback" class="scene-fallback" hidden>입체 화면을 표시할 수 없습니다. 위의 층·방 목록으로 업무와 대화기록을 이용할 수 있습니다.</p>
                       <div id="room-hotspots" class="room-hotspots"></div>
-                      <svg class="route-overlay" viewBox="0 0 1000 620" aria-hidden="true"><polyline id="walking-route" points=""/></svg>
                       <div class="desk-grid" id="desk-grid" aria-label="사무실 캐릭터"></div>
-                      <div id="commander-marker" class="commander-marker" aria-label="Commander의 현재 위치"><span>C</span><small>YOU</small></div>
-                      <span class="corridor-label" aria-hidden="true">CORRIDOR</span>
+                      <div id="commander-marker" class="commander-marker" aria-label="Commander의 현재 위치">YOU</div>
+                      <span class="floor-label" data-floor-label="3">3F</span><span class="floor-label" data-floor-label="2">2F</span><span class="floor-label" data-floor-label="1">1F</span>
                     </div>
                   </div>
                   <div class="floor-footer"><p id="room-location" role="status">현재 위치 · 복도</p><button class="motion-toggle" id="motion-toggle" type="button" aria-pressed="true" aria-label="캐릭터 움직임">움직임 켜짐</button></div>
+                  <p class="scene-caption">보행은 공간 표현입니다. 실제 업무 상태는 동료를 선택해 확인하세요.</p>
                   <div id="scene-empty" class="floor-invite"><span>첫 동료와 업무를 시작하세요.</span><button type="button" id="scene-hire-button" class="text-link">체험 직원 채용 ↗</button></div>
                 </section>
-                <aside class="panel room-panel" id="room-panel" aria-labelledby="room-heading"><div class="room-panel-header"><p class="eyebrow" id="room-number">WELCOME / 1F</p><h2 id="room-heading" tabindex="-1">복도</h2><p id="room-description"></p></div><div id="room-content" class="room-content"></div><button type="button" id="leave-room" class="leave-room" data-leave-room disabled>← 복도로 나오기 <kbd>Esc</kbd></button></aside>
+                <aside class="panel room-panel" id="room-panel" aria-labelledby="room-heading"><div class="room-panel-header"><p class="eyebrow" id="room-number">WELCOME / 1F</p><h2 id="room-heading" tabindex="-1">복도</h2><p id="room-description"></p></div><div id="room-content" class="room-content"></div><section class="stat-grid room-stats" aria-label="사무실 현황" id="stat-grid">
+            <div class="stat-card"><span class="stat-icon" data-icon="people"></span><div><span>함께하는 직원</span><strong id="stat-agents">—<small>명</small></strong></div></div>
+            <div class="stat-card"><span class="stat-icon" data-icon="activity"></span><div><span>진행 중인 업무</span><strong id="stat-working">—<small>건</small></strong></div></div>
+            <div class="stat-card"><span class="stat-icon stat-amber" data-icon="message"></span><div><span>응답·승인 대기</span><strong id="stat-waiting">—<small>건</small></strong></div></div>
+            <div class="stat-card"><span class="stat-icon stat-green" data-icon="check"></span><div><span>완료한 업무</span><strong id="stat-completed">—<small>건</small></strong></div></div>
+          </section><button type="button" id="leave-room" class="leave-room" data-leave-room disabled>← 복도로 나오기 <kbd>Esc</kbd></button></aside>
               </div>
               <section class="panel workbench" aria-label="입장한 방의 업무보고와 대화기록">
                 <div id="workbench-empty" class="workbench-empty"><span aria-hidden="true">&gt;_</span><div><strong>대화에서 보고까지, 한 자리에서.</strong><p id="workbench-empty-text">방에 입장하면 업무보고와 대화기록이 이곳에 열립니다.</p></div></div>

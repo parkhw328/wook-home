@@ -1,21 +1,32 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ROOMS, HALL, routeBetween, roomTasks, taskRoom } from '../../public/rooms.mjs';
+import { ROOMS, HALL, routeBetween, roomTasks, taskRoom, worldPoint, isHall, roomById, hallForFloor, CORRIDOR_Z, LIFT_X } from '../../public/rooms.mjs';
 import { ConversationReader, conversationMarkup, filterMessages } from '../../public/conversation.mjs';
 
-test('every room-to-room route leaves through its door, follows the corridor, and enters through the destination door', () => {
-  for (const from of [HALL, ...ROOMS]) for (const to of [HALL, ...ROOMS]) {
+test('every floor and room route uses doors, corridors and the open lift shaft without crossing walls or slabs', () => {
+  const spaces = [HALL, hallForFloor(2), hallForFloor(3), ...ROOMS];
+  for (const from of spaces) for (const to of spaces) {
     const route = routeBetween(from.id, to.id);
     if (from.id === to.id) { assert.deepEqual(route, []); continue; }
-    assert.deepEqual(route[0], { x: from.x, y: from.y });
-    assert.deepEqual(route.at(-1), { x: to.x, y: to.y });
-    if (from.id !== HALL.id) assert.deepEqual(route[1], { x: from.x, y: from.doorY });
-    if (to.id !== HALL.id) assert.deepEqual(route.at(-2), { x: to.x, y: to.doorY });
+    assert.deepEqual(route[0], worldPoint(from));
+    assert.deepEqual(route.at(-1), worldPoint(to));
+    if (!isHall(from.id)) assert.deepEqual(route[1], worldPoint(from, from.x, from.doorZ));
+    if (!isHall(to.id)) assert.deepEqual(route.at(-2), worldPoint(to, to.x, to.doorZ));
     for (let i = 1; i < route.length; i += 1) {
       const [a, b] = [route[i - 1], route[i]];
-      assert.ok(a.x === b.x || a.y === b.y, 'no diagonal wall crossings');
-      if (a.x !== b.x) assert.equal(a.y, HALL.y, 'horizontal travel stays in the corridor');
+      assert.equal(['x', 'y', 'z'].filter((axis) => a[axis] !== b[axis]).length, 1, 'only one world axis changes at a time');
+      if (a.x !== b.x) assert.equal(a.z, CORRIDOR_Z, 'cross-room travel stays in the corridor');
+      if (a.y !== b.y) { assert.equal(a.x, LIFT_X); assert.equal(a.z, CORRIDOR_Z); }
     }
+  }
+});
+
+test('leaving a room stays on the same floor and each mandatory space is assigned to a real floor', () => {
+  assert.deepEqual(new Set(ROOMS.map((room) => room.floor)), new Set([1, 2, 3]));
+  for (const room of ROOMS) {
+    const hall = hallForFloor(room.floor);
+    assert.equal(roomById(hall.id).floor, room.floor);
+    assert.ok(routeBetween(room.id, hall.id).every((point) => point.y === worldPoint(room).y));
   }
 });
 

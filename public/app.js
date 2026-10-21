@@ -149,43 +149,28 @@ function officeOccupants() {
 
 function renderCharacters() {
   const occupants = officeOccupants();
-  const seats = { office: [[138, 500], [212, 500], [493, 500], [567, 500]], meeting: [[405, 205], [525, 205]], executive: [[740, 220], [887, 220]], lounge: [[215, 207], [105, 218]] };
   const used = {};
-  const displayed = occupants.flatMap((occupant) => {
+  const displayed = occupants.filter((occupant) => {
     const room = occupantRoom(occupant);
-    const index = used[room] || 0;
-    used[room] = index + 1;
-    const position = seats[room]?.[index];
-    return position ? [{ ...occupant, position }] : [];
-  });
+    used[room] = (used[room] || 0) + 1;
+    return used[room] <= (room === 'office' ? 8 : 2);
+  }).slice(0, 16);
   const signature = JSON.stringify([displayed.map(({ id, source, status, name }) => ({ id, source, status, name })), connected, state.office.paused]);
   $('#office-scene').classList.toggle('motion-disabled', !motionEnabled);
   $('#scene-empty').hidden = occupants.length > 0;
-  $('#office-meta').textContent = `${state.localSessions?.sessions?.length || 0} CLI · ${state.agents.length} 직원${occupants.length > displayed.length ? ` · 지도 ${displayed.length}명 표시` : ''}`;
+  $('#office-meta').textContent = `${state.localSessions?.sessions?.length || 0} CLI · ${state.agents.length} 직원${occupants.length > displayed.length ? ` · 화면 ${displayed.length}명 표시` : ''}`;
   if (signature === sceneSignature) return;
   sceneSignature = signature;
   const previous = document.activeElement?.closest('#desk-grid') ? document.activeElement : null;
   const previousSource = previous?.dataset.session ? 'session' : previous?.dataset.agent ? 'agent' : null;
   const previousId = previousSource ? previous.dataset[previousSource] : null;
-  $('#desk-grid').innerHTML = displayed.map((occupant, index) => {
+  $('#desk-grid').innerHTML = displayed.map((occupant) => {
     const isSession = occupant.source === 'session';
     const label = isSession ? sessionStatusLabel(occupant.status) : statusLabel(occupant.status);
-    const movement = characterMotion(occupant.status, connected && (isSession || !state.office.paused));
-    const provider = state.providers.find((item) => item.id === occupant.provider);
-    const source = isSession ? 'CLI 관찰' : provider?.kind === 'demo' ? '체험 직원' : '등록 직원';
-    const compactName = isSession ? occupant.name.replace(/^Codex\s*·\s*/, '')
-      : Array.from(occupant.name).length > 3 ? `${Array.from(occupant.name).slice(0, 2).join('')}…` : occupant.name;
-    return `<button type="button" class="office-character station-${index} variant-${index % 3} motion-${movement} ${statusClass(occupant.status)}" data-${occupant.source}="${esc(occupant.id)}" aria-label="${esc(occupant.name)} · ${source} · ${label} 상세 보기">
-      <span class="character-shadow" aria-hidden="true"></span>
-      <span class="character-body" aria-hidden="true"><span class="character-head"><i></i></span><span class="character-shirt"></span><span class="character-arm arm-left"></span><span class="character-arm arm-right"></span><span class="character-leg leg-left"></span><span class="character-leg leg-right"></span></span>
-      <span class="character-indicator" aria-hidden="true">${movement === 'typing' ? '···' : movement === 'attention' ? '?' : isSession ? '>_' : '·'}</span>
-      <span class="character-label"><strong><span class="character-name">${esc(occupant.name)}</span><span class="compact-character-name" aria-hidden="true">${esc(compactName)}</span></strong><small>${source}</small></span>
-    </button>`;
+    const compactName = isSession ? occupant.name.replace(/^Codex\s*·\s*/, '') : occupant.name;
+    return `<button type="button" class="office-person ${statusClass(occupant.status)}" data-person-id="${esc(occupant.id)}" data-${occupant.source}="${esc(occupant.id)}" aria-label="${esc(occupant.name)} · ${label} 상세 보기"><i aria-hidden="true"></i>${esc(compactName)}</button>`;
   }).join('');
-  $$('.office-character', $('#desk-grid')).forEach((node, index) => {
-    node.style.left = `${displayed[index].position[0] / 10}%`;
-    node.style.top = `${displayed[index].position[1] / 6.2}%`;
-  });
+  workspace.scene.syncPeople(displayed);
   if (previousId) $$(`[data-${previousSource}]`, $('#desk-grid')).find((node) => node.dataset[previousSource] === previousId)?.focus({ preventScroll: true });
 }
 

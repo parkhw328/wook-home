@@ -3,7 +3,8 @@
 ## 구조
 
 - `server/`: Node.js HTTP API, 업무 상태 전환, SQLite 저장.
-- `public/`: 빌드 단계 없는 HTML/CSS/JS 사무실 GUI. `rooms.mjs`는 문·복도 경로, `workspace.mjs`는 공간별 업무 패널, `conversation.mjs`는 터미널과 세션 전환, `floor-plan.svg`는 자체 제작 평면도다.
+- `public/`: HTML/CSS/JS 사무실 GUI. `rooms.mjs`는 층·문·복도·엘리베이터 경로, `office-3d.mjs`는 자체 제작 입체 건물·가구·캐릭터, `workspace.mjs`는 공간별 업무 패널, `conversation.mjs`는 터미널과 세션 전환이다.
+- `public/vendor/three/`: 버전을 고정한 Three.js ES 모듈과 MIT 라이선스. 앱 실행 중 CDN 요청 없이 제공한다.
 - `public/fonts/`: 자체 호스팅 폰트와 라이선스. 출처는 해당 폴더 README에 기록한다.
 - `public/readability.css`: 마지막에 적용하는 공통 글자 크기와 반응형 가독성 규칙. 새 화면도 이 파일의 `--font-*` rem 토큰과 requirements 4.3의 최소 크기를 사용한다.
 - `extensions/browser-observer/`: 브라우저의 지원 AI 탭 감지 확장. 설치 절차는 Wiki Detection 참조.
@@ -14,13 +15,17 @@
 
 ## 로컬 실행
 
-Node.js 24.14 이상, 27 미만을 사용한다. Docker 기본 이미지는 Node.js 24.14.0이며 로컬 Node.js 26.10에서도 검증한다. 외부 npm 의존성은 없다.
+Node.js 24.14 이상, 27 미만을 사용한다. Docker 기본 이미지는 Node.js 24.14.0이며 로컬 Node.js 26.10에서도 검증한다. 서버는 Node 기본 모듈을 사용하고 입체 화면은 Three.js 0.186.1을 사용한다. Three.js 원본 재복사를 위한 개발 의존성과 무결성은 package-lock.json에 고정한다.
 
 ```powershell
 npm ci
 npm start
 npm test
 ```
+
+정적 브라우저 자산은 저장소에 포함되어 별도 앱 빌드 없이 실행한다. Three.js 배포 파일을 재현하거나 버전을 갱신할 때는 `npm ci` 후 `npm run vendor:three`로 두 ES 모듈과 라이선스를 복사하고 테스트·시각 검증을 수행한다. Docker 빌드는 서버와 이 정적 자산을 복사하며 npm 다운로드를 수행하지 않는다.
+
+Three.js는 유지보수 중인 [공식 프로젝트](https://github.com/mrdoob/three.js)이며 MIT 라이선스로 배포된다. [WebGLRenderer 공식 문서](https://threejs.org/docs/pages/WebGLRenderer.html)에 따라 WebGL 2를 사용한다. 미지원·컨텍스트 손실 시 방 목록과 업무 패널을 유지한다. 입체 장면은 30fps 상한, 장면 밖 탭의 렌더 중지, 제한된 픽셀 비율을 적용하고 보행 완료가 렌더 루프에 의존하지 않도록 한다.
 
 `npm start`는 http://localhost:8080 에서 GUI와 API를 제공한다. `npm run dev`는 서버 변경 시 재시작한다. 서버 재시작 시 진행 업무가 일시 중지될 수 있다. HTML/CSS/JS는 저장 후 브라우저를 새로 고치면 반영된다.
 
