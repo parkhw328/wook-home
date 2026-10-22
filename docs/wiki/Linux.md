@@ -8,6 +8,7 @@ Docker Engine·Compose와 Node.js 24.14 이상(27 미만)을 준비합니다. `d
 
 ```sh
 mkdir -p data/bridge
+npm ci
 npm run bridge:codex -- --workspace .
 ```
 

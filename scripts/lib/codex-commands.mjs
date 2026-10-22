@@ -85,7 +85,7 @@ export function createCommandPump({ directory, bridgeId, getSessions, send, shou
         } else {
           await save({ ...receipt, status: 'sending' });
           let result;
-          try { result = await send(request.sessionId, content); }
+          try { result = await send(request.sessionId, content, request.model ? { model: request.model, reasoningEffort: request.reasoningEffort } : null, request.id); }
           catch { result = { status: 'unknown', code: 'DELIVERY_UNCERTAIN' }; }
           await save({ ...receipt, ...result, updatedAt: new Date(clock()).toISOString() });
         }

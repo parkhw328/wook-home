@@ -2,6 +2,7 @@ import { open, readdir, stat } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { collectConversation } from './codex-conversations.mjs';
 import { collectActivity, connectActivities } from './codex-activity.mjs';
+import { modelId, effortId } from '../../server/execution-options.js';
 
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const windowBytes = 1024 * 1024;
@@ -15,8 +16,14 @@ export function summarizeRecords(records, workspace) {
   if (!metadata || typeof metadata.cwd !== 'string' || pathKey(metadata.cwd) !== pathKey(workspace) || !uuid.test(metadata.id)) return null;
   let status = 'unknown';
   let lastActivityAt = null;
+  let execution = {};
   for (const record of records) {
     if (!record || typeof record.timestamp !== 'string' || !Number.isFinite(Date.parse(record.timestamp))) continue;
+    if (record.type === 'turn_context') {
+      const model = record.payload?.model;
+      const reasoningEffort = record.payload?.effort;
+      execution = { ...(modelId(model) ? { model } : {}), ...(effortId(reasoningEffort) ? { reasoningEffort } : {}) };
+    }
     let next;
     if (record.type === 'event_msg') {
       next = { task_started: 'working', task_complete: 'idle', turn_aborted: 'interrupted', task_interrupted: 'interrupted', item_completed: 'working' }[record.payload?.type];
@@ -28,7 +35,7 @@ export function summarizeRecords(records, workspace) {
       lastActivityAt = new Date(record.timestamp).toISOString();
     }
   }
-  return lastActivityAt ? { id: metadata.id, status, lastActivityAt } : null;
+  return lastActivityAt ? { id: metadata.id, status, lastActivityAt, ...execution } : null;
 }
 
 async function readSummary(file, workspace, includeConversations = false, clock = Date.now) {

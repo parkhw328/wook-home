@@ -5,6 +5,7 @@
 - [빠른 사무실 사용 안내](OfficeGuide.md)
 - [화면 사용법](UI.md)
 - [기존 Codex 연결](CLI.md)
+- [직원 모델·추론 강도·작업 지시](Models.md)
 - [CLI·웹 자료 검색과 대화 모달](Search.md)
 - [CLI · 웹 탭 감지](Detection.md)
 - [CLI·웹 직원 등록](Staff.md)

@@ -47,6 +47,9 @@ export function commandPresentation(record) {
       ? '현재 서버에 이 지시의 기록이 없습니다. 전송 원문은 저장하지 않으므로 원래 CLI를 확인한 뒤 새 지시를 작성하세요.'
       : '현재 서버에 이 지시의 기록이 없습니다. 다시 전송하면 같은 지시 ID를 사용해 중복 접수를 막습니다.'],
   };
+  if (record?.status === 'failed' && record.code === 'MODEL_UNAVAILABLE') messages.failed = ['모델·강도 확인 필요', '현재 Codex에서 지원하지 않는 선택입니다. 지시는 전송하지 않았습니다. 모델 목록을 다시 확인해 주세요.'];
+  if (record?.status === 'failed' && record.code === 'SETTINGS_REJECTED') messages.failed = ['실행 설정 적용 실패', 'Codex 연결 또는 모델 설정 변경을 확인하지 못해 지시를 전송하지 않았습니다. 실행 중인 Codex와 연결 프로그램을 확인해 주세요.'];
+  if (record?.status === 'failed' && record.code === 'SETTINGS_UNCERTAIN') messages.failed = ['설정 적용 확인 필요', '설정 변경 응답을 받지 못했습니다. 지시는 전송하지 않았으며 모델·강도는 원래 CLI에서 확인해 주세요.'];
   const [title, description] = Object.hasOwn(messages, record?.status) ? messages[record.status] : messages.unknown;
   return {
     title, description,
@@ -76,7 +79,8 @@ export class CommandDelivery {
     this.update({ status: 'submitting', error: '', lookupError: '' });
     try {
       const receipt = await this.request(`/local-sessions/${encodeURIComponent(this.record.sessionId)}/commands`, {
-        method: 'POST', body: { id: this.record.id, content: this.record.content },
+        method: 'POST', body: { id: this.record.id, content: this.record.content,
+          ...(this.record.model ? { model: this.record.model, reasoningEffort: this.record.reasoningEffort } : {}) },
       });
       this.update(receipt);
     } catch (error) {

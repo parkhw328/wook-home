@@ -4,6 +4,7 @@ import { readCliProcesses } from './cli-processes.js';
 import { readCliTools } from './cli-tools.js';
 import { readSessionActivity } from './session-activity.js';
 import { readSettingsAck } from './bridge-settings.js';
+import { modelId, effortId, readExecutionOptions } from './execution-options.js';
 
 const empty = (status = 'not_connected') => ({ status, updatedAt: null, workspace: '', sessions: [], control: { enabled: false, reason: 'disconnected' }, processes: readCliProcesses(null, false), cliTools: readCliTools(null, false) });
 const states = new Set(['working', 'idle', 'interrupted', 'unknown']);
@@ -37,6 +38,8 @@ export function createSessionObserver({ file, clock = Date.now } = {}) {
           sessions.push({
             id: session.id, name: `Codex · ${session.id.slice(-4)}`, provider: 'openai',
             status, lastActivityAt: new Date(session.lastActivityAt).toISOString(),
+            ...(modelId(session.model) ? { model: session.model } : {}),
+            ...(effortId(session.reasoningEffort) ? { reasoningEffort: session.reasoningEffort } : {}),
             ...(activity ? { activity } : {}),
           });
         }
@@ -47,7 +50,8 @@ export function createSessionObserver({ file, clock = Date.now } = {}) {
           reason: !connected ? 'disconnected' : enabled ? 'ready' : data.control?.reason === 'cli_unavailable' ? 'cli_unavailable' : 'not_enabled',
           ...(enabled ? { bridgeId: data.control.bridgeId } : {}),
         };
-        return { status: connected ? 'connected' : 'disconnected', updatedAt: new Date(data.generatedAt).toISOString(), workspace, sessions, control, settings: readSettingsAck(data.settings), searchHistory: { enabled: data.searchHistory?.enabled === true }, activities: { enabled: data.activities?.enabled === true }, conversations: { enabled: data.conversations?.enabled === true }, processes: readCliProcesses(data.processes, connected, clock()), cliTools: readCliTools(data.cliTools, connected) };
+        const execution = readExecutionOptions(data.execution, Boolean(enabled), clock());
+        return { status: connected ? 'connected' : 'disconnected', updatedAt: new Date(data.generatedAt).toISOString(), workspace, sessions, control, execution, settings: readSettingsAck(data.settings), searchHistory: { enabled: data.searchHistory?.enabled === true }, activities: { enabled: data.activities?.enabled === true }, conversations: { enabled: data.conversations?.enabled === true }, processes: readCliProcesses(data.processes, connected, clock()), cliTools: readCliTools(data.cliTools, connected) };
       } catch (error) {
         return empty(error.code === 'ENOENT' ? 'not_connected' : 'disconnected');
       } finally {

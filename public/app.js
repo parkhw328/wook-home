@@ -1,4 +1,5 @@
 import { apiRequest } from './api.mjs';
+import { executionFields, updateExecutionFields, executionSelectionReason, effortLabel, newCommandId } from './execution-controls.mjs';
 import { connectionLocation, connectionSummary, connectionMarkup } from './staff-connections.mjs';
 import { officeOccupants as observedOccupants } from './office-activity.mjs';
 import { OfficeWorkspace } from './workspace.mjs';
@@ -69,6 +70,7 @@ let providersSignature = '';
 let programsSignature = '';
 const commandDeliveries = new Map();
 const commandDrafts = new Map();
+const executionDrafts = new Map();
 const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
 let motionEnabled = !motionPreference.matches;
 const modal = $('#modal');
@@ -436,51 +438,66 @@ function openHire() {
   $('#agent-name', body).focus();
 }
 
+function commandPanel(id, title = '모델 설정과 작업 지시') {
+  const draft = commandDeliveries.get(id)?.record.content ?? commandDrafts.get(id) ?? '';
+  return `<section class="command-section" aria-labelledby="command-heading"><h3 id="command-heading">${esc(title)}</h3><p class="field-help" id="command-availability"></p><div class="detail-actions"><a class="button button-small" href="#connection-settings" data-open-connection-settings data-close>연결 설정 열기</a><button type="button" class="button button-primary" data-resume-office id="command-resume" hidden>사무실 업무 재개</button></div>
+    <form id="session-command-form" class="form-stack" data-id="${esc(id)}">${executionFields()}<div class="form-field"><label for="session-command">전달할 지시</label><textarea id="session-command" name="content" rows="5" maxlength="4000" required placeholder="이 직원에게 맡길 작업과 원하는 결과를 적어 주세요.">${esc(draft)}</textarea></div>${errorSlot()}<div class="form-actions"><button class="button button-primary" type="submit" id="send-command">지시 보내기</button></div></form><div id="command-receipt" role="status" aria-live="polite"></div></section>`;
+}
+
 function openAgent(id) {
   const agent = state.agents.find((item) => item.id === id);
   if (!agent) return;
   const provider = state.providers.find((item) => item.id === agent.provider);
+  const demo = provider?.kind === 'demo';
+  const sessionId = agent.connection?.sessionId;
+  const session = state.localSessions?.sessions?.find((item) => item.id === sessionId);
   const reason = taskUnavailableReason(state, agent);
   const tasks = filterTasks(state.tasks.filter((task) => task.agentId === id), 'all');
-  const capabilities = { createSession: '새 업무 실행', observeSession: '세션 관찰', resumeSession: '세션 재개', interrupt: '업무 중단', changeModel: '모델 변경' };
-  openModal(agent.name, 'MEET YOUR TEAMMATE', `<div class="detail-heading">${avatar(agent)}<div><h3>${esc(agent.role)}</h3><p>${esc(provider?.name || agent.provider)}${provider?.kind === 'demo' ? ' · 체험용 직원' : ''}</p></div>${badge(agent.status)}</div><dl class="detail-facts"><div><dt>실행 위치</dt><dd>${esc(connectionLocation(agent))}</dd></div><div><dt>연결 상태</dt><dd>${esc(connectionSummary(agent, provider))}</dd></div><div><dt>모델</dt><dd>${esc(agent.model || (agent.connection ? '사무실에서 확인 미지원' : '연동 후 설정 가능'))}</dd></div><div><dt>추론 강도</dt><dd>${agent.reasoningEffort === 'none' ? '해당 없음' : esc(agent.reasoningEffort || (agent.connection ? '사무실에서 변경 미지원' : '지원 옵션 미확정'))}</dd></div></dl>${connectionMarkup(agent, provider)}<div class="capability-list">${Object.entries(capabilities).map(([key, label]) => `<span class="capability-tag ${(key === 'observeSession' && agent.connection ? agent.connection.status === 'connected' : provider?.capabilities?.[key]) ? 'supported' : ''}">${label} · ${(key === 'observeSession' && agent.connection ? agent.connection.status === 'connected' : provider?.capabilities?.[key]) ? '지원' : '미지원'}</span>`).join('')}</div>${reason ? `<p class="field-help">${esc(reason)}</p>` : '<p class="field-help">체험용 직원에게 업무를 맡겨 질문과 승인 흐름을 확인하세요.</p>'}<div class="detail-actions"><button type="button" class="button" data-edit-agent="${esc(id)}" data-mutation>직원 정보 수정</button><button type="button" class="button button-primary" data-new-task="${esc(id)}" data-mutation data-blocked="${Boolean(reason)}" ${reason ? 'disabled' : ''}>${icon('plus')}업무 지시</button></div><h3 class="detail-section-title">이 직원의 업무</h3>${tasks.length ? tasks.slice(0, 8).map(taskRow).join('') : emptyState('아직 맡은 업무가 없어요', '업무를 지시하면 진행 내용을 이곳에서 확인할 수 있습니다.')}`, { type: 'agent', id, signature: agentSignature(id) });
+  const execution = demo ? `<p class="field-help">체험용 직원에게 업무를 맡겨 질문과 승인 흐름을 확인하세요.</p><button type="button" class="button button-primary" data-new-task="${esc(id)}" data-mutation data-blocked="${Boolean(reason)}" ${reason ? 'disabled' : ''}>업무 지시</button>${reason ? `<p class="field-help">${esc(reason)}</p>` : ''}`
+    : sessionId ? commandPanel(sessionId)
+      : `<section class="command-section"><h3>모델 설정과 작업 지시</h3><p class="field-help">${agent.provider === 'openai' ? '지시를 받을 Codex 대화를 연결하면 추론 모델·강도 선택과 작업 지시를 여기서 사용할 수 있습니다. 프로세스나 웹 탭 감지만으로는 지시할 대화를 정할 수 없습니다.' : '현재 이 연결은 관찰 전용입니다. 모델·추론 강도 선택과 지시 전송은 원래 CLI 또는 웹 서비스에서 진행해 주세요. 사무실의 직접 지시는 Codex 대화 연결에서 지원합니다.'}</p>${agent.provider === 'openai' ? `<button type="button" class="button button-primary" data-connect-command-agent="${esc(id)}">지시할 Codex 대화 연결</button>` : ''}</section>`;
+  openModal(agent.name, 'MEET YOUR TEAMMATE', `<div class="detail-heading">${avatar(agent)}<div><h3>${esc(agent.role)}</h3><p>${esc(provider?.name || agent.provider)}${demo ? ' · 체험용 직원' : ''}</p></div>${badge(agent.status)}</div><dl class="detail-facts"><div><dt>실행 위치</dt><dd>${esc(connectionLocation(agent))}</dd></div><div><dt>연결 상태</dt><dd>${esc(connectionSummary(agent, provider))}</dd></div><div><dt>${demo ? '모델' : '최근 실행 모델'}</dt><dd id="agent-observed-model">${esc(session?.model || agent.model || '최근 실행 기록 없음')}</dd></div><div><dt>최근 추론 강도</dt><dd id="agent-observed-effort">${esc(session?.reasoningEffort ? effortLabel(session.reasoningEffort) : agent.reasoningEffort === 'none' ? '해당 없음' : '최근 실행 기록 없음')}</dd></div></dl>${connectionMarkup(agent, provider)}<div class="detail-actions"><button type="button" class="button" data-edit-agent="${esc(id)}" data-mutation>직원 정보 수정</button></div>${execution}${demo ? `<h3 class="detail-section-title">이 직원의 업무</h3>${tasks.length ? tasks.slice(0, 8).map(taskRow).join('') : emptyState('아직 맡은 업무가 없어요', '업무를 지시하면 진행 내용을 이곳에서 확인할 수 있습니다.')}` : ''}`, { type: 'agent', id, signature: agentSignature(id) });
+  renderSessionCommand();
 }
 
 function openSession(id) {
   const session = state.localSessions?.sessions?.find((item) => item.id === id);
   if (!session) return;
   const status = observedSessionStatus(state.localSessions, session, connected);
-  const draft = commandDeliveries.get(id)?.record.content ?? commandDrafts.get(id) ?? '';
   openModal(session.name, 'LOCAL CLI · SESSION', `<div class="info-box">${icon('activity')}<span>연결 설정에서 지시 전송을 켜면 기존 Codex 세션에 지시할 수 있습니다. 세션을 클릭하면 대화기록 모달에서 공개 응답을 확인할 수 있습니다. 승인·중단은 원래 CLI에서 처리하세요.</span></div><button type="button" class="button button-small" data-session="${esc(id)}">대화기록 보기 ↗</button>
     <dl class="detail-facts session-facts"><div><dt>관찰된 상태</dt><dd id="observed-status">${sessionStatusLabel(status)}</dd></div><div><dt>마지막 활동</dt><dd id="observed-last-event">${displayTime(session.lastActivityAt)}</dd></div><div><dt>연결 상태</dt><dd id="observed-connection">${state.localSessions.status === 'connected' && connected ? '관찰 연결됨' : '관찰 연결 끊김'}</dd></div><div><dt>작업 공간</dt><dd>${esc(state.localSessions.workspace || '현재 작업 공간')}</dd></div></dl>
     <p class="field-help">사무실 중지는 외부 CLI를 멈추지 않습니다. <a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/CLI" target="_blank" rel="noopener noreferrer">상태·연결 도움말 ↗</a></p>
-    <section class="command-section" aria-labelledby="command-heading"><h3 id="command-heading">이 세션에 지시하기</h3><p class="field-help" id="command-availability"></p><a class="button button-small" href="#connection-settings" data-open-connection-settings data-close>연결 설정 열기</a>
-      <form id="session-command-form" class="form-stack" data-id="${esc(id)}"><div class="form-field"><label for="session-command">전달할 지시</label><textarea id="session-command" name="content" rows="4" maxlength="4000" required placeholder="원래 CLI에 이어서 수행할 일을 적어 주세요.">${esc(draft)}</textarea></div>${errorSlot()}<div class="form-actions"><button class="button button-primary" type="submit" id="send-command">지시 보내기</button></div></form>
-      <div id="command-receipt" role="status" aria-live="polite"></div>
-    </section>`, { type: 'session', id });
+    ${commandPanel(id)}`, { type: 'session', id });
   renderSessionCommand();
 }
 
 function renderSessionCommand() {
-  if (!modal.open || modalContext?.type !== 'session' || !$('#session-command', body)) return;
-  const id = modalContext.id;
+  if (!modal.open || !$('#session-command-form', body)) return;
+  const id = $('#session-command-form', body).dataset.id;
   const delivery = commandDeliveries.get(id);
   const record = delivery?.record;
-  const reason = commandUnavailableReason(state, id, connected);
+  const session = state.localSessions?.sessions?.find((item) => item.id === id);
+  if ($('#agent-observed-model', body)) $('#agent-observed-model', body).textContent = session?.model || '최근 실행 기록 없음';
+  if ($('#agent-observed-effort', body)) $('#agent-observed-effort', body).textContent = session?.reasoningEffort ? effortLabel(session.reasoningEffort) : '최근 실행 기록 없음';
+  const selection = record?.model ? record : executionDrafts.get(id) || {};
+  const reason = commandUnavailableReason(state, id, connected) || executionSelectionReason(state.localSessions?.execution, selection);
+  updateExecutionFields(body, state.localSessions?.execution, selection, Boolean(record));
+  $('#command-resume', body).hidden = !state.office.paused;
+  $('#command-resume', body).disabled = !connected || pending;
   $('#command-availability', body).textContent = reason || '지시는 Codex 큐에 전달됩니다. 기존 작업이 끝나면 실행되며, CLI의 원래 권한과 승인 정책을 따릅니다.';
   const input = $('#session-command', body);
   $('#session-command-form', body).hidden = Boolean(record && !record.content);
   input.readOnly = Boolean(record);
-  input.disabled = !record && Boolean(reason);
+  input.disabled = false;
   $('#send-command', body).disabled = Boolean(reason || record || pending);
   $('#send-command', body).hidden = Boolean(record);
   const receipt = $('#command-receipt', body);
   if (!record) { receipt.innerHTML = ''; delete receipt.dataset.signature; return; }
   const presentation = commandPresentation(record);
-  const signature = JSON.stringify([record.status, record.error, record.lookupError, delivery.busy, reason]);
+  const signature = JSON.stringify([record.status, record.error, record.lookupError, record.model, record.reasoningEffort, record.settingsApplied, delivery.busy, reason]);
   if (receipt.dataset.signature === signature) return;
   receipt.dataset.signature = signature;
-  receipt.innerHTML = `<div class="command-status"><strong>${presentation.title}</strong><p>${esc(presentation.description)}</p>${record.restored ? '<p>새로고침 전 지시의 접수 기록입니다. 지시 원문은 브라우저에 저장하지 않습니다.</p>' : ''}${record.lookupError ? `<p class="command-warning">${esc(record.lookupError)}</p>` : ''}${presentation.retry ? `<button type="button" class="button button-small" data-retry-command="${esc(id)}" ${delivery.busy || reason ? 'disabled' : ''}>같은 지시 다시 전송</button>` : ''}${record.status === 'unconfirmed' || record.lookupError ? `<button type="button" class="button button-small" data-check-command="${esc(id)}" ${delivery.busy ? 'disabled' : ''}>접수 상태 다시 확인</button>` : ''}${presentation.final ? `<button type="button" class="button button-small" data-fresh-command="${esc(id)}">새 지시 작성</button>` : ''}</div>`;
+  receipt.innerHTML = `<div class="command-status"><strong>${presentation.title}</strong><p>${esc(presentation.description)}</p>${record.model ? `<p>선택 모델: ${esc(record.model)} · ${esc(effortLabel(record.reasoningEffort))}<br>${record.settingsApplied ? '다음 실행의 기본 설정 적용을 확인했습니다.' : '설정 적용은 아직 확인되지 않았습니다.'}</p>` : ''}${record.restored ? '<p>새로고침 전 지시의 접수 기록입니다. 지시 원문은 브라우저에 저장하지 않습니다.</p>' : ''}${record.lookupError ? `<p class="command-warning">${esc(record.lookupError)}</p>` : ''}${presentation.retry ? `<button type="button" class="button button-small" data-retry-command="${esc(id)}" ${delivery.busy || reason ? 'disabled' : ''}>같은 지시 다시 전송</button>` : ''}${record.status === 'unconfirmed' || record.lookupError ? `<button type="button" class="button button-small" data-check-command="${esc(id)}" ${delivery.busy ? 'disabled' : ''}>접수 상태 다시 확인</button>` : ''}${presentation.final ? `<button type="button" class="button button-small" data-fresh-command="${esc(id)}">새 지시 작성</button>` : ''}</div>`;
 }
 
 function onCommandChange() {
@@ -490,10 +507,13 @@ function onCommandChange() {
 
 async function sendSessionCommand(id, content) {
   if (commandDeliveries.has(id)) return;
-  const reason = commandUnavailableReason(state, id, connected);
+  const selection = executionDrafts.get(id) || {};
+  const reason = commandUnavailableReason(state, id, connected) || executionSelectionReason(state.localSessions?.execution, selection);
+  if (modalContext?.type === 'agent' && state.agents.find((agent) => agent.id === modalContext.id)?.connection?.sessionId !== id) { formError('직원 연결이 변경되었습니다. 지시할 대화를 다시 확인해 주세요.'); return; }
   if (reason) { formError(reason); return; }
   const delivery = new CommandDelivery(apiRequest, {
-    id: crypto.randomUUID(), sessionId: id, content,
+    id: newCommandId(), sessionId: id, content,
+    ...(selection.model ? selection : {}),
   }, onCommandChange);
   commandDeliveries.set(id, delivery);
   commandDrafts.set(id, content);
@@ -501,7 +521,10 @@ async function sendSessionCommand(id, content) {
 }
 
 function agentSignature(id) {
-  return JSON.stringify([state.agents.find((agent) => agent.id === id), state.tasks.filter((task) => task.agentId === id), state.office.paused]);
+  const agent = state.agents.find((item) => item.id === id);
+  const connection = agent?.connection ? { ...agent.connection } : null;
+  if (connection) delete connection.updatedAt;
+  return JSON.stringify([{ ...agent, connection }, state.tasks.filter((task) => task.agentId === id), state.office.paused]);
 }
 
 function openEditAgent(id) {
@@ -569,7 +592,16 @@ function syncModal() {
   if (!modal.open || !modalContext || pending) return;
   renderStatDetails();
   if (modalContext.type === 'agent' && agentSignature(modalContext.id) !== modalContext.signature) {
+    const focus = document.activeElement;
+    const focusId = body.contains(focus) ? focus.id : null;
+    const cursor = focusId === 'session-command' ? [focus.selectionStart, focus.selectionEnd] : null;
+    const scroll = modal.scrollTop;
+    const bodyScroll = body.scrollTop;
     openAgent(modalContext.id);
+    if (focusId) document.getElementById(focusId)?.focus({ preventScroll: true });
+    if (cursor) $('#session-command', body)?.setSelectionRange(...cursor);
+    modal.scrollTop = scroll;
+    body.scrollTop = bodyScroll;
   }
 }
 
@@ -625,7 +657,8 @@ document.addEventListener('click', (event) => {
     commandDeliveries.delete(id);
     commandDrafts.delete(id);
     onCommandChange();
-    openSession(id);
+    if (modalContext?.type === 'agent') openAgent(modalContext.id);
+    else openSession(id);
     $('#session-command', body)?.focus();
     return;
   }
@@ -655,10 +688,19 @@ document.addEventListener('click', (event) => {
 
 body.addEventListener('change', (event) => {
   if (event.target.id === 'agent-provider') updateProviderFields();
+  if (['command-model', 'command-effort'].includes(event.target.id)) {
+    const id = $('#session-command-form', body)?.dataset.id;
+    if (!id || commandDeliveries.has(id)) return;
+    const model = $('#command-model', body).value;
+    const entry = state.localSessions?.execution?.models?.find((item) => item.id === model);
+    const reasoningEffort = event.target.id === 'command-model' ? entry?.defaultReasoningEffort || '' : $('#command-effort', body).value;
+    executionDrafts.set(id, { model, reasoningEffort });
+    renderSessionCommand();
+  }
 });
 
 body.addEventListener('input', (event) => {
-  if (event.target.id === 'session-command' && modalContext?.type === 'session') commandDrafts.set(modalContext.id, event.target.value);
+  if (event.target.id === 'session-command') commandDrafts.set($('#session-command-form', body).dataset.id, event.target.value);
 });
 
 body.addEventListener('submit', (event) => {

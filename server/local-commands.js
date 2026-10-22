@@ -3,10 +3,11 @@ import { closeSync, fstatSync, mkdirSync, openSync, readSync, readdirSync, write
 import { join } from 'node:path';
 import { ApiError } from './office.js';
 import { readBridgeSettings } from './bridge-settings.js';
+import { modelId, effortId, supportsExecutionOptions } from './execution-options.js';
 
 export const commandId = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export const commandStates = new Set(['pending', 'sending', 'accepted', 'failed', 'unknown', 'expired']);
-const codes = new Set(['QUEUED', 'CLI_REJECTED', 'DELIVERY_UNCERTAIN', 'REQUEST_EXPIRED', 'SESSION_UNAVAILABLE', 'BRIDGE_RESTARTED']);
+const codes = new Set(['QUEUED', 'CLI_REJECTED', 'DELIVERY_UNCERTAIN', 'REQUEST_EXPIRED', 'SESSION_UNAVAILABLE', 'BRIDGE_RESTARTED', 'MODEL_UNAVAILABLE', 'SETTINGS_REJECTED', 'SETTINGS_UNCERTAIN']);
 
 export function readCommand(file) {
   let descriptor;
@@ -30,6 +31,7 @@ export function commandReceipt(value) {
     id: value.id, sessionId: value.sessionId, status: value.status,
     createdAt: value.createdAt, updatedAt: value.updatedAt,
     ...(codes.has(value.code) ? { code: value.code } : {}),
+    ...(modelId(value.model) && effortId(value.reasoningEffort) ? { model: value.model, reasoningEffort: value.reasoningEffort, settingsApplied: value.settingsApplied === true } : {}),
   };
 }
 
@@ -39,7 +41,7 @@ export function createLocalCommands({ directory, observer, office, clock = Date.
     // Report deadlines even when the host is stopped, without rewriting a
     // file the host may currently own or guessing that a send did not occur.
     if (value.status === 'pending' && clock() > Date.parse(value.expiresAt)) return commandReceipt({ ...value, status: 'expired', code: 'REQUEST_EXPIRED' });
-    if (value.status === 'sending' && clock() - Date.parse(value.updatedAt) > 20000) return commandReceipt({ ...value, status: 'unknown', code: 'DELIVERY_UNCERTAIN' });
+    if (value.status === 'sending' && clock() - Date.parse(value.updatedAt) > (value.model ? 70000 : 20000)) return commandReceipt({ ...value, status: 'unknown', code: 'DELIVERY_UNCERTAIN' });
     return commandReceipt(value);
   };
   return {
@@ -51,14 +53,18 @@ export function createLocalCommands({ directory, observer, office, clock = Date.
     },
     submit(sessionId, input) {
       if (!input || typeof input !== 'object' || Array.isArray(input)
-        || Object.keys(input).some((key) => !['id', 'content'].includes(key))
+        || Object.keys(input).some((key) => !['id', 'content', 'model', 'reasoningEffort'].includes(key))
         || !commandId.test(input.id) || typeof input.content !== 'string'
         || !input.content.trim() || input.content.length > 4000 || input.content.includes('\0')) {
         throw new ApiError(400, 'VALIDATION_ERROR', '지시 ID와 1~4000자의 내용을 입력해 주세요.');
       }
+      const configured = input.model !== undefined || input.reasoningEffort !== undefined;
+      if (configured && (!modelId(input.model) || !effortId(input.reasoningEffort))) throw new ApiError(400, 'VALIDATION_ERROR', '모델과 추론 강도를 함께 선택해 주세요.');
       if (!directory) throw new ApiError(409, 'CONTROL_UNAVAILABLE', '호스트 연결 프로그램의 명령 전송을 켜 주세요.');
       const content = input.content.trim();
-      const fingerprint = createHash('sha256').update(`${sessionId}\n${content}`).digest('hex');
+      const fingerprint = createHash('sha256').update(configured
+        ? `configured:v1\n${JSON.stringify([sessionId, content, input.model, input.reasoningEffort])}`
+        : `${sessionId}\n${content}`).digest('hex');
       const file = join(directory, `${input.id}.json`);
       const existing = readCommand(file);
       if (existing) {
@@ -71,12 +77,14 @@ export function createLocalCommands({ directory, observer, office, clock = Date.
       if (settings.status === 'unavailable' || (settings.status === 'ready' && !settings.options.commands)) throw new ApiError(409, 'CONTROL_UNAVAILABLE', '연결 설정에서 Codex 지시 전송을 켜고 적용 상태를 확인해 주세요.');
       if (!state.control.enabled) throw new ApiError(409, 'CONTROL_UNAVAILABLE', '호스트 연결 프로그램의 명령 전송을 확인해 주세요.');
       if (!state.sessions.some((session) => session.id === sessionId)) throw new ApiError(404, 'SESSION_NOT_FOUND', '현재 프로젝트에서 관찰 중인 세션을 선택해 주세요.');
+      if (configured && !supportsExecutionOptions(state.execution, input)) throw new ApiError(409, 'MODEL_UNAVAILABLE', '현재 Codex가 지원하는 모델과 추론 강도를 다시 선택해 주세요.');
       mkdirSync(directory, { recursive: true });
       if (readdirSync(directory).filter((name) => /^[a-f0-9-]{36}\.json$/i.test(name)).length >= 1000) throw new ApiError(429, 'COMMAND_LIMIT', '로컬 지시 기록이 가득 찼습니다. Wiki의 기록 정리를 확인해 주세요.');
       const now = clock();
       const value = {
         schemaVersion: 1, id: input.id, sessionId, bridgeId: state.control.bridgeId,
         content, fingerprint, status: 'pending',
+        ...(configured ? { model: input.model, reasoningEffort: input.reasoningEffort } : {}),
         createdAt: new Date(now).toISOString(), updatedAt: new Date(now).toISOString(),
         expiresAt: new Date(now + 60000).toISOString(),
       };

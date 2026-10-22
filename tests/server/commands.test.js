@@ -98,6 +98,37 @@ test('invalid or extended command input cannot become CLI arguments', async (t) 
   assert.deepEqual(readdirSync(f.directory), []);
 });
 
+test('command model and effort are validated against fresh options and included in idempotency', async (t) => {
+  const f = await fixture(t);
+  const request = { id: randomUUID(), content: 'configured work', model: 'model-a', reasoningEffort: 'high' };
+  assert.equal((await f.submit(request)).status, 409);
+  f.snapshot.execution = { status: 'ready', updatedAt: new Date(f.clock()).toISOString(), models: [
+    { id: 'model-a', name: 'Model A', reasoningEfforts: ['low', 'high'], defaultReasoningEffort: 'low' },
+  ] };
+  f.publish();
+  assert.equal((await f.submit({ ...request, reasoningEffort: 'ultra' })).status, 409);
+  assert.equal((await f.submit({ ...request, reasoningEffort: undefined })).status, 400);
+  assert.equal((await f.submit(request)).status, 202);
+  const sent = [];
+  const pump = createCommandPump({ ...f, getSessions: async () => f.snapshot.sessions, send: async (...args) => {
+    sent.push(args);
+    return { status: 'accepted', code: 'QUEUED', settingsApplied: true };
+  } });
+  await pump();
+  assert.deepEqual(sent, [[f.sessionId, 'configured work', { model: 'model-a', reasoningEffort: 'high' }, request.id]]);
+  f.snapshot.execution = { status: 'unavailable', models: [] };
+  f.publish();
+  const retried = await (await f.submit(request)).json();
+  assert.equal(retried.settingsApplied, true);
+  assert.equal(retried.model, 'model-a');
+  assert.equal((await f.submit({ ...request, reasoningEffort: 'low' })).status, 409);
+  assert.equal((await f.submit({ ...request, id: randomUUID() })).status, 409);
+  const plain = { id: randomUUID(), content: 'work\n["model-a","high"]' };
+  assert.equal((await f.submit(plain)).status, 202);
+  assert.equal((await f.submit({ ...plain, content: 'work', model: 'model-a', reasoningEffort: 'high' })).status, 409);
+  assert.doesNotMatch(JSON.stringify(f.office.handoff()), /model-a|configured work/);
+});
+
 test('expired, interrupted and previous-bridge requests are never replayed', async (t) => {
   const f = await fixture(t);
   const variants = [

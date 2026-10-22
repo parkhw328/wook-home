@@ -37,7 +37,8 @@ export const providers = [
     guideUrl: 'https://github.com/parkhw328/wook-home/wiki/Providers',
     available: false,
     kind: 'external',
-    reason: '감지한 CLI·웹을 직원에 연결할 수 있습니다. 새 AI 실행과 모델 변경은 준비 중입니다.',
+    reason: id === 'openai' ? 'Codex 대화를 연결하면 모델·추론 강도 선택과 지시 전송을 사용할 수 있습니다. 새 AI 실행은 준비 중입니다.'
+      : '감지한 CLI·웹을 직원에 연결할 수 있습니다. 새 AI 실행과 모델 변경은 준비 중입니다.',
     models: [],
     reasoningEfforts: [],
     capabilities: { ...unavailableCapabilities },

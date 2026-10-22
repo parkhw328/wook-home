@@ -18,9 +18,9 @@ test('web employees get observation and official service actions, never fabricat
   assert.equal(connectionMarkup({ id: 'demo' }, providers[0]), '');
 });
 
-test('stored CLI commands use only the linked session, read-only connections keep reading actions, and all attributes are escaped', () => {
+test('linked CLI reading actions target the selected session while the employee composer owns command settings', () => {
   const agent = { id: '"><img onerror="unsafe">', connection: { source: 'cli', kind: 'session', status: 'connected', statusLabel: '연결 관찰', sessionId: 'linked-session', canControl: true } };
-  assert.match(connectionMarkup(agent, providers[1]), /data-session-command="linked-session"/);
+  assert.match(connectionMarkup(agent, providers[1]), /data-session="linked-session"/);
   assert.doesNotMatch(connectionMarkup(agent, providers[1]), /<img|onerror="unsafe"/);
   agent.connection.canControl = false;
   assert.match(connectionMarkup(agent, providers[1]), /data-session="linked-session"/);

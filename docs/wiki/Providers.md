@@ -8,7 +8,7 @@
 
 | 공급자 | 공식 서비스 | 설치·인증 및 개발 문서 | 이 사무실의 현재 지원 |
 | --- | --- | --- | --- |
-| OpenAI | [ChatGPT 열기](https://chatgpt.com/) | [Codex CLI 명령](https://learn.chatgpt.com/docs/developer-commands), [사무실 연결 절차](CLI.md) | 기존 로컬 Codex 관찰·지시 전송. ChatGPT 웹 대화 가져오기는 미지원 |
+| OpenAI | [ChatGPT 열기](https://chatgpt.com/) | [Codex CLI 명령](https://learn.chatgpt.com/docs/developer-commands), [사무실 연결 절차](CLI.md) | 기존 로컬 Codex 관찰·[모델·강도 선택과 지시 전송](Models.md). ChatGPT 웹 대화 가져오기는 미지원 |
 | Claude | [Claude 열기](https://claude.ai/) | [Claude Code 설치와 로그인](https://code.claude.com/docs/en/quickstart) | 직원 정보 등록. Claude Code 실행·세션 연결은 준비 중 |
 | Google Gemini | [Gemini 열기](https://gemini.google.com/) | [Gemini CLI 시작 안내](https://geminicli.com/docs/get-started/) | 직원 정보 등록. Gemini CLI 실행·세션 연결은 준비 중 |
 | Meta Muse | [Meta AI 열기](https://www.meta.ai/), [Muse 앱 안내](https://ai.meta.com/muse/) | [Muse 다운로드](https://ai.meta.com/muse/download/), [Meta Model API 에이전트 연결](https://dev.meta.ai/docs/agent-frameworks) | 직원 정보 등록. 모델 API 실행과 기존 앱 세션 연결은 준비 중 |
@@ -20,6 +20,7 @@ Meta 카드의 **Meta AI 열기**는 Meta AI 웹 서비스로 연결됩니다. �
 Docker가 실행 중인 PC에서 프로젝트 폴더의 터미널을 열고 다음 명령을 실행합니다. Node.js와 공식 Codex CLI가 필요하며, 해당 PC에서 Codex를 먼저 로그인하고 프로젝트 세션을 열어야 합니다.
 
 ```powershell
+npm ci
 npm run bridge:codex -- --workspace .
 ```
 

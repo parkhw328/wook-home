@@ -11,6 +11,7 @@ import { createCliLifecycle } from './lib/cli-lifecycle.mjs';
 import { collectCliTools } from './lib/cli-tools.mjs';
 import { createSearchHistoryCollector } from './lib/session-search-history.mjs';
 import { readBridgeSettings, resolveBridgeSettings } from '../server/bridge-settings.js';
+import { collectExecutionOptions, sendConfiguredCommand } from './lib/codex-control.mjs';
 
 async function lockBridge(file) {
   try { await writeFile(file, String(process.pid), { flag: 'wx', mode: 0o600 }); }
@@ -56,7 +57,7 @@ async function main() {
   if (values.stop) {
     await mkdir(output, { recursive: true });
     await writeFile(stopFile, 'stop\n');
-    process.stdout.write('Observer stop requested. In-flight delivery may take up to sixteen seconds; Codex is unaffected.\n');
+    process.stdout.write('Observer stop requested. In-flight delivery may take up to seventy seconds; Codex is unaffected.\n');
     return;
   }
   await access(workspace);
@@ -74,6 +75,10 @@ async function main() {
     let cli;
     let pump;
     let lastProbe = -Infinity;
+    let execution = { status: 'disabled', models: [] };
+    let lastModels = -Infinity;
+    let pendingModels;
+    const controlOptions = () => ({ cli, workspace, remote: values.remote, remoteAuthTokenEnv: values['remote-auth-token-env'] });
     const collect = () => collectSessions({ sessionsDir, workspace, includeConversations: settings.options.conversations });
     const lifecycle = createCliLifecycle();
     let history = null;
@@ -104,6 +109,8 @@ async function main() {
           control = { enabled: false, bridgeId: randomUUID(), reason: settings.options.commands ? 'cli_unavailable' : 'not_enabled' };
           cli = null;
           lastProbe = -Infinity;
+          lastModels = -Infinity;
+          execution = { status: settings.options.commands ? 'unavailable' : 'disabled', models: [] };
           if (settings.options.searchHistory && !history) {
             history = createSearchHistoryCollector({ workspace, sessionsDir, output: join(output, 'search-history') });
             lastHistory = -Infinity;
@@ -113,7 +120,9 @@ async function main() {
           const maySend = () => !stopping && control.enabled && activeSignature === JSON.stringify(resolveBridgeSettings(readBridgeSettings(commandsDir), initial));
           pump = createCommandPump({ directory: commandsDir, bridgeId: control.bridgeId,
             getSessions: async () => (await collectSessions({ sessionsDir, workspace })).sessions,
-            send: (id, content) => maySend() ? sendToCodex(cli, id, content, workspace, values.remote, values['remote-auth-token-env'])
+            send: (id, content, selection, commandId) => maySend() ? selection
+              ? sendConfiguredCommand({ ...controlOptions(), maySend }, id, content, selection, commandId)
+              : sendToCodex(cli, id, content, workspace, values.remote, values['remote-auth-token-env'])
               : { status: 'expired', code: 'BRIDGE_RESTARTED' },
             shouldStop: () => !maySend(),
           });
@@ -127,13 +136,20 @@ async function main() {
         }
         if (Date.now() - lastCollection >= 5000) {
           const [observed, processes, cliTools] = await Promise.all([collect(), lifecycle.poll(), collectCliTools()]);
-          snapshot = { ...observed, generatedAt: new Date().toISOString(), control, processes, cliTools, searchHistory: { enabled: Boolean(history) } };
+          snapshot = { ...observed, generatedAt: new Date().toISOString(), control, execution, processes, cliTools, searchHistory: { enabled: Boolean(history) } };
           snapshot.conversations = { enabled: settings.options.conversations };
           snapshot.settings = { version: 1, ...settings };
           await publishConversations(snapshot, conversationsDir, settings.options.conversations);
           await writeFile(temporary, JSON.stringify(snapshot) + '\n', { mode: 0o644 });
           await rename(temporary, destination);
           lastCollection = Date.now();
+        }
+        if (control.enabled && !pendingModels && Date.now() - lastModels >= 30000) {
+          lastModels = Date.now();
+          const activeSignature = signature;
+          pendingModels = collectExecutionOptions(controlOptions()).then((value) => {
+            if (signature === activeSignature && !stopping) { execution = value; lastCollection = -Infinity; }
+          }).finally(() => { pendingModels = null; });
         }
         if (control.enabled && !pending) pending = pump().catch(() => {
           process.stderr.write('Command delivery unavailable. Check local folder access; requests are not automatically retried.\n');
@@ -156,6 +172,7 @@ async function main() {
     } while (!values.once && !stopping);
     await pending;
     await pendingHistory;
+    await pendingModels;
     if (snapshot && !values.once) {
       snapshot.stopped = true;
       snapshot.control = { enabled: false, reason: 'not_enabled' };

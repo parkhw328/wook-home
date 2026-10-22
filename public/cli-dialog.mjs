@@ -71,7 +71,7 @@ export class CliConversationDialog {
     this.find('#cli-dialog-state').textContent = `${state.localSessions?.workspace || '선택한 프로젝트'} · ${session ? sessionStatusLabel(observedSessionStatus(state.localSessions, session, connected)) : '현재 관찰 목록에서 벗어남'}`;
     this.agentId = state.agents.find((agent) => agent.connection?.sessionId === this.id)?.id;
     this.find('[data-cli-agent]').hidden = !this.agentId;
-    this.find('[data-cli-command]').disabled = !session || !connected || !state.localSessions?.control?.enabled;
+    this.find('[data-cli-command]').disabled = !session || !connected;
     const data = this.reader.data;
     const notes = {
       disabled: '공개 대화 읽기가 꺼져 있습니다. 아래 대화 · 지시 설정에서 켜고 저장해 주세요.',

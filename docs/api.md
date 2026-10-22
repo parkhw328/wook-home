@@ -29,7 +29,7 @@
 - `GET /api/providers`: 공급자 객체 배열.
 - 공급자: `{ id, name, available, kind, reason, models, reasoningEfforts, capabilities, webUrl?, guideUrl? }`. kind는 demo 또는 external. capabilities는 `{ createSession, observeSession, resumeSession, interrupt, changeModel }` 불리언 객체.
 - 외부 공급자의 `webUrl`은 공식 서비스 접속 주소, `guideUrl`은 공급자 연결 안내 Wiki다. 고정 HTTPS 링크이며 인증·연동 상태를 의미하지 않는다. 링크를 열어도 `available`이나 capabilities는 바뀌지 않는다.
-- 공급자 ID: demo, openai, claude, gemini, meta. 초기에는 demo만 available=true. 외부 공급자는 아직 미구현이며 인증됨으로 표시하지 않는다.
+- 공급자 ID: demo, openai, claude, gemini, meta. 초기에는 demo만 available=true. 외부 공급자의 새 세션 실행은 미구현이며 인증됨으로 표시하지 않는다. 연결한 Codex의 실행 옵션은 별도 `localSessions.execution`을 사용한다.
 - demo의 모델은 `local-demo`, 추론 강도는 `none`. 외부 공급자 models/ reasoningEfforts는 빈 배열. 미확인 모델 목록을 만들어 내지 않는다.
 - `POST /api/agents`: `{ name, role, provider, model?, reasoningEffort? }`. 이름 1~40자, 역할 1~120자. 외부 공급자는 model과 reasoningEffort를 비워 등록만 가능하다.
 - `PATCH /api/agents/:id`: `{ name?, role?, model?, reasoningEffort? }`. 공급자 변경은 불가.
@@ -75,13 +75,15 @@
 
 ## 로컬 Codex 지시 전송
 
-- `localSessions.control`: `{ enabled, reason, bridgeId? }`. reason은 ready / not_enabled / cli_unavailable / disconnected. 최신 연결 프로그램이 `--allow-commands`로 실행되고 공식 CLI의 큐 지원이 확인된 경우 활성화된다. 개별 전달 성공은 접수 결과로 확인한다.
+- `localSessions.control`: `{ enabled, reason, bridgeId? }`. reason은 ready / not_enabled / cli_unavailable / disconnected. 최신 연결 프로그램이 `--allow-commands`로 실행되고 공식 CLI의 큐 지원이 확인된 경우 활성화된다. 화면에 저장한 지시 전송 설정이 있으면 해당 선택이 실행 옵션보다 우선한다. 개별 전달 성공은 접수 결과로 확인한다.
 - `POST /api/local-sessions/:sessionId/commands`: `{ id, content }`. 클라이언트가 생성한 UUID와 1~4000자의 지시. 현재 프로젝트의 관찰 세션만 대상이다. 사무실 중지·관찰 연결 끊김·제어 미활성화는 409, 없는 세션은 404.
 - HTTP 202: `{ id, sessionId, status, createdAt, updatedAt, code? }`. 새 요청은 pending. 같은 ID·내용을 다시 보내면 기존 상태를 반환하며 다른 내용은 409 COMMAND_ID_CONFLICT. 응답 유실 시 같은 ID로 조회·재시도한다.
 - `GET /api/local-commands/:id`: 위 접수 객체. 지시 원문은 반환하지 않는다. 기록 없음은 404 COMMAND_NOT_FOUND.
 - status: pending(전달 대기), sending(CLI 호출 중), accepted(공식 큐 접수), failed(거절), unknown(전달 여부 불명), expired(만료). **accepted는 업무 완료가 아니다.** 결과·승인·중단은 원래 Codex에서 처리한다.
 - code: QUEUED / CLI_REJECTED / DELIVERY_UNCERTAIN / REQUEST_EXPIRED / SESSION_UNAVAILABLE / BRIDGE_RESTARTED. 원시 CLI 오류 출력은 전달하지 않는다.
 - 요청 유효 시간 60초, CLI 호출 제한 15초. 전달 전 원문을 지우며 중단된 sending 요청은 자동 재실행하지 않는다. 연결 프로그램 재시작 전 요청은 만료 처리한다. 접수 기록은 연결 프로그램 실행 중 7일 보관, 최대 1000개다.
+
+모델·강도 선택 요청은 `{ id, content, model, reasoningEffort }`로 확장한다. 실제 목록·적용 시점·접수 필드·추가 오류와 검증 범위는 [모델·강도 계약](execution-controls.md)을 따른다. 모델 미선택의 기존 요청·응답은 호환한다.
 
 ## 로컬 Codex 대화기록
 
@@ -96,7 +98,7 @@
 
 진행·보관 세션의 자료 검색과 웹 대화 선택 보관은 별도의 [검색 API](session-search-api.md)를 사용합니다. 최근 대화 API와 업무 인계 계약은 그대로 유지합니다.
 
-기존 Codex에 대한 큐 지시 외에 신규 AI 세션 실행, 실제 CLI 승인·중단·모델 변경, 다른 공급자 제어, 토큰·비용 측정, 임의 프로세스 감지, GitHub 자동 인계와 클라우드 인증은 지원하지 않는다.
+기존 Codex에 대한 큐 지시 외에 신규 AI 세션 실행, 실제 CLI 승인·중단, 다른 공급자 제어, 토큰·비용 측정, 임의 프로세스 감지, GitHub 자동 인계와 클라우드 인증은 지원하지 않는다.
 
 지원 CLI·AI 웹 탭의 통합 목록은 [감지 API](discovery-api.md), 설치·감지·API 인증의 분리된 점검은 [연결 점검 API](connections-api.md)를 따른다. API 연결 점검 성공은 위 업무 실행 기능을 활성화하지 않는다.
 

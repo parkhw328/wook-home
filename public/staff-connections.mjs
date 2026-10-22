@@ -32,7 +32,7 @@ export function connectionMarkup(agent, provider) {
     ${link?.source === 'web' && link.tabCount ? `<p class="field-help">같은 감지 항목의 탭 ${esc(link.tabCount)}개</p>` : ''}
     <div class="detail-actions"><button type="button" class="button" data-connect-agent="${esc(agent.id)}" data-mutation>${link ? '연결 변경·다시 연결' : 'CLI·웹 연결'}</button>
     ${link ? `<button type="button" class="button button-caution" data-disconnect-agent="${esc(agent.id)}" data-mutation>연결 해제</button>` : ''}
-    ${link?.sessionId ? `<button type="button" class="button ${link.canControl ? 'button-primary' : 'button-secondary'}" data-${link.canControl ? 'session-command' : 'session'}="${esc(link.sessionId)}" data-mutation>${link.canControl ? 'CLI 지시 보내기' : 'CLI 대화 보기'}</button>` : ''}
+    ${link?.sessionId ? `<button type="button" class="button" data-session="${esc(link.sessionId)}">CLI 대화 보기</button>` : ''}
     ${link?.source === 'web' && service.webUrl ? `<a class="button" href="${service.webUrl}" target="_blank" rel="noopener noreferrer">${esc(service.label)} 열기 ↗</a>` : ''}</div>
     <p class="field-help">연결 해제는 직원·CLI·웹 탭을 삭제하거나 종료하지 않습니다.</p></section>`;
 }
@@ -55,6 +55,7 @@ function initialize() {
   let entries = [];
   let agents = [];
   let requestedAgent = null;
+  let sessionsOnly = false;
 
   const find = (selector) => dialog.querySelector(selector);
   function frame(content) {
@@ -91,11 +92,12 @@ function initialize() {
     find('#staff-replace-help').hidden = !agents.find((agent) => agent.id === employeeSelect.value)?.connection;
   }
 
-  async function open({ entryId, agentId } = {}) {
+  async function open({ entryId, agentId, sessionOnly = false } = {}) {
     if (pending) return;
     const generation = ++requestGeneration;
     if (!dialog.open) trigger = document.activeElement;
     requestedAgent = null;
+    sessionsOnly = sessionOnly;
     frame('<p role="status">직원과 감지 목록을 확인하고 있습니다.</p>');
     try {
       const [discovery, state] = await Promise.all([apiRequest('/discovery'), apiRequest('/state')]);
@@ -104,9 +106,10 @@ function initialize() {
       requestedAgent = agentId ? agents.find((agent) => agent.id === agentId) : null;
       if (agentId && !requestedAgent) throw new Error('직원을 찾을 수 없습니다. 목록을 새로고침해 주세요.');
       entries = eligibleEntries(discovery.entries, requestedAgent);
+      if (sessionsOnly) entries = entries.filter((entry) => entry.source === 'cli' && entry.kind === 'session');
       if (entryId && !entries.some((entry) => entry.id === entryId)) throw new Error('대상이 이미 연결되었거나 더 이상 감지되지 않습니다. 최신 목록을 확인해 주세요.');
       if (!entries.length) {
-        frame('<p>연결할 수 있는 감지 대상이 없습니다. CLI 연결 프로그램이나 웹 감지를 켠 뒤 다시 확인하세요. 기존 직원과 연결할 때는 같은 공급자의 대상이 필요합니다.</p><div class="detail-actions"><button type="button" class="button" data-staff-refresh>목록 다시 확인</button><a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/Detection" target="_blank" rel="noopener noreferrer">감지 설정 안내 ↗</a></div>');
+        frame(`<p>${sessionsOnly ? '연결할 Codex 대화가 없습니다. 호스트 PC의 현재 작업 폴더에서 Codex 대화를 시작한 뒤 목록을 다시 확인하세요. 다른 직원에게 연결된 대화는 중복 선택할 수 없습니다.' : '연결할 수 있는 감지 대상이 없습니다. CLI 연결 프로그램이나 웹 감지를 켠 뒤 다시 확인하세요. 기존 직원과 연결할 때는 같은 공급자의 대상이 필요합니다.'}</p><div class="detail-actions"><button type="button" class="button" data-staff-refresh>목록 다시 확인</button><a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/Detection" target="_blank" rel="noopener noreferrer">감지 설정 안내 ↗</a></div>`);
         return;
       }
       frame(`<form id="staff-connection-form" class="form-stack">
@@ -158,7 +161,7 @@ function initialize() {
   dialog.addEventListener('click', (event) => {
     if (pending) return;
     if (event.target.closest('[data-staff-close]')) dialog.close();
-    if (event.target.closest('[data-staff-refresh]')) void open({ agentId: requestedAgent?.id });
+    if (event.target.closest('[data-staff-refresh]')) void open({ agentId: requestedAgent?.id, sessionOnly: sessionsOnly });
   });
   dialog.addEventListener('cancel', (event) => { if (pending) event.preventDefault(); });
   dialog.addEventListener('close', () => { requestGeneration += 1; if (trigger?.isConnected) trigger.focus({ preventScroll: true }); });
@@ -168,6 +171,7 @@ function initialize() {
     if (!button || button.disabled) return;
     if (button.hasAttribute('data-open-staff-connection')) void open();
     if (button.dataset.connectAgent) void open({ agentId: button.dataset.connectAgent });
+    if (button.dataset.connectCommandAgent) void open({ agentId: button.dataset.connectCommandAgent, sessionOnly: true });
     if (button.dataset.disconnectAgent) void disconnect(button.dataset.disconnectAgent);
   });
 }

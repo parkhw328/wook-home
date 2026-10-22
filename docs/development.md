@@ -17,7 +17,7 @@
 
 ## 로컬 실행
 
-Node.js 24.14 이상, 27 미만을 사용한다. Docker 기본 이미지는 Node.js 24.14.0이며 로컬 Node.js 26.10에서도 검증한다. 서버는 Node 기본 모듈을 사용하고 입체 화면은 Three.js 0.186.1을 사용한다. Three.js 원본 재복사를 위한 개발 의존성과 무결성은 package-lock.json에 고정한다.
+Node.js 24.14 이상, 27 미만을 사용한다. Docker 기본 이미지는 Node.js 24.14.0이며 로컬 Node.js 26.10에서도 검증한다. 서버는 Node 기본 모듈을 사용하고 입체 화면은 Three.js 0.186.1을 사용한다. 호스트 연결기의 공식 WebSocket 통신에는 `ws` 8.22.0(MIT)을 사용한다. Three.js 원본 재복사 및 호스트용 의존성과 무결성은 package-lock.json에 고정하며 호스트에서 `npm ci`가 필요하다. Docker 서버는 Node 기본 모듈만 사용한다.
 
 ```powershell
 npm ci
@@ -78,3 +78,9 @@ Node SQLite와 Compose 참고: [Node.js SQLite](https://nodejs.org/download/rele
 ```powershell
 node --test tests/server/*.test.js tests/ui/*.test.mjs tests/extension/*.test.mjs
 ```
+
+## Codex 모델·강도와 지시
+
+`server/execution-options.js`는 공개 모델 목록을 제한·검증하고, `scripts/lib/codex-control.mjs`는 공식 proxy 또는 호스트에 지정한 원격 엔드포인트에 연결한다. 모델 선택 시 설정 변경 확인 후 큐에 넣는다. `codex queue -m/-c`는 0.163.0에서 큐 요청에 모델 설정을 포함하지 않으므로 이 용도로 사용하지 않는다. 승인·샌드박스·작업 폴더·협업 모드를 덮어쓰지 않는다.
+
+검증 명령: `node --test tests/server/execution.test.js tests/server/commands.test.js tests/ui/execution.test.mjs`. [모델 API 계약과 검증 범위](execution-controls.md), [사용 안내](wiki/Models.md).
