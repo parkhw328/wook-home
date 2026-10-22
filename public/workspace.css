@@ -208,3 +208,7 @@ main { max-width: 1960px; padding: 24px 28px; }
   .office-scene { height: 630px; }
 }
 .room-panel .room-stats { grid-column: 1 / -1; }
+
+/* Work archives preserve user line breaks without widening the room panel. */
+.room-news p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.workbench-empty > div { min-width: 0; }

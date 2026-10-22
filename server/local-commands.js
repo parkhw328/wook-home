@@ -35,7 +35,7 @@ export function commandReceipt(value) {
   };
 }
 
-export function createLocalCommands({ directory, observer, office, clock = Date.now }) {
+export function createLocalCommands({ directory, observer, office, isArchivedSession = () => false, clock = Date.now }) {
   const missing = () => new ApiError(404, 'COMMAND_NOT_FOUND', '지시 접수 기록이 없습니다.');
   const receipt = (value) => {
     // Report deadlines even when the host is stopped, without rewriting a
@@ -71,12 +71,14 @@ export function createLocalCommands({ directory, observer, office, clock = Date.
         if (existing.fingerprint !== fingerprint) throw new ApiError(409, 'COMMAND_ID_CONFLICT', '이미 다른 지시에 사용된 ID입니다.');
         return receipt(existing);
       }
+      if (isArchivedSession(sessionId)) throw new ApiError(409, 'WORK_ARCHIVED', '창고에서 업무를 복귀한 후 새 지시를 작성해 주세요.');
       if (office.snapshot().office.paused) throw new ApiError(409, 'OFFICE_PAUSED', '사무실을 재개한 뒤 지시해 주세요.');
       const state = observer.snapshot();
       const settings = readBridgeSettings(directory);
       if (settings.status === 'unavailable' || (settings.status === 'ready' && !settings.options.commands)) throw new ApiError(409, 'CONTROL_UNAVAILABLE', '연결 설정에서 Codex 지시 전송을 켜고 적용 상태를 확인해 주세요.');
       if (!state.control.enabled) throw new ApiError(409, 'CONTROL_UNAVAILABLE', '호스트 연결 프로그램의 명령 전송을 확인해 주세요.');
       if (!state.sessions.some((session) => session.id === sessionId)) throw new ApiError(404, 'SESSION_NOT_FOUND', '현재 프로젝트에서 관찰 중인 세션을 선택해 주세요.');
+      if (state.sessions.find((session) => session.id === sessionId)?.canControl === false) throw new ApiError(409, 'CONTROL_UNAVAILABLE', '이 세션은 지시 전송을 지원하지 않습니다. 원래 CLI에서 확인해 주세요.');
       if (configured && !supportsExecutionOptions(state.execution, input)) throw new ApiError(409, 'MODEL_UNAVAILABLE', '현재 Codex가 지원하는 모델과 추론 강도를 다시 선택해 주세요.');
       mkdirSync(directory, { recursive: true });
       if (readdirSync(directory).filter((name) => /^[a-f0-9-]{36}\.json$/i.test(name)).length >= 1000) throw new ApiError(429, 'COMMAND_LIMIT', '로컬 지시 기록이 가득 찼습니다. Wiki의 기록 정리를 확인해 주세요.');

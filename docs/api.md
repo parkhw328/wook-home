@@ -114,3 +114,9 @@
 - 상태: `not_connected`, `upgrade_required`, `pending`, `applied`, `storage_error`, `bridge_error`. 설정 적용과 CLI 지시 지원 여부는 별개이며 `applied.commands`와 `controlReason`을 함께 확인한다.
 - 서버는 `CODEX_COMMANDS_DIR/bridge-settings.json`에 원자적으로 저장한다. 호스트는 출력 폴더의 `commands`에서 읽고 상태 파일의 `settings: { version: 1, revision, options, error }`로 응답한다. 두 경로는 같은 공유 폴더여야 한다.
 - 읽을 수 없는 설정은 기능을 켜지 않는다. 지시 끄기는 서버의 신규 접수를 즉시 차단하며 호스트 적용 전 성공을 주장하지 않는다. 전송 중인 지시와 검색 사본은 취소·삭제하지 않는다. 설정·대화·접수 정보는 인계에 포함하지 않는다.
+
+## 업무 창고
+
+- `POST /api/local-sessions/:id/archive`: `{ "note": "다음 행동" }`로 현재 또는 마지막 관찰 CLI를 직원 업무로 보관합니다. 응답은 201과 연결 정보를 포함한 직원입니다. 기존 직원에게 연결된 항목은 409이며 직원 보관 API를 사용합니다. 관찰 식별자는 영속 저장하지 않습니다.
+- `PUT /api/agents/:id/archive`: `{ "stored": true, "note": "다음 행동", "settingsRevision": 0 }`. `false`는 복귀이며 실제 실행·재연결은 하지 않습니다. 4,000자 한도와 직원 설정 버전 충돌을 검사합니다. 체험 직원은 지원하지 않습니다.
+- 직원의 `workArchive`에는 `stored`, `note`, `updatedAt`을 반환합니다. 로컬 DB에서 유지하고 인계에서 제외합니다. 보관 중 새 지시는 `409 WORK_ARCHIVED`, 이미 접수된 동일 ID·본문 요청은 기존 접수 결과를 반환합니다.

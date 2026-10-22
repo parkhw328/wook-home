@@ -218,3 +218,21 @@ else writeFileSync(new URL('./received.json',import.meta.url),JSON.stringify(pro
   writeFileSync(script, 'process.stderr.write("private-error");process.exitCode=2;');
   assert.deepEqual(await sendToCodex(cli, f.sessionId, content, f.root), { status: 'failed', code: 'CLI_REJECTED' });
 });
+
+test('storing a session blocks new commands while preserving idempotent receipts and explicit restore', async (t) => {
+  const f = await fixture(t);
+  const existing = { id: randomUUID(), content: '이미 접수한 지시' };
+  assert.equal((await f.submit(existing)).status, 202);
+  const archivedResponse = await fetch(`${f.base}/api/local-sessions/${f.sessionId}/archive`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ note: '나중에 다시 확인' }) });
+  assert.equal(archivedResponse.status, 201);
+  const agent = await archivedResponse.json();
+  assert.equal((await f.submit(existing)).status, 202);
+  const request = { id: randomUUID(), content: '새 지시' };
+  const blocked = await f.submit(request);
+  assert.equal(blocked.status, 409);
+  assert.equal((await blocked.json()).error.code, 'WORK_ARCHIVED');
+  assert.equal(readdirSync(f.directory).filter((name) => name.endsWith('.json')).length, 1);
+  const restored = await fetch(`${f.base}/api/agents/${agent.id}/archive`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stored: false, note: agent.workArchive.note, settingsRevision: agent.settingsRevision }) });
+  assert.equal(restored.status, 200);
+  assert.equal((await f.submit(request)).status, 202);
+});

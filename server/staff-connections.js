@@ -56,7 +56,7 @@ export function createStaffConnections({ office, discovery, observer }) {
     const entry = reference ? snapshot.entries.find((item) => item.id === reference.id) : null;
     const status = reference ? observationStatus(entry, snapshot, reference) : 'not_connected';
     const connected = status === 'connected';
-    const canControl = connected && !paused && entry?.source === 'cli' && entry.kind === 'session' && entry.canControl === true;
+    const canControl = connected && !agent.workArchive?.stored && !paused && entry?.source === 'cli' && entry.kind === 'session' && entry.canControl === true;
     output.connection = {
       source: reference?.source || preference.source, kind: reference?.kind || preference.kind,
       status, statusLabel: labels[status], canControl,
@@ -95,6 +95,28 @@ export function createStaffConnections({ office, discovery, observer }) {
       const agent = office.hire({ name: body.name, role: body.role, provider: entry.provider, projectName: body.projectName }, { source: entry.source, kind: entry.kind });
       remember(agent.id, entry);
       return currentAgent(agent.id);
+    },
+    archive(id, body) {
+      office.archiveAgent(id, body);
+      return currentAgent(id);
+    },
+    archiveSession(id, body) {
+      if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).some((key) => key !== 'note')
+        || typeof body.note !== 'string' || body.note.trim().length > 4000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(body.note)) fail(400, 'VALIDATION_ERROR', '보관 메모는 4000자 이내로 입력해 주세요.');
+      const entryId = `cli:${id}`;
+      const existing = ownerOf(entryId);
+      if (existing) fail(409, 'ENTRY_ALREADY_LINKED', '이미 등록된 직원입니다. 직원 상세에서 보관해 주세요.');
+      // Last observed records may be stored even while their bridge is offline.
+      // No live identifier is written to the office database.
+      const entry = discovery.snapshot().entries.find((item) => item.id === entryId && item.kind === 'session');
+      if (!entry) fail(409, 'ENTRY_UNAVAILABLE', '현재 목록에 기록이 없습니다. 자료 검색에서 보관된 대화를 확인해 주세요.');
+      const agent = office.hire({ name: entry.name.slice(0, 40), role: '보관 업무', provider: entry.provider }, { source: 'cli', kind: 'session' }, body.note);
+      remember(agent.id, entry);
+      return currentAgent(agent.id);
+    },
+    isArchivedSession(id) {
+      const owner = ownerOf(`cli:${id}`);
+      return Boolean(owner && requireAgent(owner).workArchive?.stored);
     },
     edit(id, body) {
       const agent = currentAgent(id);

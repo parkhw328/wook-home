@@ -121,7 +121,7 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
       output.tasks.forEach((task) => delete task.previousStatus);
       return { office: output.office, providers: structuredClone(providers), agents: output.agents, tasks: output.tasks, events: output.events, programs: structuredClone(programs) };
     },
-    hire(body, preference = null) {
+    hire(body, preference = null, archiveNote = null) {
       fields(body, ['name', 'role', 'provider', 'model', 'reasoningEffort', 'projectName']);
       const connection = connectionPreference(preference);
       return update((next) => {
@@ -140,9 +140,25 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
           createdAt: now(), updatedAt: now(),
         };
         if (connection) agent.connectionPreference = connection;
+        if (archiveNote !== null) agent.workArchive = { stored: true, note: text(archiveNote, '보관 메모', 4000, false), updatedAt: now() };
         next.agents.push(agent);
         refreshAgent(next, agent.id);
         event(next, 'agent.created', '직원 정보를 등록했습니다.');
+        return agent;
+      });
+    },
+    archiveAgent(id, body) {
+      fields(body, ['stored', 'note', 'settingsRevision']);
+      if (typeof body.stored !== 'boolean' || !Number.isSafeInteger(body.settingsRevision)) fail(400, 'VALIDATION_ERROR', '보관 여부와 최신 직원 설정 버전이 필요합니다.');
+      return update((next) => {
+        const agent = next.agents.find((item) => item.id === id);
+        if (!agent) fail(404, 'NOT_FOUND', '직원을 찾을 수 없습니다.');
+        if (agent.settingsRevision !== body.settingsRevision) fail(409, 'SETTINGS_CONFLICT', '다른 화면에서 직원 정보를 변경했습니다. 메모를 보존하고 최신 정보를 다시 확인해 주세요.');
+        if (agent.provider === 'demo') fail(409, 'PROVIDER_MISMATCH', '체험 업무는 업무보고에서 관리해 주세요.');
+        agent.workArchive = { stored: body.stored, note: text(body.note, '보관 메모', 4000, false), updatedAt: now() };
+        agent.settingsRevision += 1;
+        agent.updatedAt = now();
+        event(next, 'agent.archive.updated', body.stored ? '직원 업무를 창고에 보관했습니다.' : '보관 업무를 사무실로 복귀했습니다. 실제 실행은 별도로 확인해 주세요.');
         return agent;
       });
     },
@@ -286,7 +302,7 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
       return {
         schemaVersion: 1, exportedAt: now(),
         notice: '사용자가 입력한 업무·대화가 포함됩니다. 공개 전 내용을 검토하세요. 인증 정보는 수집하지 않습니다. 이 버전은 가져오기를 지원하지 않습니다.',
-        office: structuredClone(state.office), agents: state.agents.map(({ connectionPreference: _, ...agent }) => structuredClone(agent)), tasks: structuredClone(state.tasks),
+        office: structuredClone(state.office), agents: state.agents.map(({ connectionPreference: _, workArchive: _archive, ...agent }) => structuredClone(agent)), tasks: structuredClone(state.tasks),
       };
     },
   };

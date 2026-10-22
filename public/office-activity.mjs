@@ -31,6 +31,7 @@ export function officeOccupants(state, connected = true, now = Date.now()) {
       if (task) activity = { kind: task.status === 'waiting_input' ? 'question' : 'approval', room: 'executive', pose: 'presenting',
         label: task.status === 'waiting_input' ? '질문 대기 · 대표이사실' : '결과 발표 · 대표이사실', phase: 'active', taskId: task.id, peerSessionIds: [] };
     }
+    if (agent.workArchive?.stored) activity = null;
     actors.push({ ...agent, source: 'agent', status: connected ? agent.status : 'disconnected', sceneActivity: activity });
   }
   return actors;

@@ -13,6 +13,7 @@ export class OfficeWorkspace {
     this.onSession = onSession;
     this.room = 'corridor-2';
     this.selection = null;
+    this.answerDrafts = new Map();
     this.detailRevision = 0;
     this.connected = false;
     this.motion = true;
@@ -50,7 +51,9 @@ export class OfficeWorkspace {
       if (button.dataset.room) void this.enter(button.dataset.room);
       if (button.hasAttribute('data-floor')) this.focusFloor(Number(button.dataset.floor));
       if (button.hasAttribute('data-leave-room')) void this.enter(hallForFloor(roomById(this.room).floor).id);
-      if (button.dataset.workspaceTask) void this.selectTask(button.dataset.workspaceTask);
+      if (button.dataset.workspaceTask) void this.selectTask(button.dataset.workspaceTask).then(() => {
+        if (!document.querySelector('dialog[open]') && this.selection?.id === button.dataset.workspaceTask) this.find('#workbench-detail').scrollIntoView({ block: 'nearest' });
+      });
       if (button.dataset.workspaceSession) void this.selectSession(button.dataset.workspaceSession);
       if (button.dataset.reportAction) this.onTaskAction(button.dataset.reportAction, button.dataset.id);
     });
@@ -65,6 +68,10 @@ export class OfficeWorkspace {
     });
     root.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && !event.target.closest('input, textarea, select, dialog')) { event.preventDefault(); void this.enter(hallForFloor(roomById(this.room).floor).id); }
+    });
+    this.find('#report-answer').addEventListener('input', () => {
+      const id = this.find('#report-answer-form').dataset.taskId;
+      if (id) this.answerDrafts.set(id, this.find('#report-answer').value);
     });
     this.find('#report-answer-form').addEventListener('submit', (event) => {
       event.preventDefault();
@@ -176,6 +183,7 @@ export class OfficeWorkspace {
       const id = node.dataset.roomCount;
       const count = ['office', 'meeting'].includes(id) ? actors.filter((actor) => occupantRoom(actor) === id).length
         : id === 'executive' ? roomTasks(id, this.state.tasks).length + actors.filter((actor) => actor.sceneActivity?.room === id && !actor.sceneActivity.taskId).length
+        : id === 'warehouse' ? actors.filter((actor) => occupantRoom(actor) === id).length
         : id === 'pantry' ? this.state.events.length : id === 'lounge' ? this.state.agents.filter((agent) => agent.status === 'idle').length : roomTasks(id, this.state.tasks).length;
       node.textContent = `${count}${['office', 'meeting', 'lounge'].includes(id) ? '명' : '건'}`;
     }
@@ -189,6 +197,11 @@ export class OfficeWorkspace {
     } else if (this.room === 'lounge') {
       const idle = this.state.agents.filter((agent) => agent.status === 'idle');
       content = idle.length ? idle.map((agent) => `<button type="button" class="room-entry" data-agent="${esc(agent.id)}"><span class="entry-symbol">${esc(Array.from(agent.name)[0])}</span><span><strong>${esc(agent.name)}</strong><small>새 업무 대기</small><small>${esc(projectSummary(agent, this.state.localSessions))}</small></span></button>`).join('') : '<p class="room-empty">지금은 업무를 기다리는 직원이 없습니다.<br>소파에서 잠시 쉬어 가세요.</p>';
+    } else if (this.room === 'warehouse') {
+      const stored = actors.filter((actor) => occupantRoom(actor) === 'warehouse');
+      content = '<p class="field-help">창고 보관과 연결 확인 대기를 구분합니다. 보관 메모는 이 PC에 저장되며 대화 원문은 자료 검색에서 별도로 확인하세요.</p>'
+        + (stored.map((actor) => `<div class="room-news"><strong>${esc(actor.name)}</strong><p>${actor.workArchive?.stored ? '창고 보관 중' : '연결 확인 필요 · 아직 보관하지 않음'}</p><p>${esc(actor.workArchive?.note || '다음 행동 메모 없음')}</p><div class="detail-actions">${actor.source === 'agent' ? `<button type="button" class="button" data-stat-agent="${esc(actor.id)}">업무 · 연결 관리</button><button type="button" class="button" data-archive-agent="${esc(actor.id)}">보관 · 복귀 · 메모</button>` : `<button type="button" class="button" data-workspace-session="${esc(actor.id)}">대화 보기</button><button type="button" class="button" data-archive-session="${esc(actor.id)}">업무 보관</button>`}</div></div>`).join('') || '<p class="room-empty">보관하거나 연결을 확인할 업무가 없습니다.</p>')
+        + '<div class="detail-actions"><button type="button" class="button" data-workbench-connections>보관할 업무 선택</button><a class="button" href="#search">이전 대화 검색</a><a class="button" href="#connection-settings" data-open-connection-settings>연결 설정</a></div>';
     } else if (this.room === 'pantry') {
       content = '<div class="room-section-label">사무실 소식</div>' + (this.state.events.slice(0, 6).map((event) => `<div class="room-news"><p>${esc(event.message)}</p><time>${displayTime(event.createdAt)}</time></div>`).join('') || '<p class="room-empty">아직 등록된 소식이 없습니다.</p>');
     }
@@ -203,7 +216,7 @@ export class OfficeWorkspace {
     const list = this.find('#room-content');
     if (list.dataset.signature !== content) {
       const focus = document.activeElement;
-      const key = focus?.closest('#room-content') ? ['workspaceTask', 'workspaceSession', 'agent'].find((name) => focus.dataset[name]) : null;
+      const key = focus?.closest('#room-content') ? ['workspaceTask', 'workspaceSession', 'agent', 'statAgent', 'archiveAgent', 'archiveSession'].find((name) => focus.dataset[name]) : null;
       const value = key && focus.dataset[key];
       const scroll = list.scrollTop;
       list.innerHTML = content;
@@ -242,7 +255,8 @@ export class OfficeWorkspace {
       this.find('#report-next').textContent = task.status === 'waiting_input' ? '대표이사실에서 질문 발표 · Commander 답변 대기' : task.status === 'waiting_approval' ? '대표이사실에서 결과 검토 후 승인' : task.status === 'completed' ? 'Commander 승인 완료' : statusLabel(task.status);
       const form = this.find('#report-answer-form');
       form.hidden = task.status !== 'waiting_input';
-      if (form.dataset.taskId !== task.id || task.status !== 'waiting_input') this.find('#report-answer').value = '';
+      if (form.dataset.taskId !== task.id) this.find('#report-answer').value = this.answerDrafts.get(task.id) || '';
+      if (['waiting_approval', 'completed', 'cancelled', 'failed'].includes(task.status)) { this.find('#report-answer').value = ''; this.answerDrafts.delete(task.id); }
       form.dataset.taskId = task.id;
       this.find('#report-answer').disabled = !this.connected || this.pending || this.state.office.paused;
       this.find('#report-answer-submit').disabled = !this.connected || this.pending || this.state.office.paused;

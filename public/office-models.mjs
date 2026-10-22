@@ -241,6 +241,7 @@ function architecture(scene, floor) {
     glassLine(node, room.left, room.right, room.doorZ, false, room.x, room.id === 'office' || room.id === 'lounge' ? 1.35 : 2.9);
     guide(guides, { x: room.x, z: CORRIDOR_Z }, { x: room.x, z: room.z });
   }
+  if (floor === 1) glassLine(node, back + .2, 3.6, -3.45, true);
   if (floor < 3) glassLine(node, back + .2, 3.6, BUILDING.split, true);
   if (floor === 2) {
     for (const z of DESK_Z.map((v) => v + 2.1)) guide(guides, { x: -9.8, z }, { x: 1.85, z });
@@ -271,16 +272,19 @@ function furnish(node, floor) {
     return;
   }
   if (floor === 1) {
-    rounded(node, 0x354a4b, 9.6, .025, 7.4, -4.4, .047, -4.3, .8);
-    sofa(node, -5.6, -6.6, 4.5, 0, 0x557a6e); sofa(node, -8.8, -4.2, 3.1, Math.PI / 2, 0x8a7966);
-    sofa(node, -.4, -4.2, 3.1, -Math.PI / 2, 0x8a7966);
-    rounded(node, colors.walnut, 2.7, .13, 1.35, -4.5, .55, -3.8, .25);
-    cylinder(node, colors.charcoal, .18, .5, [-4.5, .27, -3.8]);
-    box(node, 0xd6c4a1, [.7, .06, .5], [-4.8, .65, -3.8]); plant(node, -4, -3.8, .4);
-    bookshelf(node, -5.2, -9.12, 4); lamp(node, -9.5, -7.5); plant(node, 2.5, -8.4, 1.7);
-    rounded(node, colors.walnut, 4.2, 1.05, 1.25, -6.4, .56, 1.1, .15);
-    rounded(node, colors.oak, 4.4, .11, 1.4, -6.4, 1.13, 1.1, .1);
-    box(node, 0x667e89, [.9, .55, .08], [-6.7, 1.46, .9]); plant(node, -8, 1.2, .55);
+    // Separate archive shelving and lounge, both opening onto the corridor.
+    for (const x of [-8.8, -5.1]) {
+      bookshelf(node, x, -8.9, 2.8);
+      for (const z of [-5.7, -2.4]) {
+        box(node, colors.charcoal, [2.5, .12, 1.1], [x, .5, z]);
+        for (const dx of [-.7, .65]) box(node, 0xb99968, [1.05, .8, .85], [x + dx, .96, z]);
+      }
+    }
+    rounded(node, 0x354a4b, 5.8, .025, 8.4, .1, .047, -3.8, .3);
+    sofa(node, .1, -6.6, 4.5, 0, 0x557a6e);
+    rounded(node, colors.walnut, 2.7, .13, 1.35, .1, .55, -3.8, .25);
+    cylinder(node, colors.charcoal, .18, .5, [.1, .27, -3.8]);
+    bookshelf(node, .1, -9.12, 4); plant(node, 2.5, -.6, 1.3);
     rounded(node, 0xb4af96, 8.7, .025, 11.8, 8.4, .047, -3, .1);
     box(node, 0x53695c, [7.2, 1, .9], [8.3, .55, -8.4]); box(node, 0xd8c6a2, [7.4, .12, 1.05], [8.3, 1.1, -8.4]);
     box(node, 0x253342, [.95, .85, .7], [5.6, 1.6, -8.3]); box(node, 0x92adad, [.65, .23, .04], [5.6, 1.8, -7.93]);

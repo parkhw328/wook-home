@@ -10,13 +10,14 @@ export const MEETING_CENTER = Object.freeze({ x: 8.4, z: -3 });
 export const FLOORS = Object.freeze([
   { id: 3, title: '대표이사실', description: '질문 · 발표 · 업무보고' },
   { id: 2, title: '워크스페이스', description: '사무실 · 유리 회의실' },
-  { id: 1, title: '라운지', description: '휴게실 · 다과실 · 로비' },
+  { id: 1, title: '라운지', description: '창고 · 휴게실 · 다과실' },
 ]);
 export const ROOMS = Object.freeze([
   { id: 'office', name: '사무실', number: '201', floor: 2, subtitle: '업무 · CLI 세션', description: '동료의 책상에서 업무를 맡기고, CLI 대화를 이어서 확인하세요.', x: 1.85, z: 2.9, doorZ: 3.6, left: -10.5, right: 3.55 },
   { id: 'meeting', name: '회의실', number: '202', floor: 2, subtitle: '세션 협업 · 논의', description: '협업한 동료와 세션을 확인하고 관련 대화를 살펴보세요.', x: 8.5, z: 2.9, doorZ: 3.6, left: 3.75, right: 13.05 },
   { id: 'executive', name: '대표이사실', number: '301', floor: 3, subtitle: '질문 · 발표 · 승인', description: 'Commander에게 하는 질문과 발표를 확인하고, 업무 결과를 검토하세요.', x: 1.85, z: 2.9, doorZ: 3.6, left: -10.5, right: 13.05 },
-  { id: 'lounge', name: '휴게실', number: '101', floor: 1, subtitle: '휴식 · 대기', description: '업무를 기다리는 동료가 모이는 공간입니다. 입장과 퇴실은 실제 실행을 바꾸지 않습니다.', x: .8, z: 2.9, doorZ: 3.6, left: -10.5, right: 3.55 },
+  { id: 'lounge', name: '휴게실', number: '101', floor: 1, subtitle: '휴식 · 대기', description: '업무를 기다리는 동료가 모이는 공간입니다. 입장과 퇴실은 실제 실행을 바꾸지 않습니다.', x: .8, z: 2.9, doorZ: 3.6, left: -3.35, right: 3.55 },
+  { id: 'warehouse', name: '창고', number: '103', floor: 1, subtitle: '업무 보관 · 다시 연결', description: '보관한 업무와 연결 확인이 필요한 동료를 관리하세요. 복귀는 실제 세션 재개나 지시 재전송이 아닙니다.', x: -6.8, z: 2.9, doorZ: 3.6, left: -10.5, right: -3.55 },
   { id: 'pantry', name: '다과실', number: '102', floor: 1, subtitle: '커피 · 사무실 소식', description: '잠시 쉬어 가며 사무실의 최근 소식을 확인하세요.', x: 8.5, z: 2.9, doorZ: 3.6, left: 3.75, right: 13.05 },
 ]);
 export function hallForFloor(floor = 1) {
@@ -50,6 +51,7 @@ export function roomTasks(roomId, tasks) {
   return [];
 }
 export function occupantRoom(occupant) {
+  if (occupant.workArchive?.stored || ['disconnected', 'interrupted'].includes(occupant.status) || ['missing', 'ended', 'not_connected'].includes(occupant.connection?.status)) return 'warehouse';
   if (['meeting', 'executive'].includes(occupant.sceneActivity?.room)) return occupant.sceneActivity.room;
   if (occupant.source === 'session') return 'office';
   if (['waiting_input', 'waiting_approval'].includes(occupant.status)) return 'executive';

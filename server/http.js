@@ -55,7 +55,7 @@ export function createHttpServer(office, { publicDir = resolve('public'), bridge
   const root = resolve(publicDir);
   const observer = createSessionObserver({ file: bridgeFile, clock });
   const settings = createBridgeSettings({ directory: commandsDir, observer });
-  const commands = createLocalCommands({ directory: commandsDir, observer, office, clock });
+  const commands = createLocalCommands({ directory: commandsDir, observer, office, clock, isArchivedSession: (id) => staff.isArchivedSession(id) });
   const discovery = createDiscovery({ observer, clock });
   const connections = createConnections({ observer, discovery, clock });
   const staff = createStaffConnections({ office, discovery, observer });
@@ -90,6 +90,10 @@ export function createHttpServer(office, { publicDir = resolve('public'), bridge
       if (method === 'GET' && path === '/api/handoff') return json(response, 200, office.handoff(), { 'Content-Disposition': 'attachment; filename="wook-home-handoff.json"' });
       if (method === 'POST' && path === '/api/agents') return json(response, 201, office.hire(await bodyOf(request)));
       if (method === 'POST' && path === '/api/agents/from-discovery') return json(response, 201, staff.hire(await bodyOf(request)));
+      const agentArchive = /^\/api\/agents\/([a-f0-9-]{36})\/archive$/.exec(path);
+      if (method === 'PUT' && agentArchive) return json(response, 200, staff.archive(agentArchive[1], await bodyOf(request)));
+      const sessionArchive = /^\/api\/local-sessions\/([a-f0-9-]{36})\/archive$/.exec(path);
+      if (method === 'POST' && sessionArchive) return json(response, 201, staff.archiveSession(sessionArchive[1], await bodyOf(request)));
       const agentConnection = /^\/api\/agents\/([a-f0-9-]{36})\/connection$/.exec(path);
       if (method === 'PUT' && agentConnection) return json(response, 200, staff.connect(agentConnection[1], await bodyOf(request)));
       if (method === 'DELETE' && agentConnection) return json(response, 200, staff.disconnect(agentConnection[1]));

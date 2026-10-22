@@ -168,7 +168,7 @@ function renderCharacters() {
     used[room] = (used[room] || 0) + 1;
     return used[room] <= (room === 'office' ? 8 : ['meeting', 'executive'].includes(room) ? 4 : 2);
   }).slice(0, 16);
-  const signature = JSON.stringify([displayed.map(({ id, source, status, name, sceneActivity }) => ({ id, source, status, name, sceneActivity })), connected, state.office.paused]);
+  const signature = JSON.stringify([displayed.map(({ id, source, status, name, sceneActivity, workArchive, connection }) => ({ id, source, status, name, sceneActivity, workArchive, connection })), connected, state.office.paused]);
   $('#office-scene').classList.toggle('motion-disabled', !motionEnabled);
   $('#scene-empty').hidden = occupants.length > 0;
   $('#office-meta').textContent = `${state.localSessions?.sessions?.length || 0} CLI · ${state.agents.length} 직원${occupants.length > displayed.length ? ` · 화면 ${displayed.length}명 표시` : ''}`;
@@ -216,7 +216,7 @@ function renderSessions() {
     sessionsSignature = signature;
     $('#session-list').innerHTML = sessions.length ? sessions.map((session) => {
     const status = observedSessionStatus(local, session, connected);
-    return `<button type="button" class="session-card" aria-haspopup="dialog" data-session="${esc(session.id)}"><span class="session-symbol" aria-hidden="true">&gt;_</span><span class="session-info"><strong>${esc(session.name)}</strong><small>Codex · ${local?.control?.enabled ? '지시 전송 연결됨' : '상태 관찰'}</small></span><span class="status ${statusClass(status)}">${sessionStatusLabel(status)}</span></button>`;
+    return `<button type="button" class="session-card" aria-haspopup="dialog" data-session="${esc(session.id)}"><span class="session-symbol" aria-hidden="true">&gt;_</span><span class="session-info"><strong>${esc(session.name)}</strong><small>Codex · ${!commandUnavailableReason(state, session.id, connected) ? '지시 전송 가능' : '대화 관찰 · 지시 조건 확인'}</small></span><span class="status ${statusClass(status)}">${sessionStatusLabel(status)}</span></button>`;
     }).join('') : observing
       ? emptyState('이 프로젝트에서 감지된 Codex 세션이 없습니다', '표시된 작업 폴더에서 Codex 새 대화를 시작하고 첫 메시지를 보내세요. 다음 갱신 때 다시 확인합니다.', 'activity')
       : emptyState('로컬 CLI의 상태를 연결하세요', '선택한 작업 공간의 Codex 세션을 연결하세요. 왼쪽 연결 설정에서 공개 대화 읽기를 켜고 저장하세요.', 'activity');
@@ -380,11 +380,11 @@ function closeModal() { modalLayer.close(); }
 
 function draftKey(form) { return `${form.id}:${form.dataset.id || ''}`; }
 function saveFormDraft() {
-  const form = body.querySelector('#hire-form, #edit-agent-form, #new-task-form');
+  const form = body.querySelector('#hire-form, #edit-agent-form, #new-task-form, #archive-form');
   if (form && !form.dataset.saved) formDrafts.set(draftKey(form), formValues(form));
 }
 function restoreFormDraft() {
-  const form = body.querySelector('#hire-form, #edit-agent-form, #new-task-form');
+  const form = body.querySelector('#hire-form, #edit-agent-form, #new-task-form, #archive-form');
   const values = form && formDrafts.get(draftKey(form));
   if (!values) return;
   for (const [name, value] of Object.entries(values)) {
@@ -451,7 +451,7 @@ async function mutate(path, payload, successMessage, method = 'POST', after) {
   updateControls();
   let keepEditing = false;
   let newerDraft = false;
-  if (originForm && ['hire-form', 'edit-agent-form', 'new-task-form'].includes(originForm.id)) {
+  if (originForm && ['hire-form', 'edit-agent-form', 'new-task-form', 'archive-form'].includes(originForm.id)) {
     const currentForm = body.querySelector('form');
     const sameForm = currentForm && draftKey(currentForm) === draftKey(originForm);
     keepEditing = sameForm && !sameDraft(formValues(currentForm), submittedDraft);
@@ -499,6 +499,18 @@ function commandPanel(id, title = '모델 설정과 작업 지시') {
     <form id="session-command-form" class="form-stack" data-id="${esc(id)}">${executionFields()}<div class="form-field"><label for="session-command">전달할 지시</label><textarea id="session-command" name="content" rows="5" maxlength="4000" required placeholder="이 직원에게 맡길 작업과 원하는 결과를 적어 주세요.">${esc(draft)}</textarea></div>${errorSlot()}<div class="form-actions"><button class="button button-primary" type="submit" id="send-command">지시 보내기</button></div></form><div id="command-receipt" role="status" aria-live="polite"></div></section>`;
 }
 
+function openWorkConnections() {
+  openModal('업무와 연결 선택', '대화 · 지시 · 보관', `<p class="field-help">공개 대화와 후속 지시는 CLI 대화를 선택하세요. 직원 상세에서 보관·복귀·재연결할 수 있습니다. CLI의 질문 답변·실행 승인은 원래 CLI에서 처리합니다.</p>${state.agents.map((agent) => `<button type="button" class="room-entry" data-stat-agent="${esc(agent.id)}"><strong>${esc(agent.name)}</strong><span>${agent.workArchive?.stored ? '창고 보관' : esc(connectionSummary(agent, state.providers.find((p) => p.id === agent.provider)))}</span></button>`).join('')}${orderedLocalSessions(state.localSessions).map((session) => `<div class="room-news"><strong>${esc(session.name)}</strong><div class="detail-actions"><button type="button" class="button" data-session="${esc(session.id)}">대화 보기</button><button type="button" class="button" data-session-command="${esc(session.id)}">지시 · 접수 확인</button><button type="button" class="button" data-archive-session="${esc(session.id)}">업무 보관</button></div></div>`).join('') || '<p>관찰 중인 CLI 대화가 없습니다. 연결 설정 또는 이전 대화 검색을 확인해 주세요.</p>'}<div class="detail-actions"><button type="button" class="button" data-open-staff-connection>직원 다시 연결</button><a class="button" href="#connection-settings" data-open-connection-settings>연결 설정</a><a class="button" href="#search">이전 대화 검색</a></div>`, { type: 'work-connections' });
+}
+
+function openArchive(id, session = false) {
+  const owner = session && state.agents.find((agent) => agent.connection?.sessionId === id);
+  if (owner) return openArchive(owner.id);
+  const item = session ? state.localSessions?.sessions?.find((item) => item.id === id) : state.agents.find((item) => item.id === id);
+  if (!item || item.provider === 'demo') return;
+  openModal(`${item.name} · 업무 보관`, '창고 · 다음 행동', `<p class="field-help">${session ? '이 CLI 기록을 직원 업무로 등록해 보관합니다. ' : ''}보관 메모는 이 PC에만 저장하며 인계 내보내기에 포함하지 않습니다. 실제 CLI를 종료하거나 복원하지 않으며 복귀·재연결 후에도 지시는 직접 작성해야 합니다.</p><form id="archive-form" class="form-stack" data-id="${esc(id)}" data-session="${session}"><input type="hidden" name="settingsRevision" value="${item.settingsRevision || 0}"><label for="archive-note">완료한 일 · 남은 일 · 다음 행동</label><textarea id="archive-note" name="note" rows="6" maxlength="4000" placeholder="다음 세션에서 이어갈 업무를 적어 주세요.">${esc(item.workArchive?.note || '')}</textarea>${errorSlot()}${!session ? `<button type="button" class="button" data-refresh-archive="${esc(id)}">충돌 시 최신 버전 확인 · 메모 유지</button>` : ''}<div class="form-actions"><button type="button" class="button" data-close>닫기</button>${item.workArchive?.stored ? '<button type="submit" class="button" value="restore" data-mutation>메모 저장 · 사무실로 복귀</button>' : ''}<button type="submit" class="button button-primary" value="store" data-mutation>창고에 보관 · 메모 저장</button></div></form>`, { type: 'archive', id });
+}
+
 function openAgent(id) {
   const agent = state.agents.find((item) => item.id === id);
   if (!agent) return;
@@ -511,7 +523,7 @@ function openAgent(id) {
   const execution = demo ? `<p class="field-help">체험용 직원에게 업무를 맡겨 질문과 승인 흐름을 확인하세요.</p><button type="button" class="button button-primary" data-new-task="${esc(id)}" data-mutation data-blocked="${Boolean(reason)}" ${reason ? 'disabled' : ''}>업무 지시</button>${reason ? `<p class="field-help">${esc(reason)}</p>` : ''}`
     : sessionId ? commandPanel(sessionId)
       : `<section class="command-section"><h3>모델 설정과 작업 지시</h3><p class="field-help">${agent.provider === 'openai' ? '지시를 받을 Codex 대화를 연결하면 추론 모델·강도 선택과 작업 지시를 여기서 사용할 수 있습니다. 프로세스나 웹 탭 감지만으로는 지시할 대화를 정할 수 없습니다.' : '현재 이 연결은 관찰 전용입니다. 모델·추론 강도 선택과 지시 전송은 원래 CLI 또는 웹 서비스에서 진행해 주세요. 사무실의 직접 지시는 Codex 대화 연결에서 지원합니다.'}</p>${agent.provider === 'openai' ? `<button type="button" class="button button-primary" data-connect-command-agent="${esc(id)}">지시할 Codex 대화 연결</button>` : ''}</section>`;
-  openModal(agent.name, 'MEET YOUR TEAMMATE', `<div class="detail-heading">${avatar(agent)}<div><h3>${esc(agent.role)}</h3><p>${esc(provider?.name || agent.provider)}${demo ? ' · 체험용 직원' : ''}</p></div>${badge(agent.status)}</div><dl class="detail-facts"><div><dt>담당 프로젝트</dt><dd>${esc(agent.projectName || '미배정')}</dd></div><div><dt>CLI 작업 프로젝트</dt><dd>${esc(observedProject(agent, state.localSessions) || '확인된 CLI 대화 없음')}${agent.connection?.status === 'disconnected' ? ' · 마지막 관찰' : ''}</dd></div>${!demo ? `<div><dt>저장한 기본 추론 설정</dt><dd>${esc(preferenceSummary(agent))}</dd></div>` : ''}<div><dt>실행 위치</dt><dd>${esc(connectionLocation(agent))}</dd></div><div><dt>연결 상태</dt><dd>${esc(connectionSummary(agent, provider))}</dd></div><div><dt>${demo ? '모델' : '최근 실행 모델'}</dt><dd id="agent-observed-model">${esc(session?.model || agent.model || '최근 실행 기록 없음')}</dd></div><div><dt>최근 추론 강도</dt><dd id="agent-observed-effort">${esc(session?.reasoningEffort ? effortLabel(session.reasoningEffort) : agent.reasoningEffort === 'none' ? '해당 없음' : '최근 실행 기록 없음')}</dd></div></dl>${connectionMarkup(agent, provider)}<div class="detail-actions"><button type="button" class="button" data-edit-agent="${esc(id)}" data-mutation>프로젝트 · 추론 설정</button></div>${execution}${demo ? `<h3 class="detail-section-title">이 직원의 업무</h3>${tasks.length ? tasks.slice(0, 8).map(taskRow).join('') : emptyState('아직 맡은 업무가 없어요', '업무를 지시하면 진행 내용을 이곳에서 확인할 수 있습니다.')}` : ''}`, { type: 'agent', id, signature: agentSignature(id) });
+  openModal(agent.name, 'MEET YOUR TEAMMATE', `<div class="detail-heading">${avatar(agent)}<div><h3>${esc(agent.role)}</h3><p>${esc(provider?.name || agent.provider)}${demo ? ' · 체험용 직원' : ''}</p></div>${badge(agent.status)}</div><dl class="detail-facts"><div><dt>담당 프로젝트</dt><dd>${esc(agent.projectName || '미배정')}</dd></div><div><dt>CLI 작업 프로젝트</dt><dd>${esc(observedProject(agent, state.localSessions) || '확인된 CLI 대화 없음')}${agent.connection?.status === 'disconnected' ? ' · 마지막 관찰' : ''}</dd></div>${!demo ? `<div><dt>저장한 기본 추론 설정</dt><dd>${esc(preferenceSummary(agent))}</dd></div>` : ''}<div><dt>실행 위치</dt><dd>${esc(connectionLocation(agent))}</dd></div><div><dt>연결 상태</dt><dd>${esc(connectionSummary(agent, provider))}</dd></div><div><dt>${demo ? '모델' : '최근 실행 모델'}</dt><dd id="agent-observed-model">${esc(session?.model || agent.model || '최근 실행 기록 없음')}</dd></div><div><dt>최근 추론 강도</dt><dd id="agent-observed-effort">${esc(session?.reasoningEffort ? effortLabel(session.reasoningEffort) : agent.reasoningEffort === 'none' ? '해당 없음' : '최근 실행 기록 없음')}</dd></div></dl>${connectionMarkup(agent, provider)}${!demo ? `<p class="field-help">${agent.workArchive?.stored ? '창고 보관 중 · 복귀 후 새 지시를 작성하세요.' : '업무를 보관하면 창고에서 다시 찾을 수 있습니다.'}</p><button type="button" class="button" data-archive-agent="${esc(id)}">보관 · 복귀 · 메모</button>` : ''}<div class="detail-actions"><button type="button" class="button" data-edit-agent="${esc(id)}" data-mutation>프로젝트 · 추론 설정</button></div>${execution}${demo ? `<h3 class="detail-section-title">이 직원의 업무</h3>${tasks.length ? tasks.slice(0, 8).map(taskRow).join('') : emptyState('아직 맡은 업무가 없어요', '업무를 지시하면 진행 내용을 이곳에서 확인할 수 있습니다.')}` : ''}`, { type: 'agent', id, signature: agentSignature(id) });
   renderSessionCommand();
 }
 
@@ -741,6 +753,19 @@ document.addEventListener('click', (event) => {
   const button = event.target.closest('button');
   if (!button || button.disabled) return;
   if (button.hasAttribute('data-close')) { closeModal(); return; }
+  if (button.hasAttribute('data-workbench-connections')) { openWorkConnections(); return; }
+  if (button.dataset.refreshArchive) {
+    const form = $('#archive-form', body);
+    void refresh(true).then(() => {
+      if (form?.isConnected && connected) {
+        form.elements.settingsRevision.value = String(state.agents.find((agent) => agent.id === button.dataset.refreshArchive)?.settingsRevision ?? form.elements.settingsRevision.value);
+        toast('최신 버전을 확인했습니다. 작성한 메모를 검토한 뒤 저장해 주세요.');
+      }
+    });
+    return;
+  }
+  if (button.dataset.archiveAgent) { openArchive(button.dataset.archiveAgent); return; }
+  if (button.dataset.archiveSession) { openArchive(button.dataset.archiveSession, true); return; }
   if (button.dataset.officeStat) { openStatDetails(button.dataset.officeStat); return; }
   if (button.dataset.statAgent) { openAgent(button.dataset.statAgent); return; }
   if (button.hasAttribute('data-room-assign')) { openNewTask(); return; }
@@ -820,7 +845,13 @@ body.addEventListener('submit', (event) => {
   if (pending || !form.reportValidity()) return;
   const data = Object.fromEntries(new FormData(form));
   Object.keys(data).forEach((key) => { data[key] = data[key].trim(); });
-  if (form.id === 'session-command-form') {
+  if (form.id === 'archive-form') {
+    const isSession = form.dataset.session === 'true';
+    void mutate(isSession ? `/local-sessions/${encodeURIComponent(form.dataset.id)}/archive` : `/agents/${encodeURIComponent(form.dataset.id)}/archive`,
+      isSession ? { note: data.note } : { stored: event.submitter?.value !== 'restore', note: data.note, settingsRevision: Number(data.settingsRevision) },
+      event.submitter?.value === 'restore' ? '업무를 복귀했습니다. 실제 연결을 확인한 뒤 새 지시를 작성하세요.' : '업무와 메모를 창고에 보관했습니다.',
+      isSession ? 'POST' : 'PUT', (agent) => openAgent(agent.id));
+  } else if (form.id === 'session-command-form') {
     if (!data.content) { formError('전달할 지시를 입력해 주세요.'); return; }
     void sendSessionCommand(form.dataset.id, data.content);
   } else if (form.id === 'hire-form') {
