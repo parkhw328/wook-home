@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { chownSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createStore } from '../../server/store.js';
@@ -86,6 +86,29 @@ test('command API rejects stale bridges, unobserved sessions, paused offices and
   f.advance(21000);
   assert.equal((await f.submit(request)).status, 409);
   assert.deepEqual(readdirSync(f.directory), []);
+});
+
+test('atomic command receipts preserve the HTTP server owner and private permissions on Linux', { skip: process.platform !== 'linux' }, async (t) => {
+  const f = await fixture(t);
+  const request = { id: randomUUID(), content: 'private ownership check' };
+  await f.submit(request);
+  const file = join(f.directory, `${request.id}.json`);
+  if (process.getuid() === 0) chownSync(file, 1000, 1000);
+  const before = statSync(file);
+  const check = () => {
+    const after = statSync(file);
+    assert.equal(after.uid, before.uid);
+    assert.equal(after.gid, before.gid);
+    assert.equal(after.mode & 0o777, 0o600);
+    assert.doesNotMatch(readFileSync(file, 'utf8'), /private ownership check/);
+  };
+  const pump = createCommandPump({ ...f, getSessions: async () => f.snapshot.sessions, send: async () => {
+    check();
+    return { status: 'accepted', code: 'QUEUED' };
+  } });
+  await pump();
+  check();
+  assert.equal((await (await fetch(`${f.base}/api/local-commands/${request.id}`)).json()).status, 'accepted');
 });
 
 test('invalid or extended command input cannot become CLI arguments', async (t) => {

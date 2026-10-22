@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { access, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { access, chown, lstat, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { delimiter, extname, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { commandId, readCommand } from '../../server/local-commands.js';
@@ -51,9 +51,15 @@ export async function sendToCodex(cli, sessionId, content, workspace, remote, re
 export function createCommandPump({ directory, bridgeId, getSessions, send, shouldStop = () => false, clock = Date.now }) {
   let busy = false;
   const save = async (value) => {
+    const destination = join(directory, `${value.id}.json`);
+    const ownership = await lstat(destination);
+    if (!ownership.isFile()) throw new Error('Command receipt is not a regular file.');
     const temporary = join(directory, `${value.id}.${process.pid}.tmp`);
     await writeFile(temporary, JSON.stringify(value) + '\n', { mode: 0o600 });
-    await rename(temporary, join(directory, `${value.id}.json`));
+    // A Linux host may run as root while Docker writes requests as uid 1000.
+    // Retain the request owner so the API can still read its private receipt.
+    if (process.platform !== 'win32') await chown(temporary, ownership.uid, ownership.gid);
+    await rename(temporary, destination);
   };
   return async function pump() {
     if (busy) return;
