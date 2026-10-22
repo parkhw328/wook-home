@@ -84,3 +84,18 @@ node --test tests/server/*.test.js tests/ui/*.test.mjs tests/extension/*.test.mj
 `server/execution-options.js`는 공개 모델 목록을 제한·검증하고, `scripts/lib/codex-control.mjs`는 공식 proxy 또는 호스트에 지정한 원격 엔드포인트에 연결한다. 모델 선택 시 설정 변경 확인 후 큐에 넣는다. `codex queue -m/-c`는 0.163.0에서 큐 요청에 모델 설정을 포함하지 않으므로 이 용도로 사용하지 않는다. 승인·샌드박스·작업 폴더·협업 모드를 덮어쓰지 않는다.
 
 검증 명령: `node --test tests/server/execution.test.js tests/server/commands.test.js tests/ui/execution.test.mjs`. [모델 API 계약과 검증 범위](execution-controls.md), [사용 안내](wiki/Models.md).
+
+## 상세창·HTTP 보관 브라우저 회귀 검증
+
+공통 닫기·초점 복귀는 `public/dialog-layer.mjs`, 고정 헤더와 스크롤은 `public/dialog-layer.css`에서 관리합니다. 새 상세창은 이 관리자를 사용하고 비동기 읽기를 닫기 시 정리합니다. HTTP에서도 사용할 식별자는 `browser-id.mjs`, 직접 보관의 본문 해시는 서버가 담당합니다.
+
+`npm test`는 유지관리하는 server/ui/extension 세 테스트 경로만 실행하고 로컬 참고·백업 사본을 탐색하지 않습니다. 레이어 전환·늦은 응답·UUID 대체 경로·명시적 보관의 입력 검증·마스킹·중복 방지를 포함합니다. 실제 화면 회귀는 Python 3과 Playwright/Chromium이 설치된 별도 검증 환경에서 실행합니다. 준비가 필요하면 가상 환경에 `python -m pip install playwright`와 `python -m playwright install chromium`을 실행합니다.
+
+```bash
+# 첫 터미널: 메모리 DB·합성 대화만 사용하는 격리 서버
+node tests/browser/layer-preview.mjs
+# 다른 터미널
+python tests/browser/layers.py
+```
+
+포트 기본값은 18084이며 양쪽 명령에 `LAYER_TEST_PORT`로 바꿀 수 있습니다. 검증 서버는 실제 사용자 데이터·연결기·AI를 사용하지 않습니다. HTTP 검증의 `office.test`는 Chromium 내부에서만 loopback으로 연결합니다. 실서버에 이 테스트를 실행하지 않습니다. 두 테마·320/390/768/1366/1920px·실제 200% 브라우저 확대, 닫기·초점·초안·전체화면, 저장 도중 닫기와 HTTP 보관을 검사하고 `artifacts/layer-audit/`에 로컬 결과를 남깁니다. 검증 서버는 Ctrl+C로 종료합니다. [검증 범위](layer-audit-validation.md).

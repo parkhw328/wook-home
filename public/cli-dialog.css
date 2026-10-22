@@ -1,7 +1,3 @@
-html:has(dialog[open]) { overflow: hidden; }
-.cli-conversation-dialog { width: min(1120px, calc(100% - 32px)); max-width: none; max-height: calc(100dvh - 32px); border: 1px solid var(--line); border-radius: 16px; padding: 24px; background: var(--surface); color: var(--ink); }
-.cli-conversation-dialog::backdrop { background: var(--backdrop); }
-.cli-conversation-dialog[open] { display: grid; grid-template-rows: auto auto auto auto minmax(100px, 1fr) auto; height: min(900px, calc(100dvh - 32px)); overflow: hidden; }
 .cli-dialog-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
 .cli-dialog-header > div { min-width: 0; }
 .cli-dialog-header h2 { overflow-wrap: anywhere; }
@@ -20,8 +16,6 @@ html:has(dialog[open]) { overflow: hidden; }
 .cli-dialog-log .terminal-limit { color: var(--muted); }
 .cli-conversation-dialog footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-top: 12px; font-size: var(--font-caption); }
 @media (max-width: 650px) {
-  .cli-conversation-dialog { width: calc(100% - 16px); max-height: calc(100dvh - 16px); padding: 16px; }
-  .cli-conversation-dialog[open] { height: calc(100dvh - 16px); }
   .cli-dialog-header { gap: 10px; }
   .cli-dialog-header > button { padding: 10px 8px; }
   .cli-dialog-controls { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
@@ -31,4 +25,3 @@ html:has(dialog[open]) { overflow: hidden; }
   .cli-dialog-actions .button { flex: 1 1 auto; }
   .cli-dialog-log { padding: 12px; }
 }
-@media (max-height: 650px) { .cli-conversation-dialog[open] { display: block; overflow-y: auto; } .cli-dialog-header { position: sticky; top: -1px; z-index: 1; background: var(--surface); padding-bottom: 10px; } .cli-dialog-log { height: 250px; } }

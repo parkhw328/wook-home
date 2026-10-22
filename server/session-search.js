@@ -169,8 +169,18 @@ export function createSessionSearch({ directory, bridgeFile, observer, clock = D
       db.prepare("INSERT INTO search_settings VALUES ('web_enabled',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(String(input.webEnabled));
       return { webEnabled: input.webEnabled };
     },
-    receiveWeb(input) {
-      if (!webEnabled()) throw new ApiError(409, 'SEARCH_CAPTURE_DISABLED', '웹 검색 보관을 먼저 켜 주세요.');
+    importWeb(input) {
+      if (!input || !['user', 'assistant'].includes(input.role) || typeof input.content !== 'string'
+        || !input.content.trim() || input.content.length > 20000 || !publicDialogue(input.content)) throw invalid();
+      const provider = providers.find((candidate) => canonicalConversation(candidate, input.url));
+      if (!provider) throw new ApiError(400, 'INVALID_CONVERSATION_URL', 'ChatGPT·Claude·Gemini·Meta AI의 개별 대화 주소를 입력해 주세요. 서비스 첫 화면 주소는 보관할 수 없습니다.');
+      // Only this explicit, bounded paste action bypasses automatic capture's switch.
+      // Compute the deduplication key here: Web Crypto digest is unavailable on LAN HTTP.
+      return this.receiveWeb({ clientId: input.clientId, sessions: [{ provider, url: input.url, observation: 'closed',
+        messages: [{ key: hash(`${input.role}:${input.content}`), role: input.role, content: input.content }] }] }, true);
+    },
+    receiveWeb(input, explicitImport = false) {
+      if (!explicitImport && !webEnabled()) throw new ApiError(409, 'SEARCH_CAPTURE_DISABLED', '웹 검색 보관을 먼저 켜 주세요.');
       if (!input || !/^[a-f0-9-]{36}$/.test(input.clientId) || !Array.isArray(input.sessions) || input.sessions.length > 50) throw invalid();
       // Validate the complete batch before making any mutation.
       const records = input.sessions.map((entry) => {

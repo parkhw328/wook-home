@@ -1,3 +1,4 @@
+import { DialogLayer } from './dialog-layer.mjs';
 import { ConversationReader, conversationMarkup } from './conversation.mjs';
 import { escapeHtml as esc, orderedLocalSessions, observedSessionStatus, sessionStatusLabel } from './model.mjs';
 
@@ -9,52 +10,48 @@ export class CliConversationDialog {
     this.dialog.id = 'cli-conversation-dialog';
     this.dialog.className = 'cli-conversation-dialog';
     this.dialog.setAttribute('aria-labelledby', 'cli-dialog-title');
-    this.dialog.innerHTML = `<header class="cli-dialog-header"><div><p class="eyebrow">CLI CONVERSATION</p><h2 id="cli-dialog-title">CLI 대화기록</h2><p id="cli-dialog-state"></p></div><button type="button" class="button" data-cli-close aria-label="CLI 대화기록 닫기">닫기 ×</button></header><div class="cli-dialog-controls"><label>세션<select id="cli-dialog-session"></select></label><label>대화에서 찾기<input type="search" id="cli-dialog-query" placeholder="검색어 입력" autocomplete="off"></label><label>작성자<select id="cli-dialog-role"><option value="all">모든 역할</option><option value="user">사용자</option><option value="assistant">에이전트</option></select></label></div><div class="cli-dialog-actions"><button type="button" class="button button-small" data-cli-latest>최신 기록 ↓</button><button type="button" class="button button-small" data-cli-refresh>새로고침</button><button type="button" class="button button-primary button-small" data-cli-command>이 세션에 지시</button><button type="button" class="button button-small" data-cli-agent hidden>직원 정보</button><a class="button button-small" href="#search" data-cli-library>전체 자료 검색 ↗</a></div><p id="cli-dialog-notice" role="status"></p><a class="button button-small" href="#connection-settings" data-open-connection-settings data-cli-settings>대화 · 지시 설정</a><div id="cli-dialog-log" class="cli-dialog-log" tabindex="0" aria-label="CLI 공개 대화기록"></div><footer><span id="cli-dialog-scope"></span><a href="https://github.com/parkhw328/wook-home/wiki/CLI" target="_blank" rel="noopener noreferrer">연결 안내 ↗</a></footer>`;
+    this.dialog.innerHTML = `<header class="cli-dialog-header dialog-layer-header"><div><p class="eyebrow">CLI CONVERSATION</p><h2 id="cli-dialog-title">CLI 대화기록</h2></div><button type="button" class="button" data-cli-close data-layer-close aria-label="CLI 대화기록 닫기">닫기 ×</button></header><div class="dialog-layer-body"><p id="cli-dialog-state"></p><details class="cli-dialog-options"><summary>세션 · 검색 · 작성자 필터</summary><div class="cli-dialog-controls"><label>세션<select id="cli-dialog-session"></select></label><label>대화에서 찾기<input type="search" id="cli-dialog-query" placeholder="검색어 입력" autocomplete="off"></label><label>작성자<select id="cli-dialog-role"><option value="all">모든 역할</option><option value="user">사용자</option><option value="assistant">에이전트</option></select></label></div></details><div class="cli-dialog-actions"><button type="button" class="button button-small" data-cli-latest>최신 기록 ↓</button><button type="button" class="button button-small" data-cli-refresh>새로고침</button><button type="button" class="button button-primary button-small" data-cli-command>이 세션에 지시</button><button type="button" class="button button-small" data-cli-agent hidden>직원 정보</button></div><p id="cli-dialog-notice" role="status"></p><div id="cli-dialog-log" class="cli-dialog-log" tabindex="0" aria-label="CLI 공개 대화기록"></div><footer><span id="cli-dialog-scope"></span><span>창을 닫아도 CLI 작업은 계속됩니다.</span><a class="inline-link" href="#search" data-cli-library>전체 자료 검색 ↗</a><a class="inline-link" href="#connection-settings" data-open-connection-settings data-cli-settings>대화 · 지시 설정</a><a href="https://github.com/parkhw328/wook-home/wiki/CLI" target="_blank" rel="noopener noreferrer">연결 안내 ↗</a></footer></div>`;
     document.body.append(this.dialog);
     this.find = (selector) => this.dialog.querySelector(selector);
     this.reader = new ConversationReader(request, () => this.render());
-    this.find('[data-cli-close]').addEventListener('click', () => this.close());
+    this.find('.cli-dialog-options').open = !window.matchMedia('(max-width: 650px)').matches;
+    this.layer = new DialogLayer(this.dialog, { onClose: () => {
+      this.save(); clearInterval(this.timer); this.reader.select(null);
+    } });
     this.find('#cli-dialog-query').addEventListener('input', () => this.render(true));
     this.find('#cli-dialog-role').addEventListener('change', () => this.render(true));
     this.find('#cli-dialog-session').addEventListener('change', (event) => this.open(event.target.value));
     this.find('[data-cli-refresh]').addEventListener('click', () => this.reader.refresh());
     this.find('[data-cli-latest]').addEventListener('click', () => { const log = this.find('#cli-dialog-log'); log.scrollTop = log.scrollHeight; });
-    this.find('[data-cli-command]').addEventListener('click', () => { const id = this.id; this.close(); onCommand(id); });
-    this.find('[data-cli-agent]').addEventListener('click', () => { const id = this.agentId; this.close(); onAgent(id); });
-    this.find('[data-cli-library]').addEventListener('click', () => this.close());
-    this.find('[data-cli-settings]').addEventListener('click', () => this.close());
-    this.dialog.addEventListener('close', () => {
-      this.save(); clearInterval(this.timer); this.reader.select(null);
-      const target = this.returnFocus?.isConnected ? this.returnFocus : document.querySelector(`[data-session="${this.id}"], [data-workspace-session="${this.id}"]`);
-      target?.focus({ preventScroll: true });
-    });
+    this.find('[data-cli-command]').addEventListener('click', () => { onCommand(this.id); });
+    this.find('[data-cli-agent]').addEventListener('click', () => { onAgent(this.agentId); });
+
   }
 
   save() {
     if (this.id) this.drafts.set(this.id, { query: this.find('#cli-dialog-query').value, role: this.find('#cli-dialog-role').value,
-      scroll: this.find('#cli-dialog-log').scrollTop, data: this.reader.data });
+      scroll: this.find('#cli-dialog-log').scrollTop, bodyScroll: this.find('.dialog-layer-body').scrollTop, data: this.reader.data });
   }
 
   open(id) {
     if (!/^[a-f0-9-]{36}$/i.test(id)) return;
     if (this.dialog.open) this.save();
-    if (!this.dialog.open) this.returnFocus = document.activeElement;
     this.id = id;
     const saved = this.drafts.get(id);
     this.find('#cli-dialog-query').value = saved?.query || '';
     this.find('#cli-dialog-role').value = saved?.role || 'all';
     this.restoreScroll = saved?.scroll ?? null;
     this.find('#cli-dialog-log').dataset.signature = '';
-    if (!this.dialog.open) this.dialog.showModal();
+    this.layer.open();
     this.reader.select(id);
     if (saved?.data && !this.reader.data) this.reader.data = saved.data;
     this.render();
     clearInterval(this.timer);
     this.timer = setInterval(() => { this.update(); this.reader.refresh(); }, 5000);
-    this.find('#cli-dialog-query').focus({ preventScroll: true });
+    this.find('.dialog-layer-body').scrollTop = saved?.bodyScroll || 0;
   }
 
-  close() { this.dialog.close(); }
+  close() { this.layer.close(); }
   update() { if (this.dialog.open) this.render(); }
 
   render(reset = false) {
@@ -67,8 +64,7 @@ export class CliConversationDialog {
     const markup = options.map((item) => `<option value="${esc(item.id)}">${esc(item.name)}</option>`).join('');
     if (select.dataset.signature !== markup) { select.innerHTML = markup; select.dataset.signature = markup; }
     select.value = this.id;
-    this.find('#cli-dialog-title').textContent = session?.name || `Codex · ${this.id.slice(-4)}`;
-    this.find('#cli-dialog-state').textContent = `${state.localSessions?.workspace || '선택한 프로젝트'} · ${session ? sessionStatusLabel(observedSessionStatus(state.localSessions, session, connected)) : '현재 관찰 목록에서 벗어남'}`;
+    this.find('#cli-dialog-state').textContent = `${session?.name || `Codex · ${this.id.slice(-4)}`} · ${state.localSessions?.workspace || '선택한 프로젝트'} · ${session ? sessionStatusLabel(observedSessionStatus(state.localSessions, session, connected)) : '현재 관찰 목록에서 벗어남'}`;
     this.agentId = state.agents.find((agent) => agent.connection?.sessionId === this.id)?.id;
     this.find('[data-cli-agent]').hidden = !this.agentId;
     this.find('[data-cli-command]').disabled = !session || !connected;

@@ -1,3 +1,4 @@
+import { DialogLayer } from './dialog-layer.mjs';
 import { apiRequest } from './api.mjs';
 import { escapeHtml as esc, providerLinks } from './model.mjs';
 import { connectionBadge } from './connection-status.mjs';
@@ -52,7 +53,13 @@ function initialize() {
   document.body.append(dialog);
   let requestGeneration = 0;
   let pending = false;
-  let trigger = null;
+  const layer = new DialogLayer(dialog, { onClose: () => { requestGeneration += 1; saveDraft(); } });
+  const drafts = new Map();
+  let draftId = '';
+  function saveDraft() {
+    const form = find('#staff-connection-form');
+    if (form && !form.dataset.saved) drafts.set(draftId, Object.fromEntries([...form.elements].filter((field) => field.name).map((field) => [field.name, field.value])));
+  }
   let entries = [];
   let agents = [];
   let requestedAgent = null;
@@ -60,17 +67,21 @@ function initialize() {
 
   const find = (selector) => dialog.querySelector(selector);
   function frame(content) {
-    dialog.innerHTML = `<div class="modal-header"><div><p class="eyebrow">CLI · WEB</p><h2 id="staff-connection-title" tabindex="-1">직원 연결</h2></div><button type="button" class="button" data-staff-close aria-label="직원 연결 창 닫기">닫기</button></div>${content}`;
-    if (!dialog.open) dialog.showModal();
+    dialog.innerHTML = `<div class="modal-header dialog-layer-header"><div><p class="eyebrow">CLI · WEB</p><h2 id="staff-connection-title" tabindex="-1">직원 연결</h2></div><button type="button" class="button" data-staff-close data-layer-close aria-label="직원 연결 창 닫기">닫기 ×</button></div><div class="dialog-layer-body">${content}</div>`;
+    layer.open();
   }
   function error(message) {
     const element = find('#staff-error');
+    if (!element || !dialog.open) { document.dispatchEvent(new CustomEvent('office:notice', { detail: { message, error: true } })); return; }
     element.textContent = message;
     element.hidden = false;
   }
   function setPending(value) {
     pending = value;
-    for (const control of dialog.querySelectorAll('button, input, select')) control.disabled = value;
+    let notice = find('#staff-pending');
+    if (!notice && value) { notice = document.createElement('p'); notice.id = 'staff-pending'; notice.className = 'dialog-layer-busy'; notice.setAttribute('role', 'status'); find('.dialog-layer-body').prepend(notice); }
+    if (notice) { notice.hidden = !value; notice.textContent = '연결 정보를 저장하고 있습니다. 창을 닫아도 요청은 계속 처리됩니다.'; }
+    for (const control of dialog.querySelectorAll('button:not([data-layer-close]), input, select')) control.disabled = value;
   }
   function selectedEntry() { return entries.find((entry) => entry.id === find('#staff-entry')?.value); }
   function selectionChanged(preserveEmployee = true) {
@@ -96,7 +107,8 @@ function initialize() {
   async function open({ entryId, agentId, sessionOnly = false } = {}) {
     if (pending) return;
     const generation = ++requestGeneration;
-    if (!dialog.open) trigger = document.activeElement;
+    saveDraft();
+    draftId = `${agentId || ''}:${sessionOnly}:${entryId || ''}`;
     requestedAgent = null;
     sessionsOnly = sessionOnly;
     frame('<p role="status">직원과 감지 목록을 확인하고 있습니다.</p>');
@@ -120,8 +132,15 @@ function initialize() {
         <p class="field-help">공급자는 선택한 대상에 맞춰 지정합니다. 직원 이름·역할은 저장되며 서버 재시작 후 감지 연결은 다시 선택합니다.</p>
         <div id="staff-error" class="form-error" role="alert" hidden></div><div class="form-actions"><button type="button" class="button" data-staff-refresh>목록 새로고침</button><button type="submit" id="staff-submit" class="button button-primary">직원 등록하고 연결</button></div></form>`);
       find('#staff-entry').value = entryId || entries.find((entry) => entry.linkedAgentId === agentId)?.id || entries[0].id;
+      const draft = drafts.get(draftId);
+      if (entries.some((entry) => entry.id === draft?.entryId)) find('#staff-entry').value = draft.entryId;
       selectionChanged(false);
-      find('#staff-entry').focus();
+      if (draft) {
+        if ([...find('#staff-employee').options].some((option) => option.value === draft.agentId)) find('#staff-employee').value = draft.agentId;
+        selectionChanged();
+        find('#staff-name').value = draft.name || ''; find('#staff-role').value = draft.role || '';
+      }
+      find('#staff-entry').focus({ preventScroll: true });
     } catch (failure) {
       if (generation === requestGeneration && dialog.open) frame(`<p class="form-error" role="alert">${esc(failure.message)}</p><button type="button" class="button" data-staff-refresh>목록 다시 확인</button>`);
     }
@@ -129,13 +148,14 @@ function initialize() {
 
   async function disconnect(agentId) {
     if (pending) return;
-    trigger = document.activeElement;
-    frame('<p>직원 연결을 해제하고 있습니다.</p><div id="staff-error" class="form-error" role="alert" hidden></div>');
+    frame('<p role="status">직원 연결을 해제하고 있습니다. 창을 닫아도 요청은 계속 처리됩니다.</p><div id="staff-error" class="form-error" role="alert" hidden></div>');
+    const revision = layer.revision;
     setPending(true);
     try {
       await apiRequest(`/agents/${encodeURIComponent(agentId)}/connection`, { method: 'DELETE' });
-      dialog.close();
-      document.dispatchEvent(new CustomEvent('office:staff-changed', { detail: { agentId } }));
+      const showDetails = dialog.open && revision === layer.revision;
+      if (showDetails) layer.close({ restoreFocus: false });
+      document.dispatchEvent(new CustomEvent('office:staff-changed', { detail: { agentId, showDetails } }));
     } catch (failure) { error(failure.message); }
     finally { setPending(false); }
   }
@@ -146,13 +166,16 @@ function initialize() {
     const values = Object.fromEntries(new FormData(event.target));
     const entry = selectedEntry();
     if (!entry) return;
+    const revision = layer.revision;
     setPending(true);
     try {
       const result = await apiRequest(values.agentId ? `/agents/${encodeURIComponent(values.agentId)}/connection` : '/agents/from-discovery', {
         method: values.agentId ? 'PUT' : 'POST', body: values.agentId ? { entryId: entry.id } : { entryId: entry.id, name: values.name.trim(), role: values.role.trim() },
       });
-      dialog.close();
-      document.dispatchEvent(new CustomEvent('office:staff-changed', { detail: { agentId: result.id } }));
+      event.target.dataset.saved = 'true'; drafts.delete(draftId);
+      const showDetails = dialog.open && revision === layer.revision;
+      if (showDetails) layer.close({ restoreFocus: false });
+      document.dispatchEvent(new CustomEvent('office:staff-changed', { detail: { agentId: result.id, showDetails } }));
     } catch (failure) { error(failure.message); }
     finally { setPending(false); }
   });
@@ -161,11 +184,8 @@ function initialize() {
   });
   dialog.addEventListener('click', (event) => {
     if (pending) return;
-    if (event.target.closest('[data-staff-close]')) dialog.close();
     if (event.target.closest('[data-staff-refresh]')) void open({ agentId: requestedAgent?.id, sessionOnly: sessionsOnly });
   });
-  dialog.addEventListener('cancel', (event) => { if (pending) event.preventDefault(); });
-  dialog.addEventListener('close', () => { requestGeneration += 1; if (trigger?.isConnected) trigger.focus({ preventScroll: true }); });
   document.addEventListener('office:connect-entry', (event) => { void open({ entryId: event.detail?.entryId }); });
   document.addEventListener('click', (event) => {
     const button = event.target.closest('button');

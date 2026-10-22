@@ -1,6 +1,6 @@
 # Local session search API
 
-All routes enforce the existing loopback Host and same-origin checks, JSON bodies and `Cache-Control: no-store`. Search terms use POST bodies rather than URLs. Errors and logs never echo requests or provider data. `session-search.sqlite` is separate from office state and handoff.
+All routes enforce the existing loopback/explicitly allowed Host and same-origin checks, JSON bodies and `Cache-Control: no-store`. Search terms use POST bodies rather than URLs. Errors and logs never echo requests or provider data. `session-search.sqlite` is separate from office state and handoff.
 
 | Method / route | Contract |
 | --- | --- |
@@ -9,6 +9,8 @@ All routes enforce the existing loopback Host and same-origin checks, JSON bodie
 | POST `/api/search/query` | `{query?, source?, provider?, role?, state?, offset?}`. Literal NFKC/case-insensitive substring; up to 200 characters. Source cli/web; provider openai/claude/gemini/meta; role user/assistant; state current/stored. Empty values mean all. Returns total, offset, limit=30 and matching message snippets with session metadata. |
 | GET `/api/search/sessions/:id` | 64-character derived ID; returns bounded public messages in recorded order and session metadata. CLI restricted to the currently selected or last known workspace. |
 | POST `/api/search/web` | `{clientId, sessions:[{provider,url,observation,messages,truncated?}]}`. Enabled search capture required. Up to 50 selected conversations, 3MB body. Known HTTPS conversation routes only; queries/fragments discarded. Public message shape `{key: sha256,role,content,timestamp?,truncated?}`. All entries validated before mutation. Empty/partial browser windows retain earlier messages. |
+
+`POST /api/search/import` accepts `{clientId, url, role, content}` for an explicit pasted public message, with a 128 KiB JSON body limit and 20,000-character content limit. It works independently of `webEnabled` and never enables automatic capture. The server derives the provider from the validated HTTPS conversation URL and computes the SHA-256 message key; clients on LAN HTTP do not need `crypto.subtle`. Repeated identical content/role in the same client/conversation is idempotent. Only user/assistant roles and public dialogue are accepted; the existing secret/path redaction, canonical URL handling, storage bounds and handoff exclusions still apply. Invalid conversation addresses return `INVALID_CONVERSATION_URL` without echoing the input.
 
 CLI bridge flag `--include-search-history` publishes a schema-1 index and sanitized per-session files under `search-history/`. The server validates scope, derived keys, path format, file size and public roles before importing. Source logs remain host-only. Index reading is throttled; identical versions are not reimported. A changed workspace restricts searches to that workspace's CLI material. Web conversations are never inferred to belong to a local project.
 

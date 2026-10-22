@@ -76,6 +76,7 @@ export function createHttpServer(office, { publicDir = resolve('public'), bridge
       if (method === 'POST' && path === '/api/search/query') return json(response, 200, await search.query(await bodyOf(request)));
       if (method === 'PUT' && path === '/api/search/settings') return json(response, 200, search.configure(await bodyOf(request)));
       if (method === 'POST' && path === '/api/search/web') return json(response, 200, search.receiveWeb(await bodyOf(request, 3 * 1024 * 1024)));
+      if (method === 'POST' && path === '/api/search/import') return json(response, 200, search.importWeb(await bodyOf(request, 128 * 1024)));
       const searchSession = /^\/api\/search\/sessions\/([a-f0-9]{64})$/.exec(path);
       if (method === 'GET' && searchSession) return json(response, 200, await search.detail(searchSession[1]));
       if (method === 'GET' && path === '/api/connections') return json(response, 200, connections.snapshot());

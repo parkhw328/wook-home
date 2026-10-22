@@ -40,6 +40,7 @@ export function resultMarkup(item, query) {
 export class SearchRequest {
   generation = 0;
   controller;
+  cancel() { this.generation += 1; this.controller?.abort(); }
   async run(read) {
     const generation = ++this.generation;
     this.controller?.abort();

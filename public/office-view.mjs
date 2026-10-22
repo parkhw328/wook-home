@@ -23,7 +23,10 @@ export class OfficeViewControls {
     }, true);
     document.addEventListener('fullscreenchange', () => {
       if (document.fullscreenElement === root) this.setExpanded(true);
-      else if (this.nativeFullscreen) { this.nativeFullscreen = false; this.setExpanded(false); }
+      else if (this.nativeFullscreen) { this.nativeFullscreen = false; this.setExpanded(false, this.restoreFocusOnExit !== false); }
+    });
+    window.addEventListener('hashchange', () => {
+      if (this.expanded && ['#tasks', '#search', '#handoff', '#connection-settings'].includes(location.hash)) void this.leaveFullscreen({ restoreFocus: false });
     });
     this.refresh();
   }
@@ -37,18 +40,19 @@ export class OfficeViewControls {
     this.root.querySelector('#scene-legend').hidden = !this.scene.pathsVisible;
   }
 
-  setExpanded(value) {
+  setExpanded(value, restoreFocus = true) {
     this.expanded = value;
     this.root.classList.toggle('is-expanded', value);
     document.body.classList.toggle('office-expanded', value);
     this.fullscreen.setAttribute('aria-pressed', String(value));
     this.fullscreen.querySelector('span').textContent = value ? '전체화면 닫기' : '전체화면';
     this.announcement.textContent = value ? '사무실 전체화면. Escape 또는 전체화면 닫기로 돌아갑니다.' : '일반 화면으로 돌아왔습니다. 선택한 방과 대화는 유지됩니다.';
-    if (!value) this.fullscreen.focus({ preventScroll: true });
+    if (!value && restoreFocus && !document.querySelector('dialog[open]') && !this.root.closest('[hidden]')) this.fullscreen.focus({ preventScroll: true });
   }
 
   async toggleFullscreen() {
     if (this.expanded) return this.leaveFullscreen();
+    this.restoreFocusOnExit = true;
     this.setExpanded(true);
     if (this.root.requestFullscreen && document.fullscreenEnabled) {
       this.nativeFullscreen = true;
@@ -57,12 +61,13 @@ export class OfficeViewControls {
     }
   }
 
-  async leaveFullscreen() {
+  async leaveFullscreen({ restoreFocus = true } = {}) {
+    this.restoreFocusOnExit = restoreFocus;
     if (document.fullscreenElement === this.root) {
       try { await document.exitFullscreen(); }
       catch { return; }
     }
     this.nativeFullscreen = false;
-    this.setExpanded(false);
+    this.setExpanded(false, restoreFocus);
   }
 }

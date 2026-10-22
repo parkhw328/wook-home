@@ -1,3 +1,4 @@
+import { browserId, localExtensionAvailable } from './browser-id.mjs';
 import { apiRequest } from './api.mjs';
 import { escapeHtml as esc, sessionStatusLabel, displayTime } from './model.mjs';
 import './staff-connections.mjs';
@@ -190,7 +191,7 @@ function initialize() {
 
   function extensionSnapshot() {
     return new Promise((resolve, reject) => {
-      const requestId = crypto.randomUUID();
+      const requestId = browserId();
       function receive(event) {
         if (event.source !== window || event.origin !== location.origin || event.data?.type !== 'stackqueue:discovered' || event.data.requestId !== requestId) return;
         cleanup();
@@ -206,6 +207,11 @@ function initialize() {
 
   async function collect() {
     if (!enabled || collecting) return;
+    if (!localExtensionAvailable()) {
+      webStatus = 'unsupported';
+      message = '이 원격 주소에서는 브라우저 확장을 연결할 수 없습니다. 자동 웹 감지는 확장을 설치한 PC의 http://localhost:8080 사무실에서 사용하세요. 원격 자료 검색과 직접 보관은 계속 사용할 수 있습니다.';
+      render(); return;
+    }
     collecting = true;
     const current = generation;
     try {

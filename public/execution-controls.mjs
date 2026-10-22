@@ -40,12 +40,4 @@ export function updateExecutionFields(root, catalog, selection, locked = false) 
       : '연결 설정에서 지시 전송을 켜면 Codex의 실제 모델 목록을 불러옵니다. 목록 확인 전에는 현재 CLI 설정으로 지시할 수 있습니다.');
 }
 
-export function newCommandId(cryptoSource = globalThis.crypto) {
-  if (cryptoSource.randomUUID) return cryptoSource.randomUUID();
-  // LAN HTTP is not a secure context; getRandomValues remains available there.
-  const bytes = cryptoSource.getRandomValues(new Uint8Array(16));
-  bytes[6] = (bytes[6] & 15) | 64;
-  bytes[8] = (bytes[8] & 63) | 128;
-  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
+export { browserId as newCommandId } from './browser-id.mjs';

@@ -21,3 +21,12 @@ test('late searches and aborted failures cannot overwrite the newest results', a
   assert.equal(await first, null);
   assert.deepEqual(second, { value: 'newest' });
 });
+
+test('closing a search detail cancels old reads before a new detail is opened', async () => {
+  const request = new SearchRequest(); let fail;
+  const old = request.run((signal) => new Promise((resolve, reject) => { fail = reject; signal.addEventListener('abort', () => reject(new Error('aborted'))); }));
+  request.cancel();
+  assert.deepEqual(await request.run(async () => 'new conversation'), { value: 'new conversation' });
+  fail(new Error('late failure'));
+  assert.equal(await old, null);
+});

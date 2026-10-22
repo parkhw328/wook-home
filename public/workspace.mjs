@@ -12,6 +12,7 @@ export class OfficeWorkspace {
     this.onSession = onSession;
     this.room = 'corridor-2';
     this.selection = null;
+    this.detailRevision = 0;
     this.connected = false;
     this.motion = true;
     this.moving = false;
@@ -31,6 +32,19 @@ export class OfficeWorkspace {
     this.find('#terminal-search').addEventListener('input', () => this.renderConversation(true));
     this.find('#terminal-role').addEventListener('change', () => this.renderConversation(true));
     this.find('#terminal-latest').addEventListener('click', () => { const log = this.find('#terminal-log'); log.scrollTop = log.scrollHeight; });
+    this.find('#workbench-close').addEventListener('click', () => {
+      this.detailRevision += 1;
+      this.detailHidden = true;
+      this.renderSelection();
+      this.find('#workbench-reopen').focus({ preventScroll: true });
+    });
+    this.find('#workbench-reopen').addEventListener('click', () => {
+      this.detailRevision += 1;
+      this.detailHidden = false;
+      this.renderSelection();
+      this.find('#workbench-title').focus({ preventScroll: true });
+      void this.reader.refresh();
+    });
     root.addEventListener('click', (event) => {
       const button = event.target.closest('button');
       if (!button || button.disabled) return;
@@ -85,7 +99,9 @@ export class OfficeWorkspace {
   }
 
   async enter(id, selection = null) {
+    this.detailRevision = (this.detailRevision || 0) + 1;
     const room = roomById(id);
+    if (selection || room.id !== this.room) this.detailHidden = false;
     // Finish the current doorway traversal before taking a new route. Rapid
     // selections cannot teleport through a wall or run competing animations.
     if (this.moving) {
@@ -123,7 +139,7 @@ export class OfficeWorkspace {
     this.reader.select(this.selection?.type === 'session' ? this.selection.id : null);
     this.renderRoom();
     this.renderSelection();
-    this.find('#room-heading').focus({ preventScroll: true });
+    if (typeof document === 'undefined' || !document.querySelector('dialog[open]')) this.find('#room-heading').focus({ preventScroll: true });
   }
 
   selectTask(id) {
@@ -210,10 +226,11 @@ export class OfficeWorkspace {
     const selected = this.selection;
     const valid = selected?.type === 'task' ? this.state.tasks.some((task) => task.id === selected.id)
       : selected?.type === 'session';
-    this.find('#workbench-empty').hidden = Boolean(valid);
-    this.find('#workbench-detail').hidden = !valid;
-    if (!valid) {
-      this.find('#workbench-empty-text').textContent = this.moving ? '목적지로 이동하고 있습니다.' : isHall(this.room) ? '방에 입장하면 업무보고와 대화기록이 이곳에 열립니다.' : '이 공간의 직원·세션·업무를 선택해 내용을 확인하세요.';
+    this.find('#workbench-empty').hidden = Boolean(valid) && !this.detailHidden;
+    this.find('#workbench-detail').hidden = !valid || this.detailHidden;
+    this.find('#workbench-reopen').hidden = !valid || !this.detailHidden;
+    if (!valid || this.detailHidden) {
+      this.find('#workbench-empty-text').textContent = this.detailHidden && valid ? '대화·업무 화면을 닫았습니다. 실행 중인 작업과 작성 내용은 유지됩니다.' : this.moving ? '목적지로 이동하고 있습니다.' : isHall(this.room) ? '방에 입장하면 업무보고와 대화기록이 이곳에 열립니다.' : '이 공간의 직원·세션·업무를 선택해 내용을 확인하세요.';
       return;
     }
     const isTask = selected.type === 'task';
@@ -258,7 +275,7 @@ export class OfficeWorkspace {
   }
 
   renderConversation(reset = false) {
-    if (!this.state || !this.selection) return;
+    if (!this.state || !this.selection || this.detailHidden) return;
     const isTask = this.selection.type === 'task';
     const task = isTask && this.state.tasks.find((item) => item.id === this.selection.id);
     const data = isTask ? { status: 'ready', messages: (task?.messages || []).filter((message) => ['user', 'assistant'].includes(message.role)), truncated: false } : this.reader.data;

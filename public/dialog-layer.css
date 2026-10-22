@@ -1,0 +1,53 @@
+html:has(dialog[open]) { overflow: hidden; }
+dialog.dialog-layer {
+  --dialog-gap: 16px;
+  width: min(620px, calc(100% - var(--dialog-gap) * 2));
+  max-width: none;
+  max-height: calc(100dvh - var(--dialog-gap) * 2);
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 24px 80px var(--shadow);
+}
+dialog.dialog-layer[open] { display: grid; grid-template-rows: auto minmax(0, 1fr); }
+dialog.dialog-layer::backdrop { background: var(--backdrop); backdrop-filter: blur(4px); }
+dialog.dialog-layer > .dialog-layer-header {
+  display: flex;
+  position: static;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 16px;
+  padding: 20px 24px;
+  margin: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.dialog-layer-header > div { min-width: 0; }
+.dialog-layer-header h2 { font-size: var(--font-heading); line-height: 1.5; overflow-wrap: anywhere; text-wrap: pretty; }
+.dialog-layer-header > button { flex: none; min-height: 44px; white-space: nowrap; }
+.dialog-layer-body { min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 24px; scroll-padding-block: 16px; }
+.dialog-layer-body > :first-child { margin-top: 0; }
+.dialog-layer-body > :last-child { margin-bottom: 0; }
+.dialog-layer-busy { padding: 12px; margin-bottom: 16px; border-radius: 8px; background: var(--surface-alt); font-size: var(--font-small); line-height: 1.75; }
+dialog.cli-conversation-dialog { width: min(1120px, calc(100% - var(--dialog-gap) * 2)); height: min(960px, calc(100dvh - var(--dialog-gap) * 2)); }
+dialog.search-dialog { width: min(980px, calc(100% - var(--dialog-gap) * 2)); }
+.cli-dialog-options { margin-top: 16px; }
+.cli-dialog-options > summary { cursor: pointer; min-height: 44px; padding-block: 10px; font-size: var(--font-control); font-weight: 600; }
+.cli-dialog-log { height: clamp(240px, 46dvh, 600px); }
+.search-dialog-messages { max-height: none; overflow: visible; }
+.search-dialog #search-dialog-title { font-size: var(--font-heading); }
+@media (max-width: 650px) {
+  dialog.dialog-layer { --dialog-gap: 8px; border-radius: 12px; }
+  dialog.dialog-layer > .dialog-layer-header { padding: 12px 16px; gap: 12px; }
+  .dialog-layer-body { padding: 16px; }
+  .dialog-layer-header .eyebrow { display: none; }
+}
+@media (max-height: 500px) {
+  dialog.dialog-layer > .dialog-layer-header { padding-block: 8px; }
+  .dialog-layer-header .eyebrow { display: none; }
+}

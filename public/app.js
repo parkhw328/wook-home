@@ -3,6 +3,7 @@ import { executionFields, updateExecutionFields, executionSelectionReason, effor
 import { connectionLocation, connectionSummary, connectionMarkup } from './staff-connections.mjs';
 import { officeOccupants as observedOccupants } from './office-activity.mjs';
 import { OfficeWorkspace } from './workspace.mjs';
+import { DialogLayer } from './dialog-layer.mjs';
 import { CliConversationDialog } from './cli-dialog.mjs';
 import { occupantRoom } from './rooms.mjs';
 import {
@@ -63,7 +64,8 @@ let refreshAgain = false;
 let toastTimer;
 let currentView = 'office';
 let modalContext = null;
-let modalTrigger = null;
+const formDrafts = new Map();
+let lastTaskAgentId = null;
 let sceneSignature = '';
 let sessionsSignature = '';
 let providersSignature = '';
@@ -75,6 +77,7 @@ const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
 let motionEnabled = !motionPreference.matches;
 const modal = $('#modal');
 const body = $('#modal-body');
+const modalLayer = new DialogLayer(modal, { onClose: () => { saveFormDraft(); modalContext = null; } });
 $('#sidebar-programs').open = !window.matchMedia('(max-width: 900px)').matches;
 const cliDialog = new CliConversationDialog({ request: apiRequest, getState: () => ({ state, connected }), onCommand: openSession, onAgent: openAgent });
 const workspace = new OfficeWorkspace($('#office-workspace'), {
@@ -120,6 +123,7 @@ function toast(message, isError = false) {
 
 function updateControls() {
   const unavailable = !connected || pending;
+  if ($('#modal-pending', body)) $('#modal-pending', body).hidden = !pending;
   $$('[data-office-stat]').forEach((button) => { button.disabled = !loaded; });
   ['#hire-button', '#scene-hire-button', '#resume-banner-button', '#pause-button', '#download-button'].forEach((selector) => {
     $(selector).disabled = unavailable;
@@ -349,27 +353,49 @@ function navigate() {
 }
 
 function openModal(title, eyebrow, content, context) {
-  if (!modal.open) modalTrigger = document.activeElement;
+  saveFormDraft();
   modalContext = context;
   $('#modal-title').textContent = title;
   $('#modal-eyebrow').textContent = eyebrow;
   modal.setAttribute('aria-labelledby', 'modal-title');
   body.innerHTML = content;
+  const notice = document.createElement('p');
+  notice.className = 'dialog-layer-busy'; notice.id = 'modal-pending'; notice.hidden = !pending; notice.setAttribute('role', 'status');
+  notice.textContent = '처리 중입니다. 창을 닫아도 이미 요청한 작업은 계속되며 결과를 알림으로 알려드립니다.';
+  body.prepend(notice);
+  restoreFormDraft();
   fillIcons(body);
-  if (!modal.open) modal.showModal();
+  modalLayer.open();
   $('#modal-title').tabIndex = -1;
   $('#modal-title').focus({ preventScroll: true });
+  body.scrollTop = 0;
   updateControls();
 }
 
-function closeModal() {
-  if (pending) return;
-  modal.close();
+function closeModal() { modalLayer.close(); }
+
+function draftKey(form) { return `${form.id}:${form.dataset.id || ''}`; }
+function saveFormDraft() {
+  const form = body.querySelector('#hire-form, #edit-agent-form, #new-task-form');
+  if (form && !form.dataset.saved) formDrafts.set(draftKey(form), Object.fromEntries(new FormData(form)));
+}
+function restoreFormDraft() {
+  const form = body.querySelector('#hire-form, #edit-agent-form, #new-task-form');
+  const values = form && formDrafts.get(draftKey(form));
+  if (!values) return;
+  for (const [name, value] of Object.entries(values)) {
+    if (form.id === 'new-task-form' && name === 'agentId') continue;
+    if (form.elements[name]) form.elements[name].value = value;
+  }
+  if (form.id === 'hire-form') {
+    updateProviderFields();
+    for (const name of ['model', 'reasoningEffort']) if (values[name]) form.elements[name].value = values[name];
+  }
 }
 
 function formError(message) {
   const node = $('#form-error', body);
-  if (node) {
+  if (node && modal.open) {
     node.textContent = message;
     node.hidden = false;
   } else {
@@ -384,6 +410,10 @@ function errorSlot() {
 async function mutate(path, payload, successMessage, method = 'POST', after) {
   if (pending) return;
   if (!connected) { formError('서버와 연결된 후 다시 시도해 주세요.'); return; }
+  const originRevision = modalLayer.revision;
+  const originForm = modal.open ? body.querySelector('form') : null;
+  const originView = location.hash;
+  const originWorkspaceRevision = workspace.detailRevision;
   pending = true;
   updateControls();
   if ($('#form-error', body)) $('#form-error', body).hidden = true;
@@ -392,7 +422,8 @@ async function mutate(path, payload, successMessage, method = 'POST', after) {
     result = await apiRequest(path, { method, body: payload });
   } catch (error) {
     if (error.code === 'CONNECTION_ERROR') setConnection(false);
-    formError(error.message);
+    if (modalLayer.revision === originRevision) formError(error.message);
+    else toast(error.message, true);
     pending = false;
     updateControls();
     await refresh();
@@ -411,7 +442,10 @@ async function mutate(path, payload, successMessage, method = 'POST', after) {
   pending = false;
   render();
   updateControls();
-  if (after) after(result);
+  if (originForm && ['hire-form', 'edit-agent-form', 'new-task-form'].includes(originForm.id)) {
+    originForm.dataset.saved = 'true'; formDrafts.delete(draftKey(originForm));
+  }
+  if (after && modalLayer.revision === originRevision && location.hash === originView && workspace.detailRevision === originWorkspaceRevision) after(result);
   toast(successMessage);
 }
 
@@ -434,13 +468,13 @@ function updateProviderFields() {
 function openHire() {
   if (!connected) return;
   openModal('새로운 동료를 맞이하세요', 'GROW YOUR LITTLE TEAM', `<p class="staff-hire-choice"><button type="button" class="button button-secondary" data-open-staff-connection>감지한 CLI·웹으로 등록</button><span class="field-help">아래 양식은 체험 또는 연결 없는 직원 정보 등록입니다.</span></p><form id="hire-form" class="form-stack"><div class="field-row"><div class="form-field"><label for="agent-name">직원 이름</label><input id="agent-name" name="name" placeholder="예: 모아" maxlength="40" required autocomplete="off"></div><div class="form-field"><label for="agent-role">담당 역할</label><input id="agent-role" name="role" placeholder="예: 아이디어 정리" maxlength="120" required autocomplete="off"></div></div><div class="form-field"><label for="agent-provider">AI 공급자</label><select id="agent-provider" name="provider">${providerOptions()}</select><p class="field-help" id="provider-help"></p></div><div class="field-row"><div class="form-field"><label for="agent-model">모델</label><select id="agent-model" name="model"></select></div><div class="form-field"><label for="agent-effort">추론 강도</label><select id="agent-effort" name="reasoningEffort"></select></div></div><div class="info-box">${icon('spark')}<span>직원의 이름과 역할은 나중에 바꿀 수 있어요. 연결 가능한 공급자의 실제 지원 옵션만 표시합니다.</span></div>${errorSlot()}<div class="form-actions"><button type="button" class="button" data-close>취소</button><button class="button button-primary" type="submit" data-mutation>직원 채용하기</button></div></form>`, { type: 'hire' });
-  updateProviderFields();
+  if (!formDrafts.has('hire-form:')) updateProviderFields();
   $('#agent-name', body).focus();
 }
 
 function commandPanel(id, title = '모델 설정과 작업 지시') {
   const draft = commandDeliveries.get(id)?.record.content ?? commandDrafts.get(id) ?? '';
-  return `<section class="command-section" aria-labelledby="command-heading"><h3 id="command-heading">${esc(title)}</h3><p class="field-help" id="command-availability"></p><div class="detail-actions"><a class="button button-small" href="#connection-settings" data-open-connection-settings data-close>연결 설정 열기</a><button type="button" class="button button-primary" data-resume-office id="command-resume" hidden>사무실 업무 재개</button></div>
+  return `<section class="command-section" aria-labelledby="command-heading"><h3 id="command-heading">${esc(title)}</h3><p class="field-help">창을 닫아도 작성 중인 지시는 유지됩니다. 이미 보낸 지시는 계속 처리됩니다.</p><p class="field-help" id="command-availability"></p><div class="detail-actions"><a class="button button-small" href="#connection-settings" data-open-connection-settings data-close>연결 설정 열기</a><button type="button" class="button button-primary" data-resume-office id="command-resume" hidden>사무실 업무 재개</button></div>
     <form id="session-command-form" class="form-stack" data-id="${esc(id)}">${executionFields()}<div class="form-field"><label for="session-command">전달할 지시</label><textarea id="session-command" name="content" rows="5" maxlength="4000" required placeholder="이 직원에게 맡길 작업과 원하는 결과를 적어 주세요.">${esc(draft)}</textarea></div>${errorSlot()}<div class="form-actions"><button class="button button-primary" type="submit" id="send-command">지시 보내기</button></div></form><div id="command-receipt" role="status" aria-live="polite"></div></section>`;
 }
 
@@ -530,19 +564,21 @@ function agentSignature(id) {
 function openEditAgent(id) {
   const agent = state.agents.find((item) => item.id === id);
   if (!agent) return;
-  openModal('동료의 역할을 다듬어 주세요', 'TEAMMATE SETTINGS', `<form id="edit-agent-form" class="form-stack" data-id="${esc(id)}"><div class="form-field"><label for="edit-name">직원 이름</label><input id="edit-name" name="name" value="${esc(agent.name)}" maxlength="40" required></div><div class="form-field"><label for="edit-role">담당 역할</label><input id="edit-role" name="role" value="${esc(agent.role)}" maxlength="120" required></div><p class="field-help">이름과 역할은 저장 즉시 반영됩니다. 공급자 변경은 지원하지 않습니다.</p>${errorSlot()}<div class="form-actions"><button type="button" class="button" data-agent="${esc(id)}">돌아가기</button><button type="submit" class="button button-primary" data-mutation>변경 사항 저장</button></div></form>`, { type: 'edit-agent', id });
+  openModal('동료의 역할을 다듬어 주세요', 'TEAMMATE SETTINGS', `<form id="edit-agent-form" class="form-stack" data-id="${esc(id)}"><div class="form-field"><label for="edit-name">직원 이름</label><input id="edit-name" name="name" value="${esc(agent.name)}" maxlength="40" required></div><div class="form-field"><label for="edit-role">담당 역할</label><input id="edit-role" name="role" value="${esc(agent.role)}" maxlength="120" required></div><p class="field-help">이름과 역할은 저장 즉시 반영됩니다. 공급자 변경은 지원하지 않습니다.</p>${errorSlot()}<div class="form-actions"><button type="button" class="button" data-stat-agent="${esc(id)}">직원 상세로</button><button type="submit" class="button button-primary" data-mutation>변경 사항 저장</button></div></form>`, { type: 'edit-agent', id });
   $('#edit-name', body).focus();
 }
 
 function openNewTask(agentId) {
   const available = state.agents.filter((agent) => !taskUnavailableReason(state, agent));
   if (!available.length) { toast('업무를 맡길 수 있는 체험용 직원이 필요합니다.', true); return; }
-  openModal('함께할 일을 알려 주세요', 'LET’S MAKE A START', `<form id="new-task-form" class="form-stack"><div class="form-field"><label for="task-agent">담당 직원</label><select id="task-agent" name="agentId">${available.map((agent) => `<option value="${esc(agent.id)}" ${agent.id === agentId ? 'selected' : ''}>${esc(agent.name)} · ${esc(agent.role)}</option>`).join('')}</select></div><div class="form-field"><label for="task-title">업무 이름</label><input id="task-title" name="title" placeholder="예: 새 프로젝트 아이디어 정리" maxlength="120" required autocomplete="off"></div><div class="form-field"><label for="task-description">업무 설명 <span class="muted">선택</span></label><textarea id="task-description" name="description" rows="4" maxlength="4000" placeholder="목표, 필요한 결과물, 참고할 내용을 알려 주세요."></textarea></div><div class="info-box">${icon('spark')}<span>체험용 실행입니다. 실제 AI가 업무를 수행하지 않으며, 고정된 질문 → 답변 → 결과 승인 흐름으로 진행합니다.</span></div>${errorSlot()}<div class="form-actions"><button type="button" class="button" data-close>취소</button><button class="button button-primary" type="submit" data-mutation>업무 시작하기</button></div></form>`, { type: 'new-task' });
+  agentId = available.find((agent) => agent.id === (agentId || lastTaskAgentId))?.id || available[0].id;
+  lastTaskAgentId = agentId;
+  openModal('함께할 일을 알려 주세요', 'LET’S MAKE A START', `<form id="new-task-form" class="form-stack" data-id="${esc(agentId)}"><div class="form-field"><label for="task-agent">담당 직원</label><select id="task-agent" name="agentId">${available.map((agent) => `<option value="${esc(agent.id)}" ${agent.id === agentId ? 'selected' : ''}>${esc(agent.name)} · ${esc(agent.role)}</option>`).join('')}</select></div><div class="form-field"><label for="task-title">업무 이름</label><input id="task-title" name="title" placeholder="예: 새 프로젝트 아이디어 정리" maxlength="120" required autocomplete="off"></div><div class="form-field"><label for="task-description">업무 설명 <span class="muted">선택</span></label><textarea id="task-description" name="description" rows="4" maxlength="4000" placeholder="목표, 필요한 결과물, 참고할 내용을 알려 주세요."></textarea></div><div class="info-box">${icon('spark')}<span>체험용 실행입니다. 실제 AI가 업무를 수행하지 않으며, 고정된 질문 → 답변 → 결과 승인 흐름으로 진행합니다.</span></div>${errorSlot()}<div class="form-actions"><button type="button" class="button" data-close>취소</button><button class="button button-primary" type="submit" data-mutation>업무 시작하기</button></div></form>`, { type: 'new-task' });
   $('#task-title', body).focus();
 }
 
 async function openTask(id) {
-  if (modal.open) modal.close();
+  modalLayer.close({ restoreFocus: false, reason: 'navigate' });
   location.hash = 'office';
   await workspace.selectTask(id);
   if (workspace.selection?.type === 'task' && workspace.selection.id === id) {
@@ -593,12 +629,17 @@ function syncModal() {
   renderStatDetails();
   if (modalContext.type === 'agent' && agentSignature(modalContext.id) !== modalContext.signature) {
     const focus = document.activeElement;
-    const focusId = body.contains(focus) ? focus.id : null;
+    const focusInside = modal.contains(focus);
+    const focusId = focusInside ? focus.id : null;
+    const focusData = focusInside && Object.keys(focus.dataset).find((key) => focus.dataset[key]);
+    const focusValue = focusData && focus.dataset[focusData];
     const cursor = focusId === 'session-command' ? [focus.selectionStart, focus.selectionEnd] : null;
     const scroll = modal.scrollTop;
     const bodyScroll = body.scrollTop;
     openAgent(modalContext.id);
-    if (focusId) document.getElementById(focusId)?.focus({ preventScroll: true });
+    const target = focusInside && (focus.isConnected ? focus : focusId ? document.getElementById(focusId)
+      : [...body.querySelectorAll('button')].find((node) => focusData && node.dataset[focusData] === focusValue));
+    target?.focus({ preventScroll: true });
     if (cursor) $('#session-command', body)?.setSelectionRange(...cursor);
     modal.scrollTop = scroll;
     body.scrollTop = bodyScroll;
@@ -664,11 +705,11 @@ document.addEventListener('click', (event) => {
   }
   if (button.dataset.agent) {
     const sessionId = state.agents.find((agent) => agent.id === button.dataset.agent)?.connection?.sessionId;
-    if (sessionId) { if (modal.open) closeModal(); cliDialog.open(sessionId); }
+    if (sessionId) cliDialog.open(sessionId);
     else openAgent(button.dataset.agent);
     return;
   }
-  if (button.dataset.session) { if (modal.open) closeModal(); location.hash = 'office'; void workspace.selectSession(button.dataset.session); return; }
+  if (button.dataset.session) { location.hash = 'office'; void workspace.selectSession(button.dataset.session); return; }
   if (button.dataset.task) { openTask(button.dataset.task); return; }
   if (button.dataset.editAgent) { openEditAgent(button.dataset.editAgent); return; }
   if (button.dataset.newTask) { openNewTask(button.dataset.newTask); return; }
@@ -688,6 +729,11 @@ document.addEventListener('click', (event) => {
 
 body.addEventListener('change', (event) => {
   if (event.target.id === 'agent-provider') updateProviderFields();
+  if (event.target.id === 'task-agent') {
+    saveFormDraft();
+    lastTaskAgentId = event.target.value;
+    event.target.form.dataset.id = lastTaskAgentId;
+  }
   if (['command-model', 'command-effort'].includes(event.target.id)) {
     const id = $('#session-command-form', body)?.dataset.id;
     if (!id || commandDeliveries.has(id)) return;
@@ -734,7 +780,6 @@ $('#hire-button').addEventListener('click', openHire);
 $('#scene-hire-button').addEventListener('click', openHire);
 $('#new-task-button').addEventListener('click', () => openNewTask());
 $('#all-tasks-button').addEventListener('click', () => { location.hash = 'tasks'; });
-$('#close-modal').addEventListener('click', closeModal);
 $('#task-filter').addEventListener('change', renderTasks);
 $('#retry-button').addEventListener('click', () => { void refresh(true); });
 $('#pause-button').addEventListener('click', () => { void toggleOffice(); });
@@ -754,28 +799,16 @@ $('#motion-toggle').addEventListener('click', () => {
   updateMotionPreference();
 });
 motionPreference.addEventListener('change', updateMotionPreference);
-modal.addEventListener('cancel', (event) => { if (pending) event.preventDefault(); });
-modal.addEventListener('click', (event) => {
-  if (event.target !== modal || pending) return;
-  const bounds = modal.getBoundingClientRect();
-  if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closeModal();
-});
-modal.addEventListener('close', () => {
-  // A queued close event may arrive after another detail dialog has opened.
-  if (modal.open) return;
-  modalContext = null;
-  if (document.querySelector('dialog[open]')) return;
-  const focus = document.activeElement;
-  if (focus !== document.body && !modal.contains(focus) && focus !== modalTrigger) return;
-  if (modalTrigger?.isConnected) modalTrigger.focus({ preventScroll: true });
-  else $('#hire-button').focus({ preventScroll: true });
-});
 window.addEventListener('hashchange', navigate);
 window.addEventListener('online', () => { void refresh(true); });
 document.addEventListener('office:staff-changed', async (event) => {
+  const revision = modalLayer.revision;
+  const route = location.hash;
   await refresh(true);
-  if (event.detail?.agentId) openAgent(event.detail.agentId);
+  toast('직원 연결 정보를 반영했습니다.');
+  if (event.detail?.showDetails && event.detail?.agentId && revision === modalLayer.revision && route === location.hash && !document.querySelector('dialog[open]')) openAgent(event.detail.agentId);
 });
+document.addEventListener('office:notice', (event) => toast(event.detail.message, Boolean(event.detail.error)));
 document.addEventListener('visibilitychange', () => { if (!document.hidden) void refresh(true); });
 
 fillIcons();
