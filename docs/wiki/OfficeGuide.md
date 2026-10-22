@@ -30,8 +30,10 @@ http://localhost:8080 에 접속합니다. 기본 사무실 이름은 StackQueue
 호스트에 Node.js 24.14 이상(27 미만)을 준비한 뒤 별도 터미널에서 실행합니다.
 
 ```powershell
-npm run bridge:codex -- --workspace . --allow-commands --include-conversations
+npm run bridge:codex -- --workspace .
 ```
+
+왼쪽 **연결 설정**에서 **공개 대화 읽기**와 **Codex 지시 전송**을 켜고 저장한 뒤 적용 상태를 확인하세요. 이후 선택 변경에는 재시작이 필요 없습니다.
 
 이 프로젝트의 최근 Codex 활동이 사무실 캐릭터와 **이 PC의 CLI 세션**에 나타납니다. 세션을 선택해 지시를 보내고 접수 상태를 확인하세요. `codex queue`를 지원하는 CLI가 필요하며 공개 응답은 대화 터미널에서 읽고 승인·중단은 원래 Codex에서 처리합니다. [연결 절차와 문제 해결](CLI.md)을 참고하세요.
 

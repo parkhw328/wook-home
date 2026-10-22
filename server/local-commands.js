@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { closeSync, fstatSync, mkdirSync, openSync, readSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ApiError } from './office.js';
+import { readBridgeSettings } from './bridge-settings.js';
 
 export const commandId = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export const commandStates = new Set(['pending', 'sending', 'accepted', 'failed', 'unknown', 'expired']);
@@ -66,6 +67,8 @@ export function createLocalCommands({ directory, observer, office, clock = Date.
       }
       if (office.snapshot().office.paused) throw new ApiError(409, 'OFFICE_PAUSED', '사무실을 재개한 뒤 지시해 주세요.');
       const state = observer.snapshot();
+      const settings = readBridgeSettings(directory);
+      if (settings.status === 'unavailable' || (settings.status === 'ready' && !settings.options.commands)) throw new ApiError(409, 'CONTROL_UNAVAILABLE', '연결 설정에서 Codex 지시 전송을 켜고 적용 상태를 확인해 주세요.');
       if (!state.control.enabled) throw new ApiError(409, 'CONTROL_UNAVAILABLE', '호스트 연결 프로그램의 명령 전송을 확인해 주세요.');
       if (!state.sessions.some((session) => session.id === sessionId)) throw new ApiError(404, 'SESSION_NOT_FOUND', '현재 프로젝트에서 관찰 중인 세션을 선택해 주세요.');
       mkdirSync(directory, { recursive: true });

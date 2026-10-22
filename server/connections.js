@@ -113,7 +113,7 @@ function localChecks(observer, discovery, now) {
     checkRow('cli:codex', 'cli', 'Codex CLI 지시 연결', !connected ? 'not_connected' : cli.control?.enabled ? 'ready' : 'disabled',
       !connected ? '미연결' : cli.control?.enabled ? '지시 연결 준비됨' : '관찰만 가능',
       cli.control?.enabled ? '공식 큐 전송이 활성화되어 있습니다. 접수와 실행 완료는 별개입니다.' : '공식 큐로 지시를 보내는 연결이 활성화되지 않았습니다.',
-      cli.control?.enabled ? '명령 가능한 세션을 선택해 지시하세요.' : 'Wiki에서 Codex 설치와 --allow-commands 설정을 확인하세요.',
+      cli.control?.enabled ? '명령 가능한 세션을 선택해 지시하세요.' : '연결 설정에서 Codex 지시 전송을 켜고 적용 상태를 확인하세요.',
       { provider: 'openai', checkedAt: cli.updatedAt, canControl: connected && cli.control?.enabled === true }),
   ];
   const toolNames = [['claude', 'claude', 'Claude Code'], ['gemini', 'gemini', 'Gemini CLI'], ['muse', 'meta', 'Muse Code']];

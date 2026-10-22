@@ -25,6 +25,7 @@
     <link rel="stylesheet" href="/sidebar.css">
     <link rel="stylesheet" href="/themes.css">
     <link rel="stylesheet" href="/office-stats.css">
+    <link rel="stylesheet" href="/bridge-settings.css">
     <script type="module" src="/discovery.mjs"></script>
   </head>
   <body>
@@ -41,6 +42,7 @@
           <a href="#tasks" class="nav-link" data-view="tasks"><span data-icon="task"></span>업무 보드<span class="nav-count" id="nav-task-count">0</span></a>
           <a href="#search" class="nav-link" data-view="search"><span data-icon="message"></span>자료 검색</a>
           <a href="#handoff" class="nav-link" data-view="handoff"><span data-icon="handoff"></span>작업 인계</a>
+          <a href="#connection-settings" class="nav-link" data-open-connection-settings><span data-icon="activity"></span>연결 설정</a>
           <a href="https://github.com/parkhw328/wook-home/wiki" class="nav-link help-link" target="_blank" rel="noopener noreferrer"><span data-icon="message"></span>도움말<span class="external-arrow" aria-hidden="true">↗</span></a>
         </nav>
         <label class="theme-control" for="theme-choice">화면 테마<select id="theme-choice" data-theme-choice><option value="system">기기 설정</option><option value="light">라이트</option><option value="dark">다크</option></select></label>
@@ -120,7 +122,7 @@
                     <section class="terminal" aria-label="대화기록 터미널">
                       <div class="terminal-toolbar"><span class="terminal-dots" aria-hidden="true"><i></i><i></i><i></i></span><strong>CONVERSATION</strong><button id="terminal-latest" type="button">최신 기록 ↓</button></div>
                       <div class="terminal-filters"><label class="search-field"><span>검색</span><input id="terminal-search" type="search" placeholder="대화에서 찾기" autocomplete="off"></label><label><span class="sr-only">대화 역할</span><select id="terminal-role"><option value="all">모든 역할</option><option value="user">Commander</option><option value="assistant">에이전트</option></select></label></div>
-                      <p id="terminal-notice" class="terminal-notice" role="status"></p>
+                      <p id="terminal-notice" class="terminal-notice" role="status"></p><a class="button button-small" href="#connection-settings" data-open-connection-settings id="terminal-settings" hidden>대화 읽기 설정</a>
                       <div id="terminal-log" class="terminal-log" tabindex="0" aria-label="시간순 대화기록"></div>
                       <div class="terminal-footer"><span id="terminal-scope"></span><span id="terminal-truncated" hidden>기록 일부만 표시 · 이전 내용 또는 긴 메시지가 생략되었습니다.</span><a href="https://github.com/parkhw328/wook-home/wiki/CLI" target="_blank" rel="noopener noreferrer">대화 연결 안내 ↗</a></div>
                     </section>
@@ -131,7 +133,7 @@
             <details class="office-management"><summary>직원 · 연결 관리 <span>등록, 연결 상태와 사무실 소식</span></summary>
             <div class="office-layout"><div class="office-main">
                 <section class="team-section" aria-labelledby="team-heading"><div class="section-heading"><h2 id="team-heading">함께하는 직원 <span id="team-count">0</span></h2><span class="muted">동료를 선택해 업무를 확인하세요</span></div><div id="agent-list" class="agent-grid"><div class="empty-state"><span class="empty-icon" data-icon="people"></span><strong>첫 동료를 기다리고 있어요</strong><p>감지한 CLI·웹을 연결하거나 체험 직원을 채용해 보세요.</p></div></div></section>
-                <section class="panel sessions-panel" aria-labelledby="sessions-heading"><div class="panel-heading"><h2 id="sessions-heading">Codex 대화 · 지시</h2><span id="sessions-connection" class="subtle-tag">관찰 연결 대기</span></div><p id="sessions-scope" class="session-scope">관찰 연결 후 작업 폴더가 표시됩니다.</p><div id="session-list" class="session-list"></div><p class="panel-footnote">세션을 선택해 최근 상태를 확인하세요. 호스트에서 명령 전송을 허용하면 지시를 보낼 수 있습니다. 대화기록을 활성화하면 사무실 안에서 지시와 응답을 확인할 수 있습니다. <a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/CLI" target="_blank" rel="noopener noreferrer">연결 방법 보기 ↗</a></p></section>
+                <section class="panel sessions-panel" aria-labelledby="sessions-heading"><div class="panel-heading"><h2 id="sessions-heading">Codex 대화 · 지시</h2><span id="sessions-connection" class="subtle-tag">관찰 연결 대기</span></div><p id="sessions-scope" class="session-scope">관찰 연결 후 작업 폴더가 표시됩니다.</p><div id="session-list" class="session-list"></div><p class="panel-footnote">세션을 선택해 최근 상태를 확인하세요. 연결 설정에서 대화 읽기와 지시 전송을 각각 선택하고 적용 상태를 확인하세요. <a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/CLI" target="_blank" rel="noopener noreferrer">연결 방법 보기 ↗</a> <a class="button button-small" href="#connection-settings" data-open-connection-settings>연결 설정 열기</a></p></section>
                 <section class="panel provider-panel" aria-labelledby="provider-heading"><div class="panel-heading"><h2 id="provider-heading">AI 공급자 연결</h2><span class="subtle-tag">공식 서비스</span></div><div id="provider-list" class="provider-list"></div><p class="panel-footnote">공식 사이트에서 각 서비스에 로그인할 수 있습니다. 로그인 정보와 대화는 사무실에 자동 연결되지 않습니다. 기존 Codex 세션에 지시하려면 위의 CLI 세션을 선택하세요.</p></section>
               </div>
               <aside class="commander-panel" aria-label="Commander 확인 사항"><section class="panel inbox-panel"><div class="panel-heading"><h2>Commander의 데스크</h2><span class="inbox-count" id="inbox-count">0</span></div><p class="panel-intro">당신의 한마디가 필요한 순간.</p><div id="inbox-list"></div><button class="text-link inbox-footer" type="button" id="all-tasks-button">업무 보드에서 모두 보기 <span aria-hidden="true">↗</span></button></section><section class="panel activity-panel"><div class="panel-heading"><h2>사무실 소식</h2><span class="muted">최근 활동</span></div><div id="event-list" class="event-list"></div></section><div class="mode-note"><span data-icon="spark"></span><div><strong>먼저, 가볍게 경험해 보세요.</strong><p>체험용 직원은 실제 AI를 호출하지 않습니다. 질문부터 결과 승인까지 차근차근 살펴보세요.</p></div></div></aside>

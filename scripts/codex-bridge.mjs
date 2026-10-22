@@ -10,6 +10,7 @@ import { createCommandPump, findCodex, sendToCodex, supportsQueue } from './lib/
 import { createCliLifecycle } from './lib/cli-lifecycle.mjs';
 import { collectCliTools } from './lib/cli-tools.mjs';
 import { createSearchHistoryCollector } from './lib/session-search-history.mjs';
+import { readBridgeSettings, resolveBridgeSettings } from '../server/bridge-settings.js';
 
 async function lockBridge(file) {
   try { await writeFile(file, String(process.pid), { flag: 'wx', mode: 0o600 }); }
@@ -44,7 +45,7 @@ async function main() {
     help: { type: 'boolean', default: false },
   } });
   if (values.help) {
-    process.stdout.write('Usage: npm run bridge:codex -- --workspace . [--allow-commands] [--include-conversations] [--include-search-history] [--once]\nOptions: --codex-bin <executable-or-js> --remote <Codex endpoint> --remote-auth-token-env <variable-name>\nStop: npm run bridge:codex -- --stop\nObservation is read-only by default; --allow-commands enables the official Codex queue. --include-conversations exports recent public dialogue. --include-search-history also archives bounded public Codex, Claude Code and Gemini CLI history from this workspace for local search, including older sessions. See docs/wiki/CLI.md and docs/wiki/Search.md.\n');
+    process.stdout.write('Usage: npm run bridge:codex -- --workspace . [--once]\nChoose conversation reading, search history and command delivery in the office Connection settings. Saved settings apply while running and survive restart.\nAdvanced initial defaults (only without saved settings): --allow-commands --include-conversations --include-search-history\nOptions: --codex-bin <executable-or-js> --remote <Codex endpoint> --remote-auth-token-env <variable-name>\nStop: npm run bridge:codex -- --stop\nWithout saved settings or explicit flags, observation is read-only. See docs/wiki/CLI.md.\n');
     return;
   }
   if (values['remote-auth-token-env'] && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(values['remote-auth-token-env'])) throw new Error('Invalid environment variable name.');
@@ -66,21 +67,17 @@ async function main() {
     await rm(stopFile, { force: true });
     const commandsDir = join(output, 'commands');
     await mkdir(commandsDir, { recursive: true, mode: 0o700 });
-    const bridgeId = randomUUID();
-    const cli = values['allow-commands'] && !values.once ? await findCodex(values['codex-bin']) : null;
-    const enabled = Boolean(cli && await supportsQueue(cli));
-    const control = { enabled, bridgeId, reason: enabled ? 'ready' : values['allow-commands'] ? 'cli_unavailable' : 'not_enabled' };
-    if (values['allow-commands']) process.stdout.write(enabled ? 'Codex command queue enabled.\n' : 'Codex command queue unavailable; observation only. Check codex queue --help.\n');
-    const collect = () => collectSessions({ sessionsDir, workspace, includeConversations: values['include-conversations'] });
+    const initial = { conversations: values['include-conversations'], searchHistory: values['include-search-history'], commands: values['allow-commands'] };
+    let settings = resolveBridgeSettings(readBridgeSettings(commandsDir), initial);
+    let signature = '';
+    let control = { enabled: false, bridgeId: randomUUID(), reason: 'not_enabled' };
+    let cli;
+    let pump;
+    let lastProbe = -Infinity;
+    const collect = () => collectSessions({ sessionsDir, workspace, includeConversations: settings.options.conversations });
     const lifecycle = createCliLifecycle();
-    const history = values['include-search-history'] ? createSearchHistoryCollector({ workspace, sessionsDir, output: join(output, 'search-history') }) : null;
+    let history = null;
     const conversationsDir = join(output, 'conversations');
-    if (values['include-conversations']) await mkdir(conversationsDir, { recursive: true, mode: 0o700 });
-    const pump = createCommandPump({ directory: commandsDir, bridgeId,
-      getSessions: async () => (await collect()).sessions,
-      send: (id, content) => sendToCodex(cli, id, content, workspace, values.remote, values['remote-auth-token-env']),
-      shouldStop: () => stopping,
-    });
     const destination = join(output, 'codex.json');
     const temporary = join(dirname(destination), `codex-${process.pid}.tmp`);
     let stopping = false;
@@ -88,23 +85,57 @@ async function main() {
     process.on('SIGTERM', () => { stopping = true; });
     let previouslyFailed = false;
     let snapshot;
-    let lastCollection = 0;
+    let lastCollection = -Infinity;
     let pending;
     let pendingHistory;
     let lastHistory = -Infinity;
+    process.stdout.write('Host connection started. Choose features in the office Connection settings; keep this terminal open.\n');
     do {
       try { await access(stopFile); stopping = true; break; } catch { /* No stop request. */ }
       try {
+        const next = resolveBridgeSettings(readBridgeSettings(commandsDir), initial);
+        const nextSignature = JSON.stringify(next);
+        if (signature !== nextSignature) {
+          // A disabled collector finishes its current bounded read before we
+          // acknowledge the change; existing archived copies are retained.
+          if (!next.options.searchHistory) await pendingHistory;
+          settings = next;
+          signature = nextSignature;
+          control = { enabled: false, bridgeId: randomUUID(), reason: settings.options.commands ? 'cli_unavailable' : 'not_enabled' };
+          cli = null;
+          lastProbe = -Infinity;
+          if (settings.options.searchHistory && !history) {
+            history = createSearchHistoryCollector({ workspace, sessionsDir, output: join(output, 'search-history') });
+            lastHistory = -Infinity;
+          }
+          if (!settings.options.searchHistory) history = null;
+          const activeSignature = signature;
+          const maySend = () => !stopping && control.enabled && activeSignature === JSON.stringify(resolveBridgeSettings(readBridgeSettings(commandsDir), initial));
+          pump = createCommandPump({ directory: commandsDir, bridgeId: control.bridgeId,
+            getSessions: async () => (await collectSessions({ sessionsDir, workspace })).sessions,
+            send: (id, content) => maySend() ? sendToCodex(cli, id, content, workspace, values.remote, values['remote-auth-token-env'])
+              : { status: 'expired', code: 'BRIDGE_RESTARTED' },
+            shouldStop: () => !maySend(),
+          });
+          lastCollection = -Infinity;
+        }
+        if (settings.options.commands && !values.once && !control.enabled && Date.now() - lastProbe >= 30000) {
+          lastProbe = Date.now();
+          cli = await findCodex(values['codex-bin']);
+          control.enabled = Boolean(cli && await supportsQueue(cli));
+          control.reason = control.enabled ? 'ready' : 'cli_unavailable';
+        }
         if (Date.now() - lastCollection >= 5000) {
           const [observed, processes, cliTools] = await Promise.all([collect(), lifecycle.poll(), collectCliTools()]);
           snapshot = { ...observed, generatedAt: new Date().toISOString(), control, processes, cliTools, searchHistory: { enabled: Boolean(history) } };
-          snapshot.conversations = { enabled: values['include-conversations'] };
-          await publishConversations(snapshot, conversationsDir, values['include-conversations']);
+          snapshot.conversations = { enabled: settings.options.conversations };
+          snapshot.settings = { version: 1, ...settings };
+          await publishConversations(snapshot, conversationsDir, settings.options.conversations);
           await writeFile(temporary, JSON.stringify(snapshot) + '\n', { mode: 0o644 });
           await rename(temporary, destination);
           lastCollection = Date.now();
         }
-        if (enabled && !pending) pending = pump().catch(() => {
+        if (control.enabled && !pending) pending = pump().catch(() => {
           process.stderr.write('Command delivery unavailable. Check local folder access; requests are not automatically retried.\n');
         }).finally(() => { pending = null; });
         if (history && !pendingHistory && Date.now() - lastHistory >= 30000) {
@@ -115,7 +146,7 @@ async function main() {
         }
         if (previouslyFailed) process.stdout.write('Codex observation resumed.\n');
         previouslyFailed = false;
-        if (values.once) process.stdout.write(`Observed ${snapshot.sessions.length} session(s). ${values['include-conversations'] ? 'Limited, redacted conversations exported locally.' : 'No conversation text exported.'}\n`);
+        if (values.once) process.stdout.write(`Observed ${snapshot.sessions.length} session(s). ${settings.options.conversations ? 'Limited, redacted conversations exported locally.' : 'No conversation text exported.'}\n`);
       } catch {
         if (!previouslyFailed) process.stderr.write('Codex observation unavailable. Check local directory access.\n');
         previouslyFailed = true;
@@ -126,6 +157,7 @@ async function main() {
     await pending;
     await pendingHistory;
     if (snapshot && !values.once) {
+      snapshot.stopped = true;
       snapshot.control = { enabled: false, reason: 'not_enabled' };
       snapshot.processes.status = 'unavailable';
       snapshot.processes.items = snapshot.processes.items.map((item) => item.status === 'running' ? { ...item, status: 'unknown' } : item);

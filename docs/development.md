@@ -33,7 +33,10 @@ Three.js는 유지보수 중인 [공식 프로젝트](https://github.com/mrdoob/
 
 환경 변수는 `HOST`(기본 127.0.0.1), `PORT`(기본 8080), `DATA_DIR`(기본 ./data), `OFFICE_NAME`(기본 StackQueue Office), `CODEX_BRIDGE_FILE`(기본 ./data/bridge/codex.json)이다. Docker Compose의 외부 포트는 `WOOK_PORT`로 지정한다. 로컬 서버와 컨테이너를 동시에 사용할 때는 포트를 구분한다. Node 직접 실행은 `.env`를 자동으로 읽지 않으므로 셸 환경 변수로 지정한다.
 
-`npm run bridge:codex -- --workspace .`는 현재 프로젝트의 최근 Codex 세션을 관찰한다. `--allow-commands`를 붙이면 공식 `codex queue`로 기존 세션에 지시를 전달한다. `--include-conversations`를 추가하면 선택한 프로젝트의 제한된 공개 대화기록을 별도 로컬 파일과 API로 제공한다. 다른 프로젝트의 전체 기록이나 인증 파일을 컨테이너에 연결하지 않는다. [CLI 연결 안내](wiki/CLI.md)에 조건과 상태의 의미를 기록한다. 명령 폴더는 `CODEX_COMMANDS_DIR`(기본 ./data/bridge/commands)로 지정한다.
+`npm run bridge:codex -- --workspace .`로 호스트 연결기를 실행하고 화면의 **연결 설정**에서 대화 읽기·CLI 검색 보관·지시 전송을 선택한다. `server/bridge-settings.js`는 제한된 로컬 설정의 읽기·저장·적용 확인, `public/bridge-settings.mjs`는 설정 탭과 최초 실행 안내를 담당한다. 설정 파일은 `CODEX_COMMANDS_DIR/bridge-settings.json`이며 호스트의 출력 폴더 `commands`와 같은 디렉터리를 공유해야 한다. 기존 CLI 기능 옵션은 저장된 화면 설정이 없을 때만 초기값으로 사용한다. [CLI 연결 안내](wiki/CLI.md)를 참조한다.
+
+설정 테스트는 `node --test tests/server/bridge-settings.test.js tests/ui/bridge-settings.test.mjs`로 실행한다. 실제 임시 호스트 프로세스에서 기본 꺼짐·실행 중 켜기/끄기·재시작·검색 사본 유지·읽기 사본 제거를 검증하고 API 충돌·실패·출처 검사와 지시 차단을 확인한다.
+브라우저·Docker 확인 범위는 [연결 설정 검증](connection-settings-validation.md)에 기록한다.
 
 ## Docker
 

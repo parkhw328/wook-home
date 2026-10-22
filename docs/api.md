@@ -85,7 +85,7 @@
 
 ## 로컬 Codex 대화기록
 
-- `localSessions.conversations`: `{ enabled }`. 연결기를 `--include-conversations`로 실행한 경우에만 활성화한다.
+- `localSessions.conversations`: `{ enabled }`. 화면 연결 설정의 공개 대화 읽기를 켜고 연결기가 적용했을 때 활성화한다. 저장된 설정이 없으면 기존 실행 옵션도 지원한다.
 - `GET /api/local-sessions/:sessionId/conversation`: `{ sessionId, status, messages, updatedAt, truncated, limit: 60 }`. 현재 작업 공간의 관찰 목록에 있는 UUID만 읽는다. 동일 출처 요청 검사와 `Cache-Control: no-store`를 적용한다.
 - `status`: ready(기록 수신), empty(수집 범위에 공개 대화 없음), disabled(미활성화), disconnected(20초 이상 갱신 중단), unavailable(세션 없음·읽기 실패·형식 불일치).
 - 메시지: `{ role: "user" | "assistant", timestamp, content, truncated }`. 시스템·개발자 지침, 내부 추론, 도구 원문을 제외한다. 호스트에서 알려진 인증 정보·개인 경로·연락처 패턴을 마스킹하고 화면은 HTML로 실행하지 않는다.
@@ -99,3 +99,11 @@
 기존 Codex에 대한 큐 지시 외에 신규 AI 세션 실행, 실제 CLI 승인·중단·모델 변경, 다른 공급자 제어, 토큰·비용 측정, 임의 프로세스 감지, GitHub 자동 인계와 클라우드 인증은 지원하지 않는다.
 
 지원 CLI·AI 웹 탭의 통합 목록은 [감지 API](discovery-api.md), 설치·감지·API 인증의 분리된 점검은 [연결 점검 API](connections-api.md)를 따른다. API 연결 점검 성공은 위 업무 실행 기능을 활성화하지 않는다.
+
+## 호스트 연결 설정
+
+- `GET /api/bridge/settings`: 저장한 `options`(conversations, searchHistory, commands), `revision`, `saved`, `writable`, `status`, 현재 적용된 `applied`와 프로젝트 표시명·수신 시각을 반환한다. 호스트 경로·인증 값은 반환하지 않는다.
+- `PUT /api/bridge/settings`: `{ revision, options: { conversations, searchHistory, commands } }`의 전체 불리언 선택만 받는다. 최초 revision은 null이며 다음 저장에는 조회한 revision을 사용한다. 변경 충돌은 409, 읽기·쓰기 실패는 503이다. 같은 출처 검사와 4096바이트 한도를 적용한다.
+- 상태: `not_connected`, `upgrade_required`, `pending`, `applied`, `storage_error`, `bridge_error`. 설정 적용과 CLI 지시 지원 여부는 별개이며 `applied.commands`와 `controlReason`을 함께 확인한다.
+- 서버는 `CODEX_COMMANDS_DIR/bridge-settings.json`에 원자적으로 저장한다. 호스트는 출력 폴더의 `commands`에서 읽고 상태 파일의 `settings: { version: 1, revision, options, error }`로 응답한다. 두 경로는 같은 공유 폴더여야 한다.
+- 읽을 수 없는 설정은 기능을 켜지 않는다. 지시 끄기는 서버의 신규 접수를 즉시 차단하며 호스트 적용 전 성공을 주장하지 않는다. 전송 중인 지시와 검색 사본은 취소·삭제하지 않는다. 설정·대화·접수 정보는 인계에 포함하지 않는다.

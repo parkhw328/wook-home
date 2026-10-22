@@ -1,0 +1,23 @@
+.connection-settings-heading h3 { margin: 0; font-size: var(--font-heading); }
+.connection-settings-heading p, .settings-scope-note, .bridge-start-guide p { font-size: var(--font-small); line-height: 1.8; }
+.settings-summary { padding: 14px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface-alt); font-size: var(--font-body); line-height: 1.8; }
+#bridge-settings-form fieldset { min-width: 0; margin: 0; padding: 0; border: 0; display: grid; gap: 12px; }
+.connection-option { display: flex; align-items: flex-start; gap: 14px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); cursor: pointer; }
+.connection-option:has(input:checked) { border-color: var(--action-selected-border); box-shadow: inset 3px 0 var(--action-selected-border); background: var(--action-selected); }
+.connection-option input[type="checkbox"] { flex: 0 0 24px; width: 24px; height: 24px; min-height: 24px; margin: 4px 0 0; }
+.connection-option > span { display: grid; gap: 6px; min-width: 0; }
+.connection-option strong { font-size: var(--font-control); }
+.connection-option span span { font-size: var(--font-small); line-height: 1.8; }
+.connection-option small { font-size: var(--font-caption); line-height: 1.8; color: var(--muted); }
+.connection-option .subtle-tag { justify-self: start; white-space: normal; }
+.settings-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.settings-actions .button { white-space: normal; }
+#bridge-settings-feedback, #bridge-copy-feedback { font-size: var(--font-small); line-height: 1.8; overflow-wrap: anywhere; }
+.bridge-start-guide { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+.bridge-start-guide summary { min-height: 44px; font-size: var(--font-control); cursor: pointer; }
+.bridge-start-guide ol { padding-left: 24px; }
+.bridge-start-guide li { margin: 14px 0; }
+.bridge-start-guide strong, .bridge-start-guide label { font-size: var(--font-control); }
+.bridge-start-guide textarea { display: block; width: 100%; min-width: 0; margin: 12px 0; padding: 12px; resize: vertical; font-size: var(--font-control); border: 1px solid var(--input-border); border-radius: 8px; background: var(--input-bg); color: var(--ink); }
+.bridge-start-guide code { overflow-wrap: anywhere; }
+@media (max-width: 600px) { .discovery-tabs [role="tab"] { flex: 1; padding: 10px 8px; } .connection-option { padding: 12px; gap: 10px; } }

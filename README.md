@@ -32,10 +32,12 @@ docker compose up --build -d
 
 **CLI·웹 감지는 Windows와 Linux에서 사용할 수 있습니다.** 호스트의 별도 터미널에서 `npm run bridge:codex -- --workspace .`를 실행하면 지원 CLI의 추가·종료를 확인합니다. Linux에서는 같은 사용자 계정의 프로세스를 감지합니다. 웹 탭은 Chrome/Chromium에 [감지 확장프로그램](https://github.com/parkhw328/wook-home/wiki/Detection)을 설치하고 화면에서 **웹 탭 감지 켜기**를 누르세요. [Linux 실행과 권한 안내](https://github.com/parkhw328/wook-home/wiki/Linux).
 
+왼쪽 **연결 설정**에서 **공개 대화 읽기·CLI 검색 보관·Codex 지시 전송**을 선택하고 저장하세요. 적용 상태와 최초 실행 명령을 화면에서 확인할 수 있으며, 이후 설정 변경에는 연결기 재시작이 필요 없습니다.
+
 이미 실행 중인 Codex에 지시하려면 호스트에 Node.js 24.14 이상(27 미만)과 `codex queue`를 지원하는 CLI를 준비하고 별도 터미널에서 실행하세요. [Wiki의 연결·명령 안내](https://github.com/parkhw328/wook-home/wiki/CLI)를 확인할 수 있습니다.
 
 ```powershell
-npm run bridge:codex -- --workspace . --allow-commands --include-conversations
+npm run bridge:codex -- --workspace .
 ```
 
 ```powershell

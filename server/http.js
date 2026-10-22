@@ -9,6 +9,7 @@ import { createDiscovery } from './discovery.js';
 import { createConnections } from './connections.js';
 import { createStaffConnections } from './staff-connections.js';
 import { createSessionSearch } from './session-search.js';
+import { createBridgeSettings } from './bridge-settings.js';
 
 const contentTypes = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
@@ -53,6 +54,7 @@ export function createHttpServer(office, { publicDir = resolve('public'), bridge
   }));
   const root = resolve(publicDir);
   const observer = createSessionObserver({ file: bridgeFile, clock });
+  const settings = createBridgeSettings({ directory: commandsDir, observer });
   const commands = createLocalCommands({ directory: commandsDir, observer, office, clock });
   const discovery = createDiscovery({ observer, clock });
   const connections = createConnections({ observer, discovery, clock });
@@ -68,6 +70,8 @@ export function createHttpServer(office, { publicDir = resolve('public'), bridge
       const protectedRequest = path.startsWith('/api/') || !['GET', 'HEAD'].includes(method);
       if (protectedRequest && (request.headers['sec-fetch-site'] === 'cross-site' || (request.headers.origin && request.headers.origin !== `http://${host}`))) throw new ApiError(403, 'ORIGIN_REJECTED', '사무실 화면에서 다시 요청해 주세요.');
       if (method === 'GET' && path === '/api/health') return json(response, 200, { status: 'ok', version: VERSION });
+      if (method === 'GET' && path === '/api/bridge/settings') return json(response, 200, settings.snapshot());
+      if (method === 'PUT' && path === '/api/bridge/settings') return json(response, 200, settings.configure(await bodyOf(request, 4096)));
       if (method === 'GET' && path === '/api/search/status') return json(response, 200, await search.status());
       if (method === 'POST' && path === '/api/search/query') return json(response, 200, await search.query(await bodyOf(request)));
       if (method === 'PUT' && path === '/api/search/settings') return json(response, 200, search.configure(await bodyOf(request)));

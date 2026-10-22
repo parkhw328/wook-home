@@ -9,7 +9,7 @@ export class CliConversationDialog {
     this.dialog.id = 'cli-conversation-dialog';
     this.dialog.className = 'cli-conversation-dialog';
     this.dialog.setAttribute('aria-labelledby', 'cli-dialog-title');
-    this.dialog.innerHTML = `<header class="cli-dialog-header"><div><p class="eyebrow">CLI CONVERSATION</p><h2 id="cli-dialog-title">CLI 대화기록</h2><p id="cli-dialog-state"></p></div><button type="button" class="button" data-cli-close aria-label="CLI 대화기록 닫기">닫기 ×</button></header><div class="cli-dialog-controls"><label>세션<select id="cli-dialog-session"></select></label><label>대화에서 찾기<input type="search" id="cli-dialog-query" placeholder="검색어 입력" autocomplete="off"></label><label>작성자<select id="cli-dialog-role"><option value="all">모든 역할</option><option value="user">사용자</option><option value="assistant">에이전트</option></select></label></div><div class="cli-dialog-actions"><button type="button" class="button button-small" data-cli-latest>최신 기록 ↓</button><button type="button" class="button button-small" data-cli-refresh>새로고침</button><button type="button" class="button button-primary button-small" data-cli-command>이 세션에 지시</button><button type="button" class="button button-small" data-cli-agent hidden>직원 정보</button><a class="button button-small" href="#search" data-cli-library>전체 자료 검색 ↗</a></div><p id="cli-dialog-notice" role="status"></p><div id="cli-dialog-log" class="cli-dialog-log" tabindex="0" aria-label="CLI 공개 대화기록"></div><footer><span id="cli-dialog-scope"></span><a href="https://github.com/parkhw328/wook-home/wiki/CLI" target="_blank" rel="noopener noreferrer">연결 안내 ↗</a></footer>`;
+    this.dialog.innerHTML = `<header class="cli-dialog-header"><div><p class="eyebrow">CLI CONVERSATION</p><h2 id="cli-dialog-title">CLI 대화기록</h2><p id="cli-dialog-state"></p></div><button type="button" class="button" data-cli-close aria-label="CLI 대화기록 닫기">닫기 ×</button></header><div class="cli-dialog-controls"><label>세션<select id="cli-dialog-session"></select></label><label>대화에서 찾기<input type="search" id="cli-dialog-query" placeholder="검색어 입력" autocomplete="off"></label><label>작성자<select id="cli-dialog-role"><option value="all">모든 역할</option><option value="user">사용자</option><option value="assistant">에이전트</option></select></label></div><div class="cli-dialog-actions"><button type="button" class="button button-small" data-cli-latest>최신 기록 ↓</button><button type="button" class="button button-small" data-cli-refresh>새로고침</button><button type="button" class="button button-primary button-small" data-cli-command>이 세션에 지시</button><button type="button" class="button button-small" data-cli-agent hidden>직원 정보</button><a class="button button-small" href="#search" data-cli-library>전체 자료 검색 ↗</a></div><p id="cli-dialog-notice" role="status"></p><a class="button button-small" href="#connection-settings" data-open-connection-settings data-cli-settings>대화 · 지시 설정</a><div id="cli-dialog-log" class="cli-dialog-log" tabindex="0" aria-label="CLI 공개 대화기록"></div><footer><span id="cli-dialog-scope"></span><a href="https://github.com/parkhw328/wook-home/wiki/CLI" target="_blank" rel="noopener noreferrer">연결 안내 ↗</a></footer>`;
     document.body.append(this.dialog);
     this.find = (selector) => this.dialog.querySelector(selector);
     this.reader = new ConversationReader(request, () => this.render());
@@ -22,6 +22,7 @@ export class CliConversationDialog {
     this.find('[data-cli-command]').addEventListener('click', () => { const id = this.id; this.close(); onCommand(id); });
     this.find('[data-cli-agent]').addEventListener('click', () => { const id = this.agentId; this.close(); onAgent(id); });
     this.find('[data-cli-library]').addEventListener('click', () => this.close());
+    this.find('[data-cli-settings]').addEventListener('click', () => this.close());
     this.dialog.addEventListener('close', () => {
       this.save(); clearInterval(this.timer); this.reader.select(null);
       const target = this.returnFocus?.isConnected ? this.returnFocus : document.querySelector(`[data-session="${this.id}"], [data-workspace-session="${this.id}"]`);
@@ -73,7 +74,7 @@ export class CliConversationDialog {
     this.find('[data-cli-command]').disabled = !session || !connected || !state.localSessions?.control?.enabled;
     const data = this.reader.data;
     const notes = {
-      disabled: '대화 연결이 꺼져 있습니다. 연결 프로그램을 --include-conversations 옵션으로 실행해 주세요.',
+      disabled: '공개 대화 읽기가 꺼져 있습니다. 아래 대화 · 지시 설정에서 켜고 저장해 주세요.',
       empty: '아직 수집된 공개 메시지가 없습니다.',
       unavailable: '현재 기록을 읽을 수 없습니다. 종료된 과거 기록은 전체 자료 검색에서 확인하세요.',
       disconnected: '연결이 끊겼거나 갱신이 멈췄습니다. 마지막으로 받은 내용을 표시합니다.',

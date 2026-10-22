@@ -44,7 +44,7 @@ Linux에서도 같은 확장을 설치합니다. Docker 실행만으로 브라�
 npm run bridge:codex -- --workspace .
 ```
 
-지시 전송이 필요하면 `--allow-commands`를 추가합니다. 웹 감지를 켜도 CLI 명령 권한은 바뀌지 않습니다. CLI 설정과 지원 플랫폼은 [CLI 안내](CLI.md)를 따릅니다.
+지시 전송이 필요하면 **연결 설정 → Codex 지시 전송**을 켜고 저장합니다. 웹 감지를 켜도 CLI 명령 권한은 바뀌지 않습니다. CLI 설정과 지원 플랫폼은 [CLI 안내](CLI.md)를 따릅니다.
 
 ## 연결 끊기와 문제 해결
 

@@ -27,7 +27,7 @@ export function commandUnavailableReason(state, sessionId, connected = true) {
   if (!control?.enabled) {
     return control?.reason === 'cli_unavailable'
       ? '호스트에서 Codex CLI의 명령 기능을 사용할 수 없습니다. 연결 안내를 확인해 주세요.'
-      : '호스트 연결 프로그램을 명령 허용 모드로 실행하면 이 세션에 지시할 수 있습니다.';
+      : '연결 설정에서 Codex 지시 전송을 켜고 저장한 뒤 적용 상태를 확인해 주세요.';
   }
   return '';
 }

@@ -211,7 +211,7 @@ function renderSessions() {
     return `<button type="button" class="session-card" data-session="${esc(session.id)}"><span class="session-symbol" aria-hidden="true">&gt;_</span><span class="session-info"><strong>${esc(session.name)}</strong><small>Codex · ${local?.control?.enabled ? '지시 전송 연결됨' : '상태 관찰'}</small></span><span class="status ${statusClass(status)}">${sessionStatusLabel(status)}</span></button>`;
     }).join('') : observing
       ? emptyState('이 프로젝트에서 감지된 Codex 세션이 없습니다', '표시된 작업 폴더에서 Codex 새 대화를 시작하고 첫 메시지를 보내세요. 다음 갱신 때 다시 확인합니다.', 'activity')
-      : emptyState('로컬 CLI의 상태를 연결하세요', '선택한 작업 공간의 Codex 세션을 연결하세요. 대화기록은 연결 프로그램에서 별도로 활성화할 수 있습니다.', 'activity');
+      : emptyState('로컬 CLI의 상태를 연결하세요', '선택한 작업 공간의 Codex 세션을 연결하세요. 왼쪽 연결 설정에서 공개 대화 읽기를 켜고 저장하세요.', 'activity');
     if (focused) $$('[data-session]', $('#session-list')).find((node) => node.dataset.session === focused)?.focus({ preventScroll: true });
   }
   if (modalContext?.type === 'session' && modal.open) {
@@ -339,7 +339,7 @@ function navigate() {
   document.title = `${officeName(state.office)} · ${label}`;
   $$('.view').forEach((node) => { node.hidden = node.id !== `view-${currentView}`; });
   $$('.nav-link').forEach((node) => {
-    const active = node.dataset.view === currentView;
+    const active = view === 'connection-settings' ? node.hasAttribute('data-open-connection-settings') : node.dataset.view === currentView;
     node.classList.toggle('active', active);
     if (active) node.setAttribute('aria-current', 'page');
     else node.removeAttribute('aria-current');
@@ -451,10 +451,10 @@ function openSession(id) {
   if (!session) return;
   const status = observedSessionStatus(state.localSessions, session, connected);
   const draft = commandDeliveries.get(id)?.record.content ?? commandDrafts.get(id) ?? '';
-  openModal(session.name, 'LOCAL CLI · SESSION', `<div class="info-box">${icon('activity')}<span>명령 허용 모드에서 기존 Codex 세션에 지시할 수 있습니다. 세션을 클릭하면 대화기록 모달에서 공개 응답을 확인할 수 있습니다. 승인·중단은 원래 CLI에서 처리하세요.</span></div><button type="button" class="button button-small" data-session="${esc(id)}">대화기록 보기 ↗</button>
+  openModal(session.name, 'LOCAL CLI · SESSION', `<div class="info-box">${icon('activity')}<span>연결 설정에서 지시 전송을 켜면 기존 Codex 세션에 지시할 수 있습니다. 세션을 클릭하면 대화기록 모달에서 공개 응답을 확인할 수 있습니다. 승인·중단은 원래 CLI에서 처리하세요.</span></div><button type="button" class="button button-small" data-session="${esc(id)}">대화기록 보기 ↗</button>
     <dl class="detail-facts session-facts"><div><dt>관찰된 상태</dt><dd id="observed-status">${sessionStatusLabel(status)}</dd></div><div><dt>마지막 활동</dt><dd id="observed-last-event">${displayTime(session.lastActivityAt)}</dd></div><div><dt>연결 상태</dt><dd id="observed-connection">${state.localSessions.status === 'connected' && connected ? '관찰 연결됨' : '관찰 연결 끊김'}</dd></div><div><dt>작업 공간</dt><dd>${esc(state.localSessions.workspace || '현재 작업 공간')}</dd></div></dl>
     <p class="field-help">사무실 중지는 외부 CLI를 멈추지 않습니다. <a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/CLI" target="_blank" rel="noopener noreferrer">상태·연결 도움말 ↗</a></p>
-    <section class="command-section" aria-labelledby="command-heading"><h3 id="command-heading">이 세션에 지시하기</h3><p class="field-help" id="command-availability"></p>
+    <section class="command-section" aria-labelledby="command-heading"><h3 id="command-heading">이 세션에 지시하기</h3><p class="field-help" id="command-availability"></p><a class="button button-small" href="#connection-settings" data-open-connection-settings data-close>연결 설정 열기</a>
       <form id="session-command-form" class="form-stack" data-id="${esc(id)}"><div class="form-field"><label for="session-command">전달할 지시</label><textarea id="session-command" name="content" rows="4" maxlength="4000" required placeholder="원래 CLI에 이어서 수행할 일을 적어 주세요.">${esc(draft)}</textarea></div>${errorSlot()}<div class="form-actions"><button class="button button-primary" type="submit" id="send-command">지시 보내기</button></div></form>
       <div id="command-receipt" role="status" aria-live="polite"></div>
     </section>`, { type: 'session', id });

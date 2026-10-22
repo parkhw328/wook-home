@@ -20,10 +20,10 @@ Meta 카드의 **Meta AI 열기**는 Meta AI 웹 서비스로 연결됩니다. �
 Docker가 실행 중인 PC에서 프로젝트 폴더의 터미널을 열고 다음 명령을 실행합니다. Node.js와 공식 Codex CLI가 필요하며, 해당 PC에서 Codex를 먼저 로그인하고 프로젝트 세션을 열어야 합니다.
 
 ```powershell
-npm run bridge:codex -- --workspace . --allow-commands
+npm run bridge:codex -- --workspace .
 ```
 
-사무실에서 표시된 CLI 세션을 선택하고 지시를 입력합니다. **Codex 접수**는 큐가 지시를 받은 상태입니다. 진행 중인 턴이 끝난 뒤 처리될 수 있으며, 답변·승인 요청·중단은 원래 Codex에서 확인합니다. 설정과 문제 해결은 [기존 Codex 연결 안내](CLI.md)를 따르세요.
+**연결 설정 → Codex 지시 전송**을 켜고 저장한 뒤 적용 상태를 확인합니다. 사무실에서 표시된 CLI 세션을 선택하고 지시를 입력합니다. **Codex 접수**는 큐가 지시를 받은 상태입니다. 진행 중인 턴이 끝난 뒤 처리될 수 있으며, 답변·승인 요청·중단은 원래 Codex에서 확인합니다. 설정과 문제 해결은 [기존 Codex 연결 안내](CLI.md)를 따르세요.
 
 ## 다른 공급자를 준비하려면
 

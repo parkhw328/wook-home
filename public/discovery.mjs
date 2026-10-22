@@ -1,6 +1,7 @@
 import { apiRequest } from './api.mjs';
 import { escapeHtml as esc, sessionStatusLabel, displayTime } from './model.mjs';
 import './staff-connections.mjs';
+import { mountBridgeSettings } from './bridge-settings.mjs';
 
 const GUIDE = 'https://github.com/parkhw328/wook-home/wiki/Detection';
 const ENABLED_KEY = 'stackqueue.web-detection.enabled';
@@ -36,6 +37,7 @@ function initialize() {
     <div class="discovery-tabs" role="tablist" aria-label="연결 관리 보기">
       <button type="button" id="discovery-tab-detected" role="tab" aria-controls="discovery-panel-detected" aria-selected="true" tabindex="0">감지</button>
       <button type="button" id="discovery-tab-checks" role="tab" aria-controls="discovery-panel-checks" aria-selected="false" tabindex="-1">연결 점검</button>
+      <button type="button" id="discovery-tab-settings" role="tab" aria-controls="discovery-panel-settings" aria-selected="false" tabindex="-1">설정</button>
     </div>
     <div id="discovery-panel-detected" role="tabpanel" aria-labelledby="discovery-tab-detected" tabindex="0">
     <p class="discovery-intro">실행 중인 CLI, 프로젝트의 CLI 기록, 브라우저에서 열린 AI 탭을 확인하세요.</p>
@@ -50,11 +52,12 @@ function initialize() {
     <div id="discovery-panel-checks" role="tabpanel" aria-labelledby="discovery-tab-checks" tabindex="0" hidden>
     <div class="discovery-toolbar"><button type="button" id="discovery-check" class="button button-primary">연결 점검 실행</button><a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/Connections" target="_blank" rel="noopener noreferrer">점검 안내 ↗</a></div>
     <p id="discovery-check-status" role="status">연결 점검 상태를 확인하고 있습니다.</p><div id="discovery-checks" class="discovery-list"></div>
-    </div>`;
+    </div><div id="discovery-panel-settings" role="tabpanel" aria-labelledby="discovery-tab-settings" tabindex="0" hidden></div>`;
   const team = view.querySelector('.team-section');
   if (team) team.insertAdjacentElement('afterend', panel);
   else view.append(panel);
   const find = (selector) => panel.querySelector(selector);
+  const settings = mountBridgeSettings(find('#discovery-panel-settings'));
   const tabs = [...panel.querySelectorAll('[role="tab"]')];
   function selectTab(selected) {
     for (const tab of tabs) {
@@ -63,7 +66,20 @@ function initialize() {
       tab.tabIndex = active ? 0 : -1;
       find(`#${tab.getAttribute('aria-controls')}`).hidden = !active;
     }
+    if (selected.id === 'discovery-tab-settings') void settings.read();
   }
+  function openSettings() {
+    panel.closest('details')?.setAttribute('open', '');
+    selectTab(find('#discovery-tab-settings'));
+    requestAnimationFrame(() => { find('#connection-settings-title').focus({ preventScroll: true }); panel.scrollIntoView({ block: 'start' }); });
+  }
+  document.addEventListener('click', async (event) => {
+    if (!event.target.closest('[data-open-connection-settings]')) return;
+    if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch { /* The browser may have already exited. */ } }
+    openSettings();
+  });
+  window.addEventListener('hashchange', () => { if (location.hash === '#connection-settings') openSettings(); });
+  if (location.hash === '#connection-settings') openSettings();
   for (const [index, tab] of tabs.entries()) {
     tab.addEventListener('click', () => selectTab(tab));
     tab.addEventListener('keydown', (event) => {
@@ -121,6 +137,7 @@ function initialize() {
     try { state = await apiRequest('/discovery'); serverConnected = true; }
     catch { serverConnected = false; }
     finally { reading = false; render(); }
+    void settings.read();
     if (!checking) {
       try { checkState = await apiRequest('/connections'); renderChecks(); }
       catch { find('#discovery-checks').hidden = true; find('#discovery-check-status').textContent = '연결 점검 상태를 가져오지 못했습니다. 서버 연결을 확인하세요.'; }

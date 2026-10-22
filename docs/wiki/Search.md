@@ -6,15 +6,13 @@ CLI 목록·직원 캐릭터·방 안의 CLI 세션을 클릭하면 **대화기�
 
 ## CLI 기록 연결
 
-Node.js 24.14 이상, 27 미만에서 저장소 루트의 별도 터미널로 실행합니다. 기존 연결 프로그램이 실행 중이면 먼저 `npm run bridge:codex -- --stop`으로 연결기만 종료합니다.
+**자료 검색 → CLI 검색 보관 설정** 또는 왼쪽 **연결 설정**에서 **CLI 대화 검색 보관**을 켜고 저장하세요. 연결기 실행 대기라면 화면의 명령을 서버 PC의 저장소 터미널에서 실행합니다. [처음 연결과 업데이트](CLI.md)를 참고하세요.
 
-```powershell
-npm run bridge:codex -- --workspace . --allow-commands --include-conversations --include-search-history
-```
+- **공개 대화 읽기**: 최근 Codex 메시지를 모달에서 읽는 별도 선택입니다.
+- **CLI 대화 검색 보관**: 선택 프로젝트의 Codex·Claude Code·Gemini 저장 기록을 약 30초마다 검색용으로 읽습니다. 오래된 기록과 Codex의 archived_sessions도 찾으며 원래 로그는 수정하지 않습니다.
+- **Codex 지시 전송**: 검색만 필요하면 켜지 않아도 됩니다.
 
-- `--include-conversations`: 현재 Codex의 최근 메시지를 모달에서 읽습니다.
-- `--include-search-history`: 선택한 프로젝트의 Codex·Claude Code·Gemini CLI 저장 기록을 약 30초마다 검색용으로 읽습니다. 생성 날짜와 무관하게 오래된 기록 및 Codex의 archived_sessions도 찾습니다. 원래 로그는 수정하지 않습니다.
-- `--allow-commands`: 기존 Codex 지시 전송용이며 검색만 필요하면 생략합니다.
+화면에서 해제하고 저장하면 새 수집을 멈춥니다. 탭 닫힘·연결기 종료·재시작 뒤에도 기존 검색 사본은 남습니다.
 
 Codex는 `CODEX_HOME` 또는 기본 `.codex`, Claude Code는 `CLAUDE_CONFIG_DIR` 또는 기본 `.claude/projects`, Gemini CLI는 기본 `.gemini/tmp`의 프로젝트 해시 아래 chats를 확인합니다. 본문의 작업 폴더 또는 프로젝트 해시가 정확히 일치하는 기록만 포함합니다. 다른 프로젝트나 계정의 전체 기록을 합치지 않습니다. 공급자의 저장 형식이 바뀌거나 로컬 기록이 없으면 검색할 수 없습니다.
 
