@@ -26,7 +26,6 @@
 .staff-dialog [hidden] { display: none !important; }
 .staff-dialog .form-error { overflow-wrap: anywhere; }
 .staff-hire-choice { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 22px; }
-.status.observing { color: var(--accent); background: var(--action-selected); }
 @media (max-width: 600px) {
   .discovery-panel { padding: 16px; }
   .discovery-toolbar .button { min-height: 44px; }

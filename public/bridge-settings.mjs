@@ -1,5 +1,18 @@
 import { apiRequest } from './api.mjs';
 import { displayTime } from './model.mjs';
+import { connectionTone, updateConnectionBadge } from './connection-status.mjs';
+
+export function settingPresentation(state, key, online = true) {
+  if (!online) return { status: 'disconnected', label: '서버 연결 끊김' };
+  if (!state) return { status: 'loading', label: '확인 중' };
+  if (['storage_error', 'bridge_error'].includes(state.status)) return { status: state.status, label: '설정 확인 실패' };
+  if (state.status === 'upgrade_required') return { status: state.status, label: '연결 프로그램 업데이트 필요' };
+  if (!state.applied) return { status: 'not_connected', label: '연결 대기' };
+  if (state.status === 'pending') return { status: 'pending', label: `현재 ${state.applied[key] ? '켜짐' : '꺼짐'} · 적용 대기` };
+  if (state.status !== 'applied') return { status: 'unknown', label: '상태 확인 필요' };
+  if (key === 'commands' && state.options.commands && !state.applied.commands) return { status: 'unavailable', label: '지시 전송 준비 필요' };
+  return { status: state.applied[key] ? 'enabled' : 'disabled', label: state.applied[key] ? '현재 켜짐' : '현재 꺼짐' };
+}
 
 export function settingsMessage(state) {
   if (!state) return '설정을 불러오고 있습니다.';
@@ -17,7 +30,7 @@ export function settingsMessage(state) {
 
 export function mountBridgeSettings(root) {
   root.innerHTML = `<header class="connection-settings-heading"><h3 tabindex="-1" id="connection-settings-title">이 사무실에서 사용할 기능</h3><p>필요한 기능을 선택하세요. 저장하면 실행 중인 연결 프로그램에 반영되고 다음 실행에도 유지됩니다.</p></header>
-    <p class="settings-summary" id="bridge-settings-status" role="status"></p><p id="bridge-settings-scope" class="session-scope"></p>
+    <p class="settings-summary connection-notice" id="bridge-settings-status" role="status"></p><p id="bridge-settings-scope" class="session-scope"></p>
     <form id="bridge-settings-form"><fieldset id="bridge-settings-fields" disabled><legend class="sr-only">연결 기능 선택</legend>
       <label class="connection-option" for="setting-conversations"><input type="checkbox" id="setting-conversations" name="conversations"><span><strong>공개 대화 읽기</strong><span>연결한 프로젝트의 최근 Codex 지시와 공개 응답을 대화창에서 읽습니다. 최근 최대 60개 메시지를 표시합니다.</span><small>시스템 지침·내부 추론·도구 원문은 제외합니다. 끄면 임시 읽기 사본을 정리합니다.</small><span class="subtle-tag" data-setting-state="conversations">확인 중</span></span></label>
       <label class="connection-option" for="setting-searchHistory"><input type="checkbox" id="setting-searchHistory" name="searchHistory"><span><strong>CLI 대화 검색 보관</strong><span>연결한 프로젝트의 Codex·Claude Code·Gemini 공개 대화를 이 PC에 보관해 자료 검색에서 찾습니다.</span><small>최근 대화 읽기와 별도입니다. 끄면 새 수집만 멈추고 기존 검색 사본은 유지합니다.</small><span class="subtle-tag" data-setting-state="searchHistory">확인 중</span></span></label>
@@ -36,11 +49,13 @@ npm run bridge:codex -- --workspace .</textarea><button type="button" class="but
   let reading = false;
   let generation = 0;
   let online = false;
+  let readFailed = false;
   let initialized = false;
   let pendingSince;
   function accept(next, replace = false) {
     state = next;
     online = true;
+    readFailed = false;
     if (!initialized || replace || (!dirty && !busy)) {
       revision = state.revision;
       for (const key of keys) form.elements[key].checked = state.options[key];
@@ -52,8 +67,9 @@ npm run bridge:codex -- --workspace .</textarea><button type="button" class="but
     render();
   }
   function render() {
-    find('#bridge-settings-status').textContent = !online && initialized ? '서버 연결 끊김 · 아래는 마지막으로 받은 상태입니다. 선택한 내용은 유지됩니다.' : settingsMessage(state);
-    if (pendingSince && Date.now() - pendingSince > 20000) find('#bridge-settings-status').textContent = '설정은 저장됐지만 적용 응답이 늦어지고 있습니다. 연결 프로그램의 실행 상태와 공유 폴더 권한을 확인해 주세요.';
+    find('#bridge-settings-status').textContent = readFailed ? '서버 연결 끊김 · 현재 상태를 가져오지 못했습니다. 선택한 내용은 유지됩니다.' : settingsMessage(state);
+    find('#bridge-settings-status').dataset.tone = connectionTone(readFailed ? 'disconnected' : !state ? 'loading' : state.status === 'applied' && state.options.commands && !state.applied?.commands ? 'unavailable' : state.status);
+    if (online && pendingSince && Date.now() - pendingSince > 20000) find('#bridge-settings-status').textContent = '설정은 저장됐지만 적용 응답이 늦어지고 있습니다. 연결 프로그램의 실행 상태와 공유 폴더 권한을 확인해 주세요.';
     find('#bridge-settings-scope').textContent = state ? `연결 프로젝트: ${state.workspace || '연결 후 확인'}${state.updatedAt ? ` · 마지막 확인 ${displayTime(state.updatedAt)}` : ''}` : '';
     find('#bridge-settings-fields').disabled = !state || busy || !online || !state.writable || state.status === 'storage_error';
     find('#bridge-settings-save').disabled = !state || busy || !online || !state.writable || state.status === 'storage_error' || (!dirty && state.saved);
@@ -61,10 +77,14 @@ npm run bridge:codex -- --workspace .</textarea><button type="button" class="but
     find('#bridge-settings-reload').disabled = busy;
     for (const key of keys) {
       const badge = find(`[data-setting-state="${key}"]`);
-      badge.textContent = !online ? '상태 확인 필요' : !state?.applied ? '연결 대기' : state.status === 'pending' ? `현재 ${state.applied[key] ? '켜짐' : '꺼짐'} · 적용 대기`
-        : key === 'commands' && state.options.commands && !state.applied.commands ? '지시 전송 준비 필요' : state.applied[key] ? '현재 켜짐' : '현재 꺼짐';
+      const presentation = settingPresentation(state, key, !readFailed);
+      badge.classList.remove('subtle-tag');
+      updateConnectionBadge(badge, presentation.label, presentation.status);
     }
-    if (state && !state.writable) find('#bridge-settings-status').textContent = '설정 폴더에 쓸 수 없습니다. 연결 프로그램과 사무실의 공유 폴더 계정·권한을 확인해 주세요.';
+    if (online && state && !state.writable) {
+      find('#bridge-settings-status').textContent = '설정 폴더에 쓸 수 없습니다. 연결 프로그램과 사무실의 공유 폴더 계정·권한을 확인해 주세요.';
+      find('#bridge-settings-status').dataset.tone = 'error';
+    }
   }
   async function read(replace = false) {
     if (reading || busy) return;
@@ -78,7 +98,7 @@ npm run bridge:codex -- --workspace .</textarea><button type="button" class="but
       if (dirty && next.revision !== revision) find('#bridge-settings-feedback').textContent = '다른 화면에서 설정이 변경됐습니다. 현재 선택은 유지했습니다. 저장된 설정 다시 불러기로 최신 선택을 확인하세요.';
     } catch (error) {
       if (current !== generation) return;
-      online = false; render(); find('#bridge-settings-feedback').textContent = error.message;
+      online = false; readFailed = true; render(); find('#bridge-settings-feedback').textContent = error.message;
     } finally { reading = false; }
   }
   form.addEventListener('change', () => { dirty = true; find('#bridge-settings-feedback').textContent = '아직 저장하지 않은 선택입니다.'; render(); });

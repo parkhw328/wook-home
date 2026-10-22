@@ -1,0 +1,30 @@
+/* Shared health indicators, independent of action-button and task colors. */
+[data-tone="healthy"] { --state-ink: var(--success-ink); --state-bg: var(--success-bg); --state-border: var(--success-border); }
+[data-tone="info"] { --state-ink: var(--info-ink); --state-bg: var(--info-bg); --state-border: var(--info-border); }
+[data-tone="warning"] { --state-ink: var(--warning-ink); --state-bg: var(--warning-bg); --state-border: var(--warning-border); }
+[data-tone="error"] { --state-ink: var(--danger-ink); --state-bg: var(--danger-bg); --state-border: var(--danger-border); }
+[data-tone="neutral"] { --state-ink: var(--muted); --state-bg: var(--surface-muted); --state-border: var(--line-strong); }
+.connection-state { display: inline-flex; align-items: flex-start; gap: 7px; max-width: 100%; padding: 5px 9px; border: 1px solid var(--state-border); border-radius: 7px; background: var(--state-bg); color: var(--state-ink); font-size: var(--font-caption); font-weight: 700; line-height: 1.6; white-space: normal; overflow-wrap: anywhere; }
+.connection-state svg { flex: 0 0 18px; width: 18px; height: 18px; margin-top: 2px; }
+.connection-state > span { min-width: 0; }
+.discovery-card[data-tone] { border-inline-start: 4px solid var(--state-border); }
+.discovery-card-heading { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 12px; justify-content: space-between; width: 100%; }
+.discovery-card-heading > strong { flex: 1 1 130px; }
+.discovery-card-heading .connection-state { flex: 0 1 auto; }
+.discovery-card .discovery-card-body { flex: 1 1 100%; }
+.discovery-card .discovery-card-actions { max-width: 100%; align-items: flex-start; }
+.discovery-sources, .connection-legend { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; margin: 12px 0; }
+.connection-legend { padding-block: 12px; border-bottom: 1px solid var(--line); }
+.connection-legend .connection-state { border-color: transparent; padding: 3px 7px; }
+.connection-notice[data-tone] { padding: 12px 14px; border: 1px solid var(--state-border); border-inline-start-width: 4px; border-radius: 8px; background: var(--state-bg); color: var(--state-ink); font-size: var(--font-small); line-height: 1.8; }
+.connection-option .connection-state { justify-self: start; }
+.connection-option .connection-state > span { font-size: var(--font-caption); line-height: 1.6; }
+.status.observing { color: var(--success-ink); background: var(--success-bg); }
+.status.unknown, .status.interrupted { color: var(--warning-ink); background: var(--warning-bg); }
+.connection-pill.connected { color: var(--success-ink); }
+.connection-pill.connected i { background: var(--success-ink); width: 8px; height: 8px; }
+.connection-pill.disconnected { color: var(--danger-ink); }
+.connection-pill.disconnected i { background: var(--danger-ink); }
+@media (forced-colors: active) {
+  .connection-state, .connection-notice[data-tone] { border-color: CanvasText; }
+}

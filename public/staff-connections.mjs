@@ -1,5 +1,6 @@
 import { apiRequest } from './api.mjs';
 import { escapeHtml as esc, providerLinks } from './model.mjs';
+import { connectionBadge } from './connection-status.mjs';
 
 export function connectionType(connection) {
   if (!connection) return '연결 미지정';
@@ -28,7 +29,7 @@ export function connectionMarkup(agent, provider) {
       : link.source === 'web' ? '웹 탭의 열림 상태를 관찰합니다. 로그인·응답 생성 여부는 확인하지 않으며, 대화 읽기와 지시 전송은 해당 서비스에서 진행하세요.'
         : link.kind === 'process' ? '실행 프로세스를 관찰합니다. 저장 대화와의 연결이 확인되지 않아 이 항목으로 지시를 보내지는 않습니다.'
           : '연결한 Codex 대화를 확인할 수 있습니다. 지시 전송은 호스트에서 명시적으로 허용한 경우에 사용할 수 있습니다.';
-  return `<section class="staff-connection-box" aria-label="직원 연결"><p>${esc(explanation)}</p>
+  return `<section class="staff-connection-box" aria-label="직원 연결">${connectionBadge(link ? `${connectionType(link)} · ${link.statusLabel}` : '연결 미지정', link?.status === 'not_connected' ? 'unknown' : link?.status || 'not_connected')}<p>${esc(explanation)}</p>
     ${link?.source === 'web' && link.tabCount ? `<p class="field-help">같은 감지 항목의 탭 ${esc(link.tabCount)}개</p>` : ''}
     <div class="detail-actions"><button type="button" class="button" data-connect-agent="${esc(agent.id)}" data-mutation>${link ? '연결 변경·다시 연결' : 'CLI·웹 연결'}</button>
     ${link ? `<button type="button" class="button button-caution" data-disconnect-agent="${esc(agent.id)}" data-mutation>연결 해제</button>` : ''}
