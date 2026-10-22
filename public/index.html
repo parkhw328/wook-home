@@ -33,8 +33,12 @@
     <div class="app-shell">
       <aside class="sidebar" aria-label="작업 공간 탐색">
         <div class="workspace-identity">
+          <section class="sidebar-user" aria-labelledby="sidebar-user-heading">
+            <h2 id="sidebar-user-heading" class="sidebar-section-title">현재 사용자</h2>
+            <div class="sidebar-bottom"><span class="commander-avatar" aria-hidden="true">C</span><div><strong>Commander</strong><span>워크스페이스 관리자</span></div></div>
+            <span class="connection-pill" id="connection-status" role="status"><i aria-hidden="true"></i>로컬 서버 연결 중</span>
+          </section>
           <a class="brand" href="#office" id="brand-link" aria-label="StackQueue Office"><span class="brand-icon" aria-hidden="true">SQ<span></span></span><span class="brand-copy"><span data-office-name>StackQueue Office</span></span></a>
-          <span class="connection-pill" id="connection-status" role="status"><i aria-hidden="true"></i>로컬 서버 연결 중</span>
         </div>
         <div class="nav-label">WORKSPACE</div>
         <nav class="main-nav">
@@ -51,7 +55,6 @@
           <div class="program-grid" id="program-list" aria-labelledby="program-heading"></div>
         </details>
         <div class="sidebar-meta">
-          <section class="sidebar-user" aria-labelledby="sidebar-user-heading"><h2 id="sidebar-user-heading" class="sidebar-section-title">현재 사용자</h2><div class="sidebar-bottom"><span class="commander-avatar" aria-hidden="true">C</span><div><strong>Commander</strong><span>워크스페이스 관리자</span></div></div></section>
           <footer class="sidebar-footer" aria-labelledby="sidebar-info-heading"><h2 id="sidebar-info-heading" class="sidebar-section-title">도움말 · 버전</h2><a class="inline-link footer-help" href="https://github.com/parkhw328/wook-home/wiki/UI" target="_blank" rel="noopener noreferrer">화면 사용법 ↗</a><div class="sidebar-version"><span>앱 버전</span><span id="app-version">확인 중</span></div></footer>
         </div>
       </aside>
