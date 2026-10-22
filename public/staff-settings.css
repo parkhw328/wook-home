@@ -1,0 +1,5 @@
+.staff-project-field { grid-column: 1 / -1; min-width: 0; }
+.staff-project, .detail-facts dd, #staff-execution-help, #staff-selection-warning { overflow-wrap: anywhere; }
+.staff-project { color: var(--ink); }
+.staff-card-group { display: grid; align-content: start; gap: .5rem; min-width: 0; }
+.staff-card-group > .button { justify-self: start; }

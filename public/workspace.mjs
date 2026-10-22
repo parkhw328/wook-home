@@ -1,3 +1,4 @@
+import { projectSummary } from './staff-settings.mjs';
 import { ROOMS, FLOORS, roomById, routeBetween, roomTasks, taskRoom, occupantRoom, isHall, hallForFloor } from './rooms.mjs';
 import { OfficeScene } from './office-3d.mjs';
 import { OfficeViewControls } from './office-view.mjs';
@@ -187,11 +188,11 @@ export class OfficeWorkspace {
       content = '<div class="room-welcome"><span aria-hidden="true">↳</span><strong>같은 건물에서, 함께하는 일.</strong><p>층을 둘러보고 동료의 방을 선택하세요. Commander가 엘리베이터와 복도를 따라 찾아갑니다.</p><p class="room-key-hint">Tab · 방 선택<br>Enter · 입장 / Esc · 퇴실</p></div>';
     } else if (this.room === 'office') {
       content = `<div class="room-section-label">CLI 세션 <span>${sessions.length}</span></div>` + (sessions.map((session) => `<button class="room-entry" type="button" data-workspace-session="${esc(session.id)}" aria-pressed="${this.selection?.id === session.id}"><span class="entry-symbol">&gt;_</span><span><strong>${esc(session.name)}</strong><small>${sessionStatusLabel(observedSessionStatus(this.state.localSessions, session, this.connected))}</small></span><span aria-hidden="true">↗</span></button>`).join('') || '<p class="room-empty">연결된 CLI 세션이 없습니다. 아래 연결 관리에서 작업 폴더와 연결 방법을 확인하세요.</p>');
-      content += `<div class="room-section-label">직원 <span>${this.state.agents.length}</span></div>` + this.state.agents.map((agent) => `<button class="room-entry" type="button" data-agent="${esc(agent.id)}"><span class="entry-symbol">${esc(Array.from(agent.name)[0])}</span><span><strong>${esc(agent.name)}</strong><small>${esc(agent.role)} · ${statusLabel(agent.status)}</small></span><span aria-hidden="true">↗</span></button>`).join('');
+      content += `<div class="room-section-label">직원 <span>${this.state.agents.length}</span></div>` + this.state.agents.map((agent) => `<button class="room-entry" type="button" data-agent="${esc(agent.id)}"><span class="entry-symbol">${esc(Array.from(agent.name)[0])}</span><span><strong>${esc(agent.name)}</strong><small>${esc(agent.role)} · ${statusLabel(agent.status)}</small><small>${esc(projectSummary(agent, this.state.localSessions))}</small></span><span aria-hidden="true">↗</span></button>`).join('');
       content += '<button type="button" class="button button-primary room-assign" data-room-assign>업무 지시</button>';
     } else if (this.room === 'lounge') {
       const idle = this.state.agents.filter((agent) => agent.status === 'idle');
-      content = idle.length ? idle.map((agent) => `<button type="button" class="room-entry" data-agent="${esc(agent.id)}"><span class="entry-symbol">${esc(Array.from(agent.name)[0])}</span><span><strong>${esc(agent.name)}</strong><small>새 업무 대기</small></span></button>`).join('') : '<p class="room-empty">지금은 업무를 기다리는 직원이 없습니다.<br>소파에서 잠시 쉬어 가세요.</p>';
+      content = idle.length ? idle.map((agent) => `<button type="button" class="room-entry" data-agent="${esc(agent.id)}"><span class="entry-symbol">${esc(Array.from(agent.name)[0])}</span><span><strong>${esc(agent.name)}</strong><small>새 업무 대기</small><small>${esc(projectSummary(agent, this.state.localSessions))}</small></span></button>`).join('') : '<p class="room-empty">지금은 업무를 기다리는 직원이 없습니다.<br>소파에서 잠시 쉬어 가세요.</p>';
     } else if (this.room === 'pantry') {
       content = '<div class="room-section-label">사무실 소식</div>' + (this.state.events.slice(0, 6).map((event) => `<div class="room-news"><p>${esc(event.message)}</p><time>${displayTime(event.createdAt)}</time></div>`).join('') || '<p class="room-empty">아직 등록된 소식이 없습니다.</p>');
     }

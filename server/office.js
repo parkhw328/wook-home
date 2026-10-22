@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { VERSION, programs, providers } from './catalog.js';
+import { modelId, effortId, supportsExecutionOptions } from './execution-options.js';
 
 export class ApiError extends Error {
   constructor(status, code, message) {
@@ -45,6 +46,12 @@ function connectionPreference(value) {
   return { source: value.source, kind: value.kind };
 }
 
+function projectName(value = '') {
+  const name = text(value, '담당 프로젝트', 80, false);
+  if (/[\r\n\t]/.test(name)) fail(400, 'VALIDATION_ERROR', '담당 프로젝트 이름은 한 줄로 입력해 주세요.');
+  return name;
+}
+
 function refreshAgent(state, agentId) {
   const agent = state.agents.find((item) => item.id === agentId);
   if (!agent) return;
@@ -83,6 +90,11 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
   }
   state.office.version = VERSION;
   state.office.name = officeName;
+  for (const agent of state.agents) {
+    agent.projectName ??= '';
+    agent.executionPreference ??= null;
+    agent.settingsRevision ??= 0;
+  }
   store.save(state);
 
   function update(action) {
@@ -110,7 +122,7 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
       return { office: output.office, providers: structuredClone(providers), agents: output.agents, tasks: output.tasks, events: output.events, programs: structuredClone(programs) };
     },
     hire(body, preference = null) {
-      fields(body, ['name', 'role', 'provider', 'model', 'reasoningEffort']);
+      fields(body, ['name', 'role', 'provider', 'model', 'reasoningEffort', 'projectName']);
       const connection = connectionPreference(preference);
       return update((next) => {
         if (next.agents.length >= 100) fail(409, 'LIMIT_REACHED', '초기 버전은 직원 100명까지 등록할 수 있습니다.');
@@ -124,6 +136,7 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
         const agent = {
           id: randomUUID(), name: text(body.name, '이름', 40), role: text(body.role, '역할', 120),
           provider: provider.id, model, reasoningEffort, status: 'idle', location: 'local-container',
+          projectName: projectName(body.projectName), executionPreference: null, settingsRevision: 0,
           createdAt: now(), updatedAt: now(),
         };
         if (connection) agent.connectionPreference = connection;
@@ -141,19 +154,34 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
         if (agent.provider === 'demo') fail(409, 'PROVIDER_MISMATCH', '체험 직원에는 외부 세션을 연결할 수 없습니다.');
         if (connection) agent.connectionPreference = connection;
         else delete agent.connectionPreference;
+        agent.settingsRevision += 1;
         agent.updatedAt = now();
         event(next, 'agent.connection.updated', connection ? '직원의 관찰 연결을 지정했습니다.' : '직원의 관찰 연결을 해제했습니다.');
         return agent;
       });
     },
-    editAgent(id, body) {
-      fields(body, ['name', 'role', 'model', 'reasoningEffort']);
+    editAgent(id, body, { execution, canConfigureExecution = false } = {}) {
+      fields(body, ['name', 'role', 'model', 'reasoningEffort', 'projectName', 'executionPreference', 'settingsRevision']);
       return update((next) => {
         const agent = next.agents.find((item) => item.id === id);
         if (!agent) fail(404, 'NOT_FOUND', '직원을 찾을 수 없습니다.');
+        if (body.settingsRevision !== undefined && (!Number.isSafeInteger(body.settingsRevision) || body.settingsRevision < 0)) fail(400, 'VALIDATION_ERROR', '직원 설정 버전을 확인해 주세요.');
+        if (body.settingsRevision !== undefined && body.settingsRevision !== agent.settingsRevision) fail(409, 'SETTINGS_CONFLICT', '다른 화면에서 직원 설정 또는 연결을 변경했습니다. 작성 내용은 유지됩니다. 최신 설정을 다시 불러온 뒤 저장해 주세요.');
         const provider = providers.find((item) => item.id === agent.provider);
         if (body.name !== undefined) agent.name = text(body.name, '이름', 40);
         if (body.role !== undefined) agent.role = text(body.role, '역할', 120);
+        if (body.projectName !== undefined) agent.projectName = projectName(body.projectName);
+        if (body.executionPreference !== undefined) {
+          const selection = body.executionPreference;
+          if (selection !== null) {
+            fields(selection, ['model', 'reasoningEffort']);
+            if (!modelId(selection.model) || !effortId(selection.reasoningEffort)) fail(400, 'VALIDATION_ERROR', '기본 모델과 추론 강도를 함께 선택해 주세요.');
+            const changed = selection.model !== agent.executionPreference?.model || selection.reasoningEffort !== agent.executionPreference?.reasoningEffort;
+            if (changed && (agent.provider !== 'openai' || !canConfigureExecution)) fail(409, 'CAPABILITY_UNAVAILABLE', '모델 설정을 저장하려면 이 직원에게 지원되는 Codex 대화를 연결해 주세요.');
+            if (changed && !supportsExecutionOptions(execution, selection)) fail(409, 'MODEL_UNAVAILABLE', '현재 Codex가 지원하는 모델과 추론 강도를 다시 선택해 주세요.');
+          }
+          agent.executionPreference = selection && { model: selection.model, reasoningEffort: selection.reasoningEffort };
+        }
         for (const [key, choices] of [['model', provider.models], ['reasoningEffort', provider.reasoningEfforts]]) {
           if (body[key] !== undefined) {
             if (body[key] !== agent[key]) fail(409, 'CAPABILITY_UNAVAILABLE', '이 연결에서는 모델·추론 강도 변경을 아직 지원하지 않습니다.');
@@ -161,6 +189,7 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
           }
         }
         agent.updatedAt = now();
+        agent.settingsRevision += 1;
         event(next, 'agent.updated', '직원 정보를 변경했습니다.');
         return agent;
       });

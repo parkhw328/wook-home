@@ -1,3 +1,4 @@
+import { projectField } from './staff-settings.mjs';
 import { DialogLayer } from './dialog-layer.mjs';
 import { apiRequest } from './api.mjs';
 import { escapeHtml as esc, providerLinks } from './model.mjs';
@@ -128,7 +129,7 @@ function initialize() {
       frame(`<form id="staff-connection-form" class="form-stack">
         <div class="form-field"><label for="staff-entry">연결할 CLI·웹</label><select id="staff-entry" name="entryId">${entries.map((entry) => `<option value="${esc(entry.id)}">${esc(connectionType(entry))} · ${esc(entry.name)} · ${esc(entry.scope)}</option>`).join('')}</select><p id="staff-source-help" class="field-help"></p></div>
         <div class="form-field"><label for="staff-employee">등록 방식</label><select id="staff-employee" name="agentId"></select><p id="staff-replace-help" class="field-help" hidden>이 직원의 기존 연결을 선택한 대상으로 변경합니다. 원래 CLI·웹은 종료하지 않습니다.</p></div>
-        <div id="staff-new-fields" class="field-row"><div class="form-field"><label for="staff-name">직원 이름</label><input id="staff-name" name="name" maxlength="40" autocomplete="off" placeholder="예: 리서치 담당" required></div><div class="form-field"><label for="staff-role">담당 역할</label><input id="staff-role" name="role" maxlength="120" autocomplete="off" placeholder="예: 자료 조사" required></div></div>
+        <div id="staff-new-fields" class="field-row"><div class="form-field"><label for="staff-name">직원 이름</label><input id="staff-name" name="name" maxlength="40" autocomplete="off" placeholder="예: 리서치 담당" required></div><div class="form-field"><label for="staff-role">담당 역할</label><input id="staff-role" name="role" maxlength="120" autocomplete="off" placeholder="예: 자료 조사" required></div>${projectField({}, agents, null, 'register')}</div>
         <p class="field-help">공급자는 선택한 대상에 맞춰 지정합니다. 직원 이름·역할은 저장되며 서버 재시작 후 감지 연결은 다시 선택합니다.</p>
         <div id="staff-error" class="form-error" role="alert" hidden></div><div class="form-actions"><button type="button" class="button" data-staff-refresh>목록 새로고침</button><button type="submit" id="staff-submit" class="button button-primary">직원 등록하고 연결</button></div></form>`);
       find('#staff-entry').value = entryId || entries.find((entry) => entry.linkedAgentId === agentId)?.id || entries[0].id;
@@ -139,6 +140,7 @@ function initialize() {
         if ([...find('#staff-employee').options].some((option) => option.value === draft.agentId)) find('#staff-employee').value = draft.agentId;
         selectionChanged();
         find('#staff-name').value = draft.name || ''; find('#staff-role').value = draft.role || '';
+        find('#register-project').value = draft.projectName || '';
       }
       find('#staff-entry').focus({ preventScroll: true });
     } catch (failure) {
@@ -170,7 +172,7 @@ function initialize() {
     setPending(true);
     try {
       const result = await apiRequest(values.agentId ? `/agents/${encodeURIComponent(values.agentId)}/connection` : '/agents/from-discovery', {
-        method: values.agentId ? 'PUT' : 'POST', body: values.agentId ? { entryId: entry.id } : { entryId: entry.id, name: values.name.trim(), role: values.role.trim() },
+        method: values.agentId ? 'PUT' : 'POST', body: values.agentId ? { entryId: entry.id } : { entryId: entry.id, name: values.name.trim(), role: values.role.trim(), projectName: values.projectName?.trim() || '' },
       });
       event.target.dataset.saved = 'true'; drafts.delete(draftId);
       const showDetails = dialog.open && revision === layer.revision;

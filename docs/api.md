@@ -31,9 +31,14 @@
 - 외부 공급자의 `webUrl`은 공식 서비스 접속 주소, `guideUrl`은 공급자 연결 안내 Wiki다. 고정 HTTPS 링크이며 인증·연동 상태를 의미하지 않는다. 링크를 열어도 `available`이나 capabilities는 바뀌지 않는다.
 - 공급자 ID: demo, openai, claude, gemini, meta. 초기에는 demo만 available=true. 외부 공급자의 새 세션 실행은 미구현이며 인증됨으로 표시하지 않는다. 연결한 Codex의 실행 옵션은 별도 `localSessions.execution`을 사용한다.
 - demo의 모델은 `local-demo`, 추론 강도는 `none`. 외부 공급자 models/ reasoningEfforts는 빈 배열. 미확인 모델 목록을 만들어 내지 않는다.
-- `POST /api/agents`: `{ name, role, provider, model?, reasoningEffort? }`. 이름 1~40자, 역할 1~120자. 외부 공급자는 model과 reasoningEffort를 비워 등록만 가능하다.
-- `PATCH /api/agents/:id`: `{ name?, role?, model?, reasoningEffort? }`. 공급자 변경은 불가.
-- 직원: `{ id, name, role, provider, model, reasoningEffort, status, location, createdAt, updatedAt }`. status는 idle / working / waiting_input / waiting_approval / paused / unavailable. location은 local-container.
+- `POST /api/agents`: `{ name, role, provider, model?, reasoningEffort?, projectName? }`. 이름 1~40자, 역할 1~120자. 외부 공급자는 model과 reasoningEffort를 비워 등록만 가능하다.
+- `PATCH /api/agents/:id`: `{ name?, role?, projectName?, executionPreference?, settingsRevision? }`. 기존 `model`/`reasoningEffort`의 관찰값 변경은 지원하지 않는다. 공급자 변경은 불가.
+- 직원: `{ id, name, role, provider, model, reasoningEffort, projectName, executionPreference, settingsRevision, status, location, createdAt, updatedAt }`. status는 idle / working / waiting_input / waiting_approval / paused / unavailable. location은 local-container.
+
+- `projectName`은 수동 배정한 대표 프로젝트 이름(0~80자, 한 줄)이며 빈 문자열은 미배정이다. 감지 등록에도 입력할 수 있다. 실제 실행 경로나 관찰 범위를 바꾸지 않는다.
+- `executionPreference`는 `null`(CLI 설정 유지) 또는 `{ model, reasoningEffort }`다. 새 값은 현재 연결된 Codex 대화의 실제 모델 목록으로 검증한다. 저장은 AI 요청을 만들지 않으며 화면이 다음 지시 요청에 저장값을 명시적으로 포함한다. 끊긴 연결에서도 기존 값을 유지하거나 해제할 수 있다.
+- `settingsRevision`은 직원 편집·연결 변경마다 증가한다. 화면은 편집 시작 값을 보내고 서버 값과 다르면 `409 SETTINGS_CONFLICT`로 전체 변경을 거절한다. 필드 생략은 기존 클라이언트 호환용이며 현재 UI는 항상 전송한다.
+- 기존 DB 직원은 `projectName: ""`, `executionPreference: null`, `settingsRevision: 0`으로 보완한다. 직원 설정은 재시작 후 유지하고 관찰 식별자·실제 작업 폴더는 인계에 포함하지 않는다.
 
 ## 업무와 Q&A
 

@@ -9,14 +9,15 @@ export function executionSelectionReason(catalog, selection) {
   return model && model.reasoningEfforts.includes(selection.reasoningEffort) ? '' : '선택한 모델·강도를 현재 확인할 수 없습니다. 목록 복구를 기다리거나 현재 CLI 설정 유지를 선택하세요.';
 }
 
-export function executionFields() {
-  return `<div class="field-row"><div class="form-field"><label for="command-model">추론 모델</label><select id="command-model" name="model" aria-describedby="execution-help"></select></div><div class="form-field"><label for="command-effort">추론 강도</label><select id="command-effort" name="reasoningEffort" aria-describedby="execution-help"></select></div></div><p id="execution-help" class="field-help"></p>`;
+export function executionFields(prefix = 'command') {
+  const help = prefix === 'command' ? 'execution-help' : `${prefix}-execution-help`;
+  return `<div class="field-row"><div class="form-field"><label for="${prefix}-model">추론 모델</label><select id="${prefix}-model" name="model" aria-describedby="${help}"></select></div><div class="form-field"><label for="${prefix}-effort">추론 강도</label><select id="${prefix}-effort" name="reasoningEffort" aria-describedby="${help}"></select></div></div><p id="${help}" class="field-help"></p>`;
 }
 
 // Update only options that changed; polling must not replace the form or draft.
-export function updateExecutionFields(root, catalog, selection, locked = false) {
-  const modelSelect = root.querySelector('#command-model');
-  const effortSelect = root.querySelector('#command-effort');
+export function updateExecutionFields(root, catalog, selection, locked = false, prefix = 'command') {
+  const modelSelect = root.querySelector(`#${prefix}-model`);
+  const effortSelect = root.querySelector(`#${prefix}-effort`);
   if (!modelSelect || !effortSelect) return;
   const models = catalog?.status === 'ready' ? catalog.models : [];
   const model = models.find((entry) => entry.id === selection.model);
@@ -34,7 +35,7 @@ export function updateExecutionFields(root, catalog, selection, locked = false) 
   if (effortSelect.dataset.signature !== effortMarkup) { effortSelect.innerHTML = effortMarkup; effortSelect.dataset.signature = effortMarkup; }
   effortSelect.value = selection.reasoningEffort || '';
   effortSelect.disabled = locked || !model;
-  root.querySelector('#execution-help').textContent = executionSelectionReason(catalog, selection) || (selection.model
+  root.querySelector(prefix === 'command' ? '#execution-help' : `#${prefix}-execution-help`).textContent = executionSelectionReason(catalog, selection) || (selection.model
     ? '지시를 보낼 때 적용합니다. 현재 실행 중인 작업은 유지하고, 대기 중인 지시를 포함한 다음 실행부터 이 세션의 기본 모델·강도가 바뀝니다.'
     : models.length ? 'Codex에서 확인한 모델과 모델별 지원 강도입니다. 현재 CLI 설정 유지를 선택하면 실행 설정을 바꾸지 않습니다.'
       : '연결 설정에서 지시 전송을 켜면 Codex의 실제 모델 목록을 불러옵니다. 목록 확인 전에는 현재 CLI 설정으로 지시할 수 있습니다.');

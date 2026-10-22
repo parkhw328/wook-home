@@ -58,7 +58,7 @@ export function createHttpServer(office, { publicDir = resolve('public'), bridge
   const commands = createLocalCommands({ directory: commandsDir, observer, office, clock });
   const discovery = createDiscovery({ observer, clock });
   const connections = createConnections({ observer, discovery, clock });
-  const staff = createStaffConnections({ office, discovery });
+  const staff = createStaffConnections({ office, discovery, observer });
   const search = createSessionSearch({ directory: searchDirectory, bridgeFile, observer, clock });
   const server = createServer({ requestTimeout: 15000, headersTimeout: 10000 }, async (request, response) => {
     try {
@@ -101,7 +101,7 @@ export function createHttpServer(office, { publicDir = resolve('public'), bridge
       const commandMatch = /^\/api\/local-commands\/([a-f0-9-]{36})$/.exec(path);
       if (method === 'GET' && commandMatch) return json(response, 200, commands.get(commandMatch[1]));
       const agentMatch = /^\/api\/agents\/([a-f0-9-]{36})$/.exec(path);
-      if (method === 'PATCH' && agentMatch) return json(response, 200, office.editAgent(agentMatch[1], await bodyOf(request)));
+      if (method === 'PATCH' && agentMatch) return json(response, 200, staff.edit(agentMatch[1], await bodyOf(request)));
       const taskMatch = /^\/api\/tasks\/([a-f0-9-]{36})\/(messages|approve|cancel)$/.exec(path);
       if (method === 'POST' && taskMatch) {
         const action = { messages: 'answer', approve: 'approve', cancel: 'cancel' }[taskMatch[2]];

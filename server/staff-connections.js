@@ -23,7 +23,7 @@ function observationStatus(entry, snapshot, reference = entry) {
 
 // Only the user-selected source category is persisted on the employee. Live IDs,
 // browser aliases, process identifiers and observations stay in this bounded map.
-export function createStaffConnections({ office, discovery }) {
+export function createStaffConnections({ office, discovery, observer }) {
   const links = new Map();
 
   function requireAgent(id) {
@@ -90,11 +90,20 @@ export function createStaffConnections({ office, discovery }) {
       }) };
     },
     hire(body) {
-      input(body, ['entryId', 'name', 'role']);
+      input(body, ['entryId', 'name', 'role', 'projectName']);
       const entry = requireEntry(body.entryId);
-      const agent = office.hire({ name: body.name, role: body.role, provider: entry.provider }, { source: entry.source, kind: entry.kind });
+      const agent = office.hire({ name: body.name, role: body.role, provider: entry.provider, projectName: body.projectName }, { source: entry.source, kind: entry.kind });
       remember(agent.id, entry);
       return currentAgent(agent.id);
+    },
+    edit(id, body) {
+      const agent = currentAgent(id);
+      const local = observer?.snapshot();
+      office.editAgent(id, body, { execution: local?.execution,
+        canConfigureExecution: agent.connection?.status === 'connected' && agent.connection.source === 'cli'
+          && agent.connection.kind === 'session' && local?.control?.enabled === true
+          && local.sessions.some((session) => session.id === agent.connection.sessionId) });
+      return currentAgent(id);
     },
     connect(id, body) {
       input(body, ['entryId']);
