@@ -36,7 +36,7 @@
 .sidebar-programs .blog-card { grid-template-columns: 2.5rem minmax(0, 1fr); padding-left: 14px; }
 .sidebar-programs .blog-card .program-icon { width: 2.5rem; height: 2.5rem; }
 .sidebar-programs summary:focus-visible, .sidebar-programs a:focus-visible {
-  outline: 3px solid #246cb0;
+  outline: 3px solid var(--action-focus);
   outline-offset: 2px;
 }
 .sidebar-meta { display: grid; gap: 16px; margin-top: auto; padding-top: 20px; }

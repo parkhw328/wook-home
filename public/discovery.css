@@ -1,32 +1,32 @@
 .discovery-panel { margin-top: 24px; padding: 24px; }
 .discovery-panel .panel-heading { flex-wrap: wrap; gap: 12px; }
 .discovery-panel [hidden] { display: none !important; }
-.discovery-tabs { display: flex; gap: 4px; margin: 12px 0 16px; border-bottom: 1px solid #eedcdd; }
-.discovery-tabs [role="tab"] { min-height: 44px; padding: 10px 18px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: #755e62; font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; }
-.discovery-tabs [role="tab"]:hover { background: #fff5f5; color: #8f2838; }
-.discovery-tabs [aria-selected="true"] { border-bottom-color: #b52d44; color: #9c263b; background: #fff5f5; }
-.discovery-tabs [role="tab"]:focus-visible, .discovery-panel [role="tabpanel"]:focus-visible { outline: 2px solid #b52d44; outline-offset: 3px; border-radius: 4px; }
+.discovery-tabs { display: flex; gap: 4px; margin: 12px 0 16px; border-bottom: 1px solid var(--line); }
+.discovery-tabs [role="tab"] { min-height: 44px; padding: 10px 18px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--muted); font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.discovery-tabs [role="tab"]:hover { background: var(--action-hover); color: var(--action-selected-ink); }
+.discovery-tabs [aria-selected="true"] { border-bottom-color: var(--action-primary); color: var(--action-selected-ink); background: var(--action-hover); }
+.discovery-tabs [role="tab"]:focus-visible, .discovery-panel [role="tabpanel"]:focus-visible { outline: 2px solid var(--action-primary); outline-offset: 3px; border-radius: 4px; }
 .discovery-intro, .discovery-connection { margin: 10px 0; line-height: 1.7; }
 .discovery-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 18px 0; }
 .discovery-toolbar label { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-.discovery-toolbar select { min-height: 40px; border: 1px solid #d9bfc0; border-radius: 8px; background: #fffafa; color: #553238; padding: 6px 10px; font: inherit; }
+.discovery-toolbar select { min-height: 40px; border: 1px solid var(--input-border); border-radius: 8px; background: var(--surface-alt); color: var(--ink); padding: 6px 10px; font: inherit; }
 .discovery-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 12px; margin-top: 16px; }
-.discovery-card { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; min-width: 0; border: 1px solid #eedcdd; background: #fffafa; padding: 16px; border-radius: 12px; }
+.discovery-card { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; min-width: 0; border: 1px solid var(--line); background: var(--surface-alt); padding: 16px; border-radius: 12px; }
 .discovery-card strong { overflow-wrap: anywhere; }
 .discovery-card p { margin: 6px 0; font-size: 13px; line-height: 1.6; }
-.discovery-card small, .discovery-empty { color: #755e62; line-height: 1.6; }
+.discovery-card small, .discovery-empty { color: var(--muted); line-height: 1.6; }
 .discovery-card .subtle-tag { flex-shrink: 0; }
 .discovery-card > div:first-child { min-width: 0; }
 .discovery-card .discovery-card-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; flex: 0 0 auto; max-width: 50%; }
 .discovery-card-actions .button { white-space: normal; overflow-wrap: anywhere; min-height: 44px; font-size: var(--font-control, 1rem); }
-.staff-connection-box { margin-block: 18px; padding: 16px; border: 1px solid #eedcdd; border-radius: 10px; background: #fffafa; }
+.staff-connection-box { margin-block: 18px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-alt); }
 .staff-connection-box p { font-size: var(--font-small, .9375rem); line-height: 1.8; }
 .staff-connection-box .detail-actions { margin: 12px 0; }
 .staff-dialog .button { min-height: 44px; }
 .staff-dialog [hidden] { display: none !important; }
 .staff-dialog .form-error { overflow-wrap: anywhere; }
 .staff-hire-choice { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 22px; }
-.status.observing { color: #70504d; background: #f6e7e9; }
+.status.observing { color: var(--accent); background: var(--action-selected); }
 @media (max-width: 600px) {
   .discovery-panel { padding: 16px; }
   .discovery-toolbar .button { min-height: 44px; }

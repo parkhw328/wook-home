@@ -8,6 +8,7 @@
 - `public/fonts/`: 자체 호스팅 폰트와 라이선스. 출처는 해당 폴더 README에 기록한다.
 - `public/program-icons/`: wShell·wPost·wText의 실제 앱 아이콘과 라이선스. 원본 커밋·파일·SHA-256은 [자산 안내](../public/program-icons/README.md)에 기록한다.
 - `public/readability.css`: 마지막에 적용하는 공통 글자 크기와 반응형 가독성 규칙. 새 화면도 이 파일의 `--font-*` rem 토큰과 requirements 4.3의 최소 크기를 사용한다.
+- `public/themes.css`: 모든 화면의 의미별 색상 토큰과 라이트·다크 팔레트. 배경·글자·입력·상태·강조·버튼에 공통 토큰을 사용하고 화면별 고정 색상이나 별도 테마 범위를 추가하지 않는다. `theme.js`는 첫 표시 전에 저장된 선택을 적용하며 `data-theme`로 현재 색상, `data-theme-preference`로 사용자 선택을 구분한다. `wook-home.theme`만 브라우저 로컬 저장소에 보관하고 업무 데이터와 분리한다.
 - `extensions/browser-observer/`: 브라우저의 지원 AI 탭 감지 확장. 설치 절차는 Wiki Detection 참조.
 - `scripts/`: 호스트 Codex 관찰·CLI 설치/프로세스 점검·대화 수집과 명시적으로 활성화하는 공식 큐 전달. Docker 이미지에 포함하지 않는다.
 - `tests/server/`, `tests/ui/`, `tests/extension/`: Node.js 기본 테스트 러너를 사용하는 API·화면 로직·브라우저 확장 자동 검증. 파일 이름은 `*.test.js` 또는 `*.test.mjs`다.
@@ -56,6 +57,8 @@ Linux 프로세스 감지기는 `scripts/lib/linux-processes.mjs`다. `/proc/<pi
 `npm test`는 서버와 UI 테스트를 실행하고 `npm run test:server`는 서버 테스트만 실행한다. 서버 테스트는 임시 DB에서 업무 전환, 중복 실행 방지, 재시작 보존, 입력·origin 검증과 정적 파일 제공을 확인한다. Codex 관찰 테스트는 프로젝트 필터, 부분 기록, 민감 필드 제외, 오래된 활동과 연결 끊김을 검증한다. 대화 테스트는 역할 제외·마스킹·분량 제한·프로젝트/세션 격리와 인계 제외를 검증한다. UI 테스트는 모든 방 사이 문·복도 경로, 보고 상태 분류, HTML 비실행과 늦은 세션 응답 차단도 검증한다. `public/model.mjs`의 `officeStatItems`는 현황 카드와 상세 목록에 같은 집계 기준을 제공하며 `tests/ui/model.test.mjs`에서 상태 전환·완료 제외 조건·정렬과 원본 보존을 확인한다. 현황 목록·탐색 레이아웃의 브라우저 검증은 [현황 상세 검증](room-details-validation.md)에 기록한다.
 
 변경 범위에 맞는 자동 검증 후, Docker 빌드·health check와 브라우저의 실제 사용 흐름을 확인한다. 검사에 사용한 가상 직원과 실제 AI 연결을 구분하고 검증 결과를 커밋에 연결한다. [검증 기록](validation.md)과 [실내 배치 검증](office-layout-validation.md)을 참고한다.
+
+테마 동작은 `node --test tests/ui/theme.test.mjs tests/ui/office-scene.test.mjs`로 저장·복원, 기기 설정, 탭 동기화, 저장소 차단과 장면 상태 보존을 확인한다. 화면 변경 시 두 테마에서 실제 브라우저의 최종 계산 색상·글꼴과 320·390·768·1366·1920px 배치, 대화상자·전체화면·확대 상태도 점검한다.
 
 ## 문서와 협업
 

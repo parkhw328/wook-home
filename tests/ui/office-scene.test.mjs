@@ -3,7 +3,23 @@ import assert from 'node:assert/strict';
 import { buildFloor } from '../../public/office-models.mjs';
 import { OfficeScene, officeCameraFrame, arrangePersonLabels } from '../../public/office-3d.mjs';
 import { routeBetween, BUILDING, FLOOR_HEIGHT, CORRIDOR_Z, LIFT_X, occupantRoom } from '../../public/rooms.mjs';
-import { Object3D, Scene, MeshBasicMaterial, OrthographicCamera, Vector3, Box3 } from '../../public/vendor/three/three.module.js';
+import { Object3D, Scene, MeshBasicMaterial, OrthographicCamera, Vector3, Box3, HemisphereLight, DirectionalLight } from '../../public/vendor/three/three.module.js';
+
+test('theme changes update lighting without replacing actors, routes or camera selection', () => {
+  const scene = Object.create(OfficeScene.prototype);
+  Object.assign(scene, { ambientLight: new HemisphereLight(), fillLight: new DirectionalLight(), renderer: {},
+    routeMaterial: new MeshBasicMaterial(), camera: new OrthographicCamera(), commander: new Object3D(),
+    people: new Map([['session', new Object3D()]]), view: 3, zoom: 1.4, walk: { destination: 'executive' } });
+  const { camera, commander, people, walk } = scene;
+  scene.setTheme('light');
+  const lightExposure = scene.renderer.toneMappingExposure;
+  scene.setTheme('dark');
+  assert.ok(scene.renderer.toneMappingExposure < lightExposure);
+  assert.equal(scene.routeMaterial.color.getHex(), 0x9bebe1);
+  assert.equal(scene.camera, camera); assert.equal(scene.commander, commander);
+  assert.equal(scene.people, people); assert.equal(scene.walk, walk);
+  assert.equal(scene.view, 3); assert.equal(scene.zoom, 1.4);
+});
 
 test('missing WebGL preserves room navigation and does not block entry with reduced motion', async () => {
   const fallback = { hidden: true };

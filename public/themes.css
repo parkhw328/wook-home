@@ -1,0 +1,173 @@
+@charset "UTF-8";
+
+/* All screens use these roles. Keep artwork and third-party icons in their
+   original colors; UI surfaces and scene labels follow the chosen theme. */
+:root {
+  color-scheme: light;
+  --bg: #f7f4f2;
+  --surface: #fffdfb;
+  --surface-alt: #f5efeb;
+  --surface-muted: #eee7e2;
+  --sidebar-bg: #fcf9f7;
+  --identity-bg: #f4e8e3;
+  --ink: #30272b;
+  --muted: #62565b;
+  --line: #dacfc9;
+  --line-strong: #a8949d;
+  --accent: #a83240;
+  --accent-dark: #862635;
+  --accent-soft: #f9e5e8;
+  --amber: #795017;
+  --input-bg: #fff;
+  --input-border: #a8949d;
+  --placeholder: #796b70;
+  --success-ink: #3f613e;
+  --success-bg: #e9f1e4;
+  --success-border: #779673;
+  --warning-ink: #795017;
+  --warning-bg: #fff5de;
+  --warning-border: #b68b49;
+  --danger-ink: #a12539;
+  --danger-bg: #fff0f1;
+  --danger-border: #bd6472;
+  --info-ink: #285a80;
+  --info-bg: #e8f0f8;
+  --purple-ink: #6d4077;
+  --purple-bg: #f3e7f6;
+  --purple-border: #a57bad;
+  --mark-bg: #ffdfa6;
+  --mark-ink: #533300;
+  --backdrop: #21172799;
+  --shadow: #3f201b26;
+  --toast-bg: #493a42;
+  --toast-ink: #fff;
+  --action-bg: var(--surface);
+  --action-ink: #4c4146;
+  --action-border: var(--line-strong);
+  --action-hover: #f4edef;
+  --action-hover-border: #816d77;
+  --action-primary: #a83240;
+  --action-primary-hover: #862635;
+  --action-selected: #f9e5e8;
+  --action-selected-ink: #882637;
+  --action-selected-border: #b85466;
+  --action-selected-hover: #f4d8df;
+  --action-caution: var(--warning-ink);
+  --action-caution-bg: var(--warning-bg);
+  --action-caution-hover: #fbeac2;
+  --action-danger-hover: #fce1e5;
+  --action-focus: #155e87;
+  --disabled-ink: #6f6269;
+  --disabled-bg: #eee9eb;
+  --disabled-border: #b5a6ad;
+  --scene-bg: #e8e4dd;
+  --scene-glow: #f6f3ee;
+  --scene-mid: #e9e5df;
+  --scene-edge: #d6dce2;
+  --scene-label-bg: #fffdf7f5;
+  --scene-route: #386f68;
+  --scene-route-active: #145b50;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0a1120;
+  --surface: #121d2d;
+  --surface-alt: #19273a;
+  --surface-muted: #26364a;
+  --sidebar-bg: #0e1726;
+  --identity-bg: #172234;
+  --ink: #e5ebf4;
+  --muted: #b3c1d4;
+  --line: #35475e;
+  --line-strong: #60748e;
+  --accent: #ffb6c1;
+  --accent-dark: #ffd4dc;
+  --accent-soft: #442c38;
+  --amber: #f1d09b;
+  --input-bg: #0d1727;
+  --input-border: #60748e;
+  --placeholder: #a3b4cb;
+  --success-ink: #b0dfb8;
+  --success-bg: #1d382d;
+  --success-border: #72b58b;
+  --warning-ink: #f1d09b;
+  --warning-bg: #382f22;
+  --warning-border: #aa8954;
+  --danger-ink: #ffb5bf;
+  --danger-bg: #422531;
+  --danger-border: #cd8292;
+  --info-ink: #b7d9fc;
+  --info-bg: #20364e;
+  --purple-ink: #e6bce9;
+  --purple-bg: #3c293e;
+  --purple-border: #bd87b1;
+  --mark-bg: #755617;
+  --mark-ink: #fff3cd;
+  --backdrop: #020612b3;
+  --shadow: #0006;
+  --toast-bg: #dce6f5;
+  --toast-ink: #142133;
+  --action-ink: #dae5f5;
+  --action-hover: #26394e;
+  --action-hover-border: #91b6cb;
+  --action-primary: #b23849;
+  --action-primary-hover: #982d3e;
+  --action-selected: #442c38;
+  --action-selected-ink: #ffd0d7;
+  --action-selected-border: #cf8797;
+  --action-selected-hover: #563847;
+  --action-caution-hover: #4d3d25;
+  --action-danger-hover: #58313f;
+  --action-focus: #80c4ed;
+  --disabled-ink: #bac4d1;
+  --disabled-bg: #293342;
+  --disabled-border: #56657a;
+  --scene-bg: #0b1424;
+  --scene-glow: #1a2a43;
+  --scene-mid: #101c30;
+  --scene-edge: #0a1324;
+  --scene-label-bg: #142334f2;
+  --scene-route: #8dc9c0;
+  --scene-route-active: #b4fff0;
+}
+
+input, select, textarea { accent-color: var(--action-primary); }
+input:focus-visible, select:focus-visible, textarea:focus-visible,
+summary:focus-visible, [tabindex="0"]:focus-visible {
+  outline: 3px solid var(--action-focus);
+  outline-offset: 3px;
+}
+mark { background: var(--mark-bg); color: var(--mark-ink); }
+.theme-control { display: grid; gap: 7px; min-width: 0; font-size: var(--font-control); font-weight: 600; line-height: 1.6; }
+.sidebar > .theme-control { margin: 20px 8px 0; }
+.theme-control select { min-height: 44px; font-size: var(--font-control); }
+.scene-theme-control { display: none; }
+#office-workspace:is(.is-expanded, :fullscreen) .scene-theme-control { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.scene-theme-control select { width: auto; max-width: 100%; }
+
+/* These scene controls have ID-scoped layouts; their states still use the same
+   action roles as buttons in dialogs and other views. */
+#office-workspace :is(.floor-tab, .room-navigation button, .scene-controls button, .room-hotspot, .room-entry)[aria-pressed="true"] {
+  color: var(--action-selected-ink);
+  background: var(--action-selected);
+  border-color: var(--action-selected-border);
+  box-shadow: inset 0 -3px 0 var(--action-selected-border);
+  font-weight: 700;
+}
+@media (hover: hover) {
+  #office-workspace :is(.floor-tab, .room-navigation button, .scene-controls button, .room-hotspot, .room-entry):hover:not(:disabled) {
+    color: var(--action-ink); background: var(--action-hover); border-color: var(--action-hover-border);
+  }
+  #office-workspace :is(.floor-tab, .room-navigation button, .scene-controls button, .room-hotspot, .room-entry)[aria-pressed="true"]:hover:not(:disabled) {
+    color: var(--action-selected-ink); background: var(--action-selected-hover); border-color: var(--action-selected-border);
+  }
+}
+#office-workspace :is(.scene-controls button, .room-navigation button):disabled {
+  color: var(--disabled-ink); background: var(--disabled-bg); border-color: var(--disabled-border); box-shadow: none;
+}
+@media (forced-colors: active) {
+  #office-workspace :is(.floor-tab, .room-navigation button, .scene-controls button, .room-hotspot, .room-entry)[aria-pressed="true"] {
+    outline: 2px solid Highlight; outline-offset: -3px;
+  }
+}

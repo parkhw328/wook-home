@@ -60,16 +60,20 @@ export class OfficeScene {
       root.querySelector('#office-canvas').append(this.renderer.domElement);
       this.scene = new T.Scene();
       this.leaderRoot = document.createElement('div'); this.leaderRoot.className = 'person-label-leaders'; this.leaderRoot.setAttribute('aria-hidden', 'true'); root.append(this.leaderRoot);
-      this.scene.add(new T.HemisphereLight(0xb9d5ef, 0x3b302b, 2.1));
+      this.ambientLight = new T.HemisphereLight(0xb9d5ef, 0x3b302b, 2.1);
+      this.scene.add(this.ambientLight);
       const light = new T.DirectionalLight(0xffd8a3, 3.5); light.position.set(-6, 24, 14); light.castShadow = true;
       light.shadow.mapSize.set(2048, 2048); Object.assign(light.shadow.camera, { left: -24, right: 24, top: 25, bottom: -20, far: 90 });
       light.shadow.normalBias = .045; light.shadow.bias = -.0001; this.scene.add(light);
       const fill = new T.DirectionalLight(0x86b6f0, 1.2); fill.position.set(8, 9, -7); this.scene.add(fill);
+      this.fillLight = fill;
       this.floors = [1, 2, 3].map((floor) => buildFloor(this.scene, floor));
       this.actorRoot = new T.Group(); this.scene.add(this.actorRoot);
       this.commander = createPerson(this.actorRoot, 0, true); this.commander.position.copy(vec(worldPoint(roomById('corridor-2'))));
       this.cabin = createLiftPlatform(this.scene);
       this.routeMaterial = new T.MeshBasicMaterial({ color: 0x9bebe1 });
+      this.setTheme(document.documentElement.dataset.theme);
+      window.addEventListener('office-theme-change', (event) => this.setTheme(event.detail.theme));
       this.camera = new T.OrthographicCamera(-10, 10, 8, -8, .1, 150);
       const frame = officeCameraFrame(2, 2);
       this.target = frame.target; this.eye = frame.eye; this.size = frame.size;
@@ -84,6 +88,16 @@ export class OfficeScene {
   fail() {
     this.finishWalk(); this.renderer?.setAnimationLoop(null); this.root.dataset.rendering = 'unavailable';
     this.root.querySelector('#scene-fallback').hidden = false;
+  }
+  setTheme(theme) {
+    if (!this.ambientLight) return;
+    const dark = theme === 'dark';
+    this.ambientLight.color.setHex(dark ? 0xb9d5ef : 0xe1efff);
+    this.ambientLight.groundColor.setHex(dark ? 0x3b302b : 0x9d8e7d);
+    this.ambientLight.intensity = dark ? 2.1 : 2.8;
+    this.fillLight.intensity = dark ? 1.2 : 1.7;
+    this.renderer.toneMappingExposure = dark ? 1.1 : 1.25;
+    this.routeMaterial.color.setHex(dark ? 0x9bebe1 : 0x327b70);
   }
   resizeScene() {
     if (!this.camera) return;

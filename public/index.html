@@ -5,6 +5,7 @@
     <meta name="application-name" content="wook-home">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#b43d3e">
+    <script src="/theme.js"></script>
     <meta name="description" content="AI 직원과 함께 일하는 나만의 가상 회사, StackQueue Office.">
     <title>StackQueue Office · 나의 사무실</title>
     <link rel="icon" href="/icon.svg" type="image/svg+xml">
@@ -22,6 +23,7 @@
     <script type="module" src="/session-search.mjs"></script>
     <link rel="stylesheet" href="/actions.css">
     <link rel="stylesheet" href="/sidebar.css">
+    <link rel="stylesheet" href="/themes.css">
     <link rel="stylesheet" href="/office-stats.css">
     <script type="module" src="/discovery.mjs"></script>
   </head>
@@ -41,6 +43,7 @@
           <a href="#handoff" class="nav-link" data-view="handoff"><span data-icon="handoff"></span>작업 인계</a>
           <a href="https://github.com/parkhw328/wook-home/wiki" class="nav-link help-link" target="_blank" rel="noopener noreferrer"><span data-icon="message"></span>도움말<span class="external-arrow" aria-hidden="true">↗</span></a>
         </nav>
+        <label class="theme-control" for="theme-choice">화면 테마<select id="theme-choice" data-theme-choice><option value="system">기기 설정</option><option value="light">라이트</option><option value="dark">다크</option></select></label>
         <details class="sidebar-programs" id="sidebar-programs" open>
           <summary id="program-heading">프로그램 · 블로그</summary>
           <div class="program-grid" id="program-list" aria-labelledby="program-heading"></div>
@@ -70,6 +73,7 @@
                       <button type="button" class="scene-control" data-scene-action="paths" aria-pressed="true">동선 표시</button>
                       <button type="button" class="scene-control" data-scene-action="work">업무 패널 ↓</button>
                       <button type="button" class="scene-control fullscreen-button" id="office-fullscreen" data-scene-action="fullscreen" aria-pressed="false"><span>전체화면</span> ⛶</button>
+                      <label class="theme-control scene-theme-control" for="scene-theme-choice">화면 테마<select id="scene-theme-choice" data-theme-choice><option value="system">기기 설정</option><option value="light">라이트</option><option value="dark">다크</option></select></label>
                     </div>
                     <p id="office-view-status" class="sr-only" role="status"></p>
                   </div>
