@@ -8,7 +8,6 @@ function movingWorkspace() {
   const moves = [];
   const workspace = Object.assign(Object.create(OfficeWorkspace.prototype), {
     room: 'corridor-2', moving: false, selection: null,
-    reader: { select() {} },
     find: () => ({ setAttribute() {}, focus() {} }),
     renderRoom() {}, renderSelection() {}, focusFloor() {},
     scene: { moveCommander() {
@@ -17,6 +16,30 @@ function movingWorkspace() {
   });
   return { workspace, moves };
 }
+
+test('reading a CLI session opens its dialog immediately without replacing a report or queued movement', () => {
+  const { workspace, moves } = movingWorkspace();
+  const report = { type: 'task', id: 'report' };
+  const queued = { id: 'executive' };
+  Object.assign(workspace, { room: 'meeting', moving: true, selection: report, nextVisit: queued, detailRevision: 4 });
+  const opened = [];
+  workspace.onSession = (id) => opened.push(id);
+  workspace.selectSession('session');
+  assert.deepEqual(opened, ['session']);
+  assert.equal(workspace.room, 'meeting');
+  assert.equal(workspace.selection, report);
+  assert.equal(workspace.nextVisit, queued);
+  assert.equal(workspace.detailRevision, 4);
+  assert.equal(moves.length, 0);
+});
+
+test('entering an office with CLI sessions does not select a conversation for the lower workbench', async () => {
+  const { workspace } = movingWorkspace();
+  workspace.room = 'office';
+  workspace.state = { tasks: [], localSessions: { sessions: [{ id: 'session' }] } };
+  await workspace.enter('office');
+  assert.equal(workspace.selection, null);
+});
 
 test('selecting details during movement waits until the queued room and task are ready', async () => {
   const { workspace, moves } = movingWorkspace();

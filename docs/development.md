@@ -96,6 +96,12 @@ node --test tests/server/*.test.js tests/ui/*.test.mjs tests/extension/*.test.mj
 node tests/browser/layer-preview.mjs
 # 다른 터미널
 python tests/browser/layers.py
+# CLI 모달 전용 진입·읽기·업무 초안·전체화면 회귀
+python tests/browser/cli-modal.py
+# 늦은 업무 답변 뒤 CLI 열람 화면의 이동·초점 보존
+python tests/browser/cli-late-navigation.py
 ```
 
 포트 기본값은 18084이며 양쪽 명령에 `LAYER_TEST_PORT`로 바꿀 수 있습니다. 검증 서버는 실제 사용자 데이터·연결기·AI를 사용하지 않습니다. HTTP 검증의 `office.test`는 Chromium 내부에서만 loopback으로 연결합니다. 실서버에 이 테스트를 실행하지 않습니다. 두 테마·320/390/768/1366/1920px·실제 200% 브라우저 확대, 닫기·초점·초안·전체화면, 저장 도중 닫기와 HTTP 보관을 검사하고 `artifacts/layer-audit/`에 로컬 결과를 남깁니다. 검증 서버는 Ctrl+C로 종료합니다. [검증 범위](layer-audit-validation.md).
+
+CLI 전용 검증은 같은 합성 서버에서 실행하며 결과와 화면을 `artifacts/cli-modal/`에 저장합니다. 방 진입 시 불필요한 대화 조회가 없는지, 닫은 뒤 조회 중단, 검색창 Esc 닫기, 현재 방·필터·읽던 위치·업무 답변 유지도 확인합니다.

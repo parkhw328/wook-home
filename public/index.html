@@ -113,10 +113,10 @@
           </section><button type="button" id="leave-room" class="leave-room" data-leave-room disabled>← 복도로 나오기 <kbd>Esc</kbd></button></aside>
                 </aside>
               </div>
-              <section class="panel workbench" aria-label="입장한 방의 업무보고와 대화기록">
-                <div id="workbench-empty" class="workbench-empty"><span aria-hidden="true">&gt;_</span><div><strong>대화에서 보고까지, 한 자리에서.</strong><p id="workbench-empty-text">방에 입장하면 업무보고와 대화기록이 이곳에 열립니다.</p><button type="button" class="button button-small" id="workbench-reopen" hidden>대화·업무 다시 열기</button></div></div>
+              <section class="panel workbench" aria-label="입장한 방의 업무보고">
+                <div id="workbench-empty" class="workbench-empty"><span aria-hidden="true">&gt;_</span><div><strong>업무보고와 답변</strong><p id="workbench-empty-text">업무를 선택하면 보고와 답변을 확인합니다. CLI 대화는 직원이나 세션을 누르면 별도 대화창으로 열립니다.</p><button type="button" class="button button-small" id="workbench-reopen" hidden>업무보고 다시 열기</button></div></div>
                 <div id="workbench-detail" hidden>
-                  <header class="workbench-header"><div><p id="workbench-kind" class="eyebrow"></p><h2 id="workbench-title" tabindex="-1"></h2></div><span id="workbench-status" class="status"></span><button type="button" id="workbench-command" class="button button-primary button-small">이 세션에 지시</button><button type="button" id="workbench-close" class="button button-small" aria-label="방의 대화·업무 화면 닫기">화면 닫기 ×</button></header>
+                  <header class="workbench-header"><div><p id="workbench-kind" class="eyebrow"></p><h2 id="workbench-title" tabindex="-1"></h2></div><span id="workbench-status" class="status"></span><button type="button" id="workbench-close" class="button button-small" aria-label="방의 업무보고 닫기">화면 닫기 ×</button></header>
                   <div class="workbench-columns">
                     <section id="report-detail" class="report-detail" aria-label="업무보고" hidden>
                       <p class="report-demo">체험 직원의 업무보고 · 외부 AI 호출 없음</p>
@@ -125,12 +125,12 @@
                       <form id="report-answer-form" class="form-stack" hidden><div class="form-field"><label for="report-answer">직원의 질문에 답변</label><textarea id="report-answer" name="content" rows="3" maxlength="4000" required placeholder="원하는 방향과 기준을 알려 주세요."></textarea></div><button id="report-answer-submit" class="button button-primary" type="submit">답변 보내기</button></form>
                       <div class="report-actions"><button type="button" id="report-approve" class="button button-primary" data-report-action="approve" hidden>보고 확인 · 결과 승인</button><button type="button" id="report-review" class="button button-secondary" hidden>대표이사실에서 보고받기 →</button><button type="button" id="report-cancel" class="button button-danger button-small" hidden>업무 취소</button></div>
                     </section>
-                    <section class="terminal" aria-label="대화기록 터미널">
+                    <section class="terminal" aria-label="선택한 업무의 체험 대화">
                       <div class="terminal-toolbar"><span class="terminal-dots" aria-hidden="true"><i></i><i></i><i></i></span><strong>CONVERSATION</strong><button id="terminal-latest" type="button">최신 기록 ↓</button></div>
                       <div class="terminal-filters"><label class="search-field"><span>검색</span><input id="terminal-search" type="search" placeholder="대화에서 찾기" autocomplete="off"></label><label><span class="sr-only">대화 역할</span><select id="terminal-role"><option value="all">모든 역할</option><option value="user">Commander</option><option value="assistant">에이전트</option></select></label></div>
-                      <p id="terminal-notice" class="terminal-notice" role="status"></p><a class="button button-small" href="#connection-settings" data-open-connection-settings id="terminal-settings" hidden>대화 읽기 설정</a>
+                      <p id="terminal-notice" class="terminal-notice" role="status"></p>
                       <div id="terminal-log" class="terminal-log" tabindex="0" aria-label="시간순 대화기록"></div>
-                      <div class="terminal-footer"><span id="terminal-scope"></span><span id="terminal-truncated" hidden>기록 일부만 표시 · 이전 내용 또는 긴 메시지가 생략되었습니다.</span><a href="https://github.com/parkhw328/wook-home/wiki/CLI" target="_blank" rel="noopener noreferrer">대화 연결 안내 ↗</a></div>
+                      <div class="terminal-footer"><span id="terminal-scope"></span></div>
                     </section>
                   </div>
                 </div>

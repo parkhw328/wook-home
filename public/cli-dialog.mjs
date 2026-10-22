@@ -19,6 +19,11 @@ export class CliConversationDialog {
       this.save(); clearInterval(this.timer); this.reader.select(null);
     } });
     this.find('#cli-dialog-query').addEventListener('input', () => this.render(true));
+    this.find('#cli-dialog-query').addEventListener('keydown', (event) => {
+      // Native search inputs consume Escape to clear text before the dialog can
+      // close. Preserve the filter and give this dialog one-step dismissal.
+      if (event.key === 'Escape') { event.preventDefault(); this.close(); }
+    });
     this.find('#cli-dialog-role').addEventListener('change', () => this.render(true));
     this.find('#cli-dialog-session').addEventListener('change', (event) => this.open(event.target.value));
     this.find('[data-cli-refresh]').addEventListener('click', () => this.reader.refresh());

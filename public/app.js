@@ -84,7 +84,6 @@ $('#sidebar-programs').open = !window.matchMedia('(max-width: 900px)').matches;
 const cliDialog = new CliConversationDialog({ request: apiRequest, getState: () => ({ state, connected }), onCommand: openSession, onAgent: openAgent });
 const workspace = new OfficeWorkspace($('#office-workspace'), {
   onSession: (id) => cliDialog.open(id),
-  request: apiRequest,
   onTaskAction(action, id, content) {
     if (action === 'approve' && workspace.room !== 'executive') return;
     void mutate(`/tasks/${encodeURIComponent(id)}/${action === 'answer' ? 'messages' : 'approve'}`,
@@ -217,7 +216,7 @@ function renderSessions() {
     sessionsSignature = signature;
     $('#session-list').innerHTML = sessions.length ? sessions.map((session) => {
     const status = observedSessionStatus(local, session, connected);
-    return `<button type="button" class="session-card" data-session="${esc(session.id)}"><span class="session-symbol" aria-hidden="true">&gt;_</span><span class="session-info"><strong>${esc(session.name)}</strong><small>Codex · ${local?.control?.enabled ? '지시 전송 연결됨' : '상태 관찰'}</small></span><span class="status ${statusClass(status)}">${sessionStatusLabel(status)}</span></button>`;
+    return `<button type="button" class="session-card" aria-haspopup="dialog" data-session="${esc(session.id)}"><span class="session-symbol" aria-hidden="true">&gt;_</span><span class="session-info"><strong>${esc(session.name)}</strong><small>Codex · ${local?.control?.enabled ? '지시 전송 연결됨' : '상태 관찰'}</small></span><span class="status ${statusClass(status)}">${sessionStatusLabel(status)}</span></button>`;
     }).join('') : observing
       ? emptyState('이 프로젝트에서 감지된 Codex 세션이 없습니다', '표시된 작업 폴더에서 Codex 새 대화를 시작하고 첫 메시지를 보내세요. 다음 갱신 때 다시 확인합니다.', 'activity')
       : emptyState('로컬 CLI의 상태를 연결하세요', '선택한 작업 공간의 Codex 세션을 연결하세요. 왼쪽 연결 설정에서 공개 대화 읽기를 켜고 저장하세요.', 'activity');
@@ -420,6 +419,8 @@ async function mutate(path, payload, successMessage, method = 'POST', after) {
   const submittedDraft = originForm ? formValues(originForm) : null;
   const originView = location.hash;
   const originWorkspaceRevision = workspace.detailRevision;
+  // Every CLI entry and dismissal supersedes a pending follow-up navigation.
+  const originCliRevision = cliDialog.layer.revision;
   pending = true;
   updateControls();
   if ($('#form-error', body)) $('#form-error', body).hidden = true;
@@ -465,7 +466,7 @@ async function mutate(path, payload, successMessage, method = 'POST', after) {
     if (keepEditing) saveFormDraft();
     renderStaffSettings();
   }
-  if (after && !keepEditing && modalLayer.revision === originRevision && location.hash === originView && workspace.detailRevision === originWorkspaceRevision) after(result);
+  if (after && !keepEditing && modalLayer.revision === originRevision && cliDialog.layer.revision === originCliRevision && location.hash === originView && workspace.detailRevision === originWorkspaceRevision) after(result);
   toast(`${successMessage}${newerDraft ? ' 이후에 작성한 초안은 아직 저장되지 않았습니다.' : ''}`);
 }
 
@@ -763,7 +764,7 @@ document.addEventListener('click', (event) => {
     else openAgent(button.dataset.agent);
     return;
   }
-  if (button.dataset.session) { location.hash = 'office'; void workspace.selectSession(button.dataset.session); return; }
+  if (button.dataset.session) { workspace.selectSession(button.dataset.session); return; }
   if (button.dataset.task) { openTask(button.dataset.task); return; }
   if (button.dataset.reloadStaffSettings) {
     void reloadStaffSettings(button.dataset.reloadStaffSettings); return;
@@ -888,6 +889,5 @@ void refresh(true);
 setInterval(() => {
   if (document.hidden || pending) return;
   void refresh();
-  void workspace.reader.refresh();
   for (const delivery of commandDeliveries.values()) if (delivery.shouldPoll()) void delivery.check();
 }, 2500);

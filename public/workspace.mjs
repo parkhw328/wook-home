@@ -2,12 +2,12 @@ import { projectSummary } from './staff-settings.mjs';
 import { ROOMS, FLOORS, roomById, routeBetween, roomTasks, taskRoom, occupantRoom, isHall, hallForFloor } from './rooms.mjs';
 import { OfficeScene } from './office-3d.mjs';
 import { OfficeViewControls } from './office-view.mjs';
-import { ConversationReader, conversationMarkup, conversationReadError } from './conversation.mjs';
-import { officeOccupants, sessionRoom, activityRoomMarkup, activitySummaryMarkup } from './office-activity.mjs';
-import { escapeHtml as esc, statusLabel, statusClass, displayTime, orderedLocalSessions, unassignedLocalSessions, observedSessionStatus, sessionStatusLabel, taskUnavailableReason } from './model.mjs';
+import { conversationMarkup } from './conversation.mjs';
+import { officeOccupants, activityRoomMarkup, activitySummaryMarkup } from './office-activity.mjs';
+import { escapeHtml as esc, statusLabel, statusClass, displayTime, unassignedLocalSessions, observedSessionStatus, sessionStatusLabel, taskUnavailableReason } from './model.mjs';
 
 export class OfficeWorkspace {
-  constructor(root, { request, onTaskAction, onSession }) {
+  constructor(root, { onTaskAction, onSession }) {
     this.root = root;
     this.onTaskAction = onTaskAction;
     this.onSession = onSession;
@@ -17,7 +17,6 @@ export class OfficeWorkspace {
     this.connected = false;
     this.motion = true;
     this.moving = false;
-    this.reader = new ConversationReader(request, () => this.renderConversation());
     this.find = (selector) => root.querySelector(selector);
     this.find('#room-navigation').innerHTML = ROOMS.map((room) => `<button type="button" class="room-nav-button" data-room="${room.id}" aria-pressed="false"><span>${room.floor}F</span>${room.name}</button>`).join('');
     this.find('#floor-navigation').innerHTML = FLOORS.map((floor) => `<button type="button" data-floor="${floor.id}" class="floor-tab" aria-pressed="false"><span class="floor-number">${floor.id}</span><span class="floor-tab-copy"><strong>${floor.title}</strong><span>${floor.description}</span></span><span class="floor-people" data-floor-people="${floor.id}">0명</span></button>`).join('') + '<button type="button" data-floor="0" class="floor-tab overview-tab" aria-pressed="false"><span class="floor-number">▤</span><span class="floor-tab-copy"><strong>전체 건물</strong><span>모든 층의 배치 보기</span></span></button>';
@@ -44,7 +43,6 @@ export class OfficeWorkspace {
       this.detailHidden = false;
       this.renderSelection();
       this.find('#workbench-title').focus({ preventScroll: true });
-      void this.reader.refresh();
     });
     root.addEventListener('click', (event) => {
       const button = event.target.closest('button');
@@ -112,7 +110,6 @@ export class OfficeWorkspace {
     if (room.id !== this.room) {
       this.moving = true;
       this.selection = null;
-      this.reader.select(null);
       this.renderSelection();
       const betweenFloors = roomById(this.room).floor !== room.floor;
       this.find('#room-location').textContent = `${room.floor}층 ${room.name} 이동 중 · ${betweenFloors ? '엘리베이터와 복도' : '복도'}를 따라 이동합니다`;
@@ -134,10 +131,8 @@ export class OfficeWorkspace {
     if (selection) this.selection = selection;
     else if (!this.selection && this.state) {
       const tasks = roomTasks(this.room, this.state.tasks);
-      const session = this.room === 'office' && orderedLocalSessions(this.state.localSessions)[0];
-      this.selection = session ? { type: 'session', id: session.id } : tasks.length ? { type: 'task', id: tasks[0].id } : null;
+      this.selection = tasks.length ? { type: 'task', id: tasks[0].id } : null;
     }
-    this.reader.select(this.selection?.type === 'session' ? this.selection.id : null);
     this.renderRoom();
     this.renderSelection();
     if (typeof document === 'undefined' || !document.querySelector('dialog[open]')) this.find('#room-heading').focus({ preventScroll: true });
@@ -149,8 +144,9 @@ export class OfficeWorkspace {
     return this.enter(this.room === 'executive' ? 'executive' : taskRoom(task), { type: 'task', id });
   }
   selectSession(id) {
-    this.onSession?.(id);
-    return this.enter(this.state ? sessionRoom(this.state, id, this.connected) : 'office', { type: 'session', id });
+    // Reading a CLI conversation belongs to the dialog, not the room workbench.
+    // Keep the current room, report and in-flight movement untouched.
+    return this.onSession?.(id);
   }
 
   renderRoom() {
@@ -187,7 +183,7 @@ export class OfficeWorkspace {
     if (isHall(this.room)) {
       content = '<div class="room-welcome"><span aria-hidden="true">↳</span><strong>같은 건물에서, 함께하는 일.</strong><p>층을 둘러보고 동료의 방을 선택하세요. Commander가 엘리베이터와 복도를 따라 찾아갑니다.</p><p class="room-key-hint">Tab · 방 선택<br>Enter · 입장 / Esc · 퇴실</p></div>';
     } else if (this.room === 'office') {
-      content = `<div class="room-section-label">CLI 세션 <span>${sessions.length}</span></div>` + (sessions.map((session) => `<button class="room-entry" type="button" data-workspace-session="${esc(session.id)}" aria-pressed="${this.selection?.id === session.id}"><span class="entry-symbol">&gt;_</span><span><strong>${esc(session.name)}</strong><small>${sessionStatusLabel(observedSessionStatus(this.state.localSessions, session, this.connected))}</small></span><span aria-hidden="true">↗</span></button>`).join('') || '<p class="room-empty">연결된 CLI 세션이 없습니다. 아래 연결 관리에서 작업 폴더와 연결 방법을 확인하세요.</p>');
+      content = `<div class="room-section-label">CLI 세션 <span>${sessions.length}</span></div>` + (sessions.map((session) => `<button class="room-entry" type="button" data-workspace-session="${esc(session.id)}" aria-haspopup="dialog"><span class="entry-symbol">&gt;_</span><span><strong>${esc(session.name)}</strong><small>${sessionStatusLabel(observedSessionStatus(this.state.localSessions, session, this.connected))}</small></span><span aria-hidden="true">↗</span></button>`).join('') || '<p class="room-empty">연결된 CLI 세션이 없습니다. 아래 연결 관리에서 작업 폴더와 연결 방법을 확인하세요.</p>');
       content += `<div class="room-section-label">직원 <span>${this.state.agents.length}</span></div>` + this.state.agents.map((agent) => `<button class="room-entry" type="button" data-agent="${esc(agent.id)}"><span class="entry-symbol">${esc(Array.from(agent.name)[0])}</span><span><strong>${esc(agent.name)}</strong><small>${esc(agent.role)} · ${statusLabel(agent.status)}</small><small>${esc(projectSummary(agent, this.state.localSessions))}</small></span><span aria-hidden="true">↗</span></button>`).join('');
       content += '<button type="button" class="button button-primary room-assign" data-room-assign>업무 지시</button>';
     } else if (this.room === 'lounge') {
@@ -225,29 +221,20 @@ export class OfficeWorkspace {
   renderSelection() {
     if (!this.state) return;
     const selected = this.selection;
-    const valid = selected?.type === 'task' ? this.state.tasks.some((task) => task.id === selected.id)
-      : selected?.type === 'session';
+    const task = selected?.type === 'task' && this.state.tasks.find((task) => task.id === selected.id);
+    const valid = Boolean(task);
     this.find('#workbench-empty').hidden = Boolean(valid) && !this.detailHidden;
     this.find('#workbench-detail').hidden = !valid || this.detailHidden;
     this.find('#workbench-reopen').hidden = !valid || !this.detailHidden;
     if (!valid || this.detailHidden) {
-      this.find('#workbench-empty-text').textContent = this.detailHidden && valid ? '대화·업무 화면을 닫았습니다. 실행 중인 작업과 작성 내용은 유지됩니다.' : this.moving ? '목적지로 이동하고 있습니다.' : isHall(this.room) ? '방에 입장하면 업무보고와 대화기록이 이곳에 열립니다.' : '이 공간의 직원·세션·업무를 선택해 내용을 확인하세요.';
+      this.find('#workbench-empty-text').textContent = this.detailHidden && valid ? '업무보고를 닫았습니다. 작성한 답변은 유지됩니다.' : this.moving ? '목적지로 이동하고 있습니다. CLI 대화는 이동 중에도 목록에서 바로 열 수 있습니다.' : '업무를 선택하면 이곳에서 보고와 답변을 확인합니다. CLI 대화는 직원이나 세션을 누르면 별도 대화창으로 열립니다.';
       return;
     }
-    const isTask = selected.type === 'task';
-    const task = isTask ? this.state.tasks.find((item) => item.id === selected.id) : null;
-    const observed = !isTask ? this.state.localSessions?.sessions?.find((item) => item.id === selected.id) : null;
-    const session = !isTask ? observed || { id: selected.id, name: `Codex · ${selected.id.slice(-4)}`, status: 'disconnected' } : null;
-    this.find('#workbench-title').textContent = task?.title || session.name;
-    this.find('#workbench-kind').textContent = isTask ? '업무보고 · 체험 직원' : `CLI 대화기록 · ${session.id}`;
-    const actor = !isTask && officeOccupants(this.state, this.connected).find((item) => item.source === 'session' ? item.id === session.id : item.connection?.sessionId === session.id);
-    this.find('#workbench-status').textContent = isTask ? statusLabel(task.status) : actor?.sceneActivity?.label || (observed ? sessionStatusLabel(observedSessionStatus(this.state.localSessions, session, this.connected)) : '세션 관찰 종료');
-    this.find('#workbench-status').className = `status ${statusClass(task?.status || observedSessionStatus(this.state.localSessions, session, this.connected))}`;
-    const command = this.find('#workbench-command');
-    command.hidden = isTask;
-    command.dataset.sessionCommand = session?.id || '';
-    command.disabled = !this.connected || this.pending || (!isTask && !observed);
-    this.find('#report-detail').hidden = !isTask;
+    this.find('#workbench-title').textContent = task.title;
+    this.find('#workbench-kind').textContent = '업무보고 · 체험 직원';
+    this.find('#workbench-status').textContent = statusLabel(task.status);
+    this.find('#workbench-status').className = `status ${statusClass(task.status)}`;
+    this.find('#report-detail').hidden = false;
     if (task) {
       this.find('#report-owner').textContent = this.state.agents.find((agent) => agent.id === task.agentId)?.name || '직원';
       this.find('#report-goal').textContent = task.description || task.title;
@@ -276,21 +263,11 @@ export class OfficeWorkspace {
   }
 
   renderConversation(reset = false) {
-    if (!this.state || !this.selection || this.detailHidden) return;
-    const isTask = this.selection.type === 'task';
-    const task = isTask && this.state.tasks.find((item) => item.id === this.selection.id);
-    const data = isTask ? { status: 'ready', messages: (task?.messages || []).filter((message) => ['user', 'assistant'].includes(message.role)), truncated: false } : this.reader.data;
-    const status = this.connected ? data?.status : 'disconnected';
-    const notes = {
-      disabled: '공개 대화 읽기가 꺼져 있습니다. 대화 읽기 설정에서 켜고 저장해 주세요.',
-      empty: '수집 범위에 공개 대화가 없습니다. 세션에 첫 메시지를 보내고 다음 갱신을 기다려 주세요.',
-      unavailable: conversationReadError(data) || '이 세션의 기록을 읽을 수 없습니다. 연결 프로그램과 선택한 작업 폴더를 확인하세요.',
-      disconnected: '연결이 끊겼거나 기록 갱신이 멈췄습니다. 마지막 수신 내용을 표시합니다.',
-    };
-    this.find('#terminal-notice').textContent = !data ? '대화기록을 불러오는 중입니다.' : notes[status] || (isTask ? '체험 대화 · 실제 AI 응답이 아닙니다.' : `로컬 기록 · ${data.updatedAt ? displayTime(data.updatedAt) + ' 수신 · ' : ''}최근 최대 60개 / 읽기 전용`);
-    this.find('#terminal-settings').hidden = isTask || status !== 'disabled';
-    this.find('#terminal-scope').textContent = isTask ? '선택한 업무의 대화' : '선택한 프로젝트 · 최근 7일 폴더 중 24시간 내 활동 세션 · 로그 끝 1MB';
-    this.find('#terminal-truncated').hidden = !data?.truncated;
+    if (!this.state || this.selection?.type !== 'task' || this.detailHidden) return;
+    const task = this.state.tasks.find((item) => item.id === this.selection.id);
+    const messages = (task?.messages || []).filter((message) => ['user', 'assistant'].includes(message.role));
+    this.find('#terminal-notice').textContent = this.connected ? '체험 대화 · 실제 AI 응답이 아닙니다.' : '서버와 연결이 끊겼습니다. 마지막으로 받은 업무 대화를 표시합니다.';
+    this.find('#terminal-scope').textContent = '선택한 업무의 대화';
     const log = this.find('#terminal-log');
     const identity = `${this.selection.type}:${this.selection.id}`;
     if (log.dataset.identity !== identity) {
@@ -299,8 +276,8 @@ export class OfficeWorkspace {
       log.dataset.identity = identity;
       reset = true;
     }
-    const markup = data?.messages?.length ? conversationMarkup(data.messages, { query: this.find('#terminal-search').value, role: this.find('#terminal-role').value, demo: isTask })
-      : `<p class="terminal-empty">${esc(!data ? '연결된 세션의 기록을 기다리고 있습니다.' : notes[status] || '아직 대화가 없습니다.')}</p>`;
+    const markup = messages.length ? conversationMarkup(messages, { query: this.find('#terminal-search').value, role: this.find('#terminal-role').value, demo: true })
+      : '<p class="terminal-empty">아직 업무 대화가 없습니다.</p>';
     if (log.dataset.signature !== markup || reset) {
       const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
       const scroll = log.scrollTop;
