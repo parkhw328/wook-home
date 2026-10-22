@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildFloor } from '../../public/office-models.mjs';
+import { buildFloor, applyFloorTheme } from '../../public/office-models.mjs';
 import { OfficeScene, officeCameraFrame, arrangePersonLabels } from '../../public/office-3d.mjs';
 import { routeBetween, BUILDING, FLOOR_HEIGHT, CORRIDOR_Z, LIFT_X, occupantRoom } from '../../public/rooms.mjs';
 import { Object3D, Scene, MeshBasicMaterial, OrthographicCamera, Vector3, Box3, HemisphereLight, DirectionalLight } from '../../public/vendor/three/three.module.js';
@@ -19,6 +19,40 @@ test('theme changes update lighting without replacing actors, routes or camera s
   assert.equal(scene.camera, camera); assert.equal(scene.commander, commander);
   assert.equal(scene.people, people); assert.equal(scene.walk, walk);
   assert.equal(scene.view, 3); assert.equal(scene.zoom, 1.4);
+});
+
+test('day and night update all floors in place without sharing mutable environment materials', () => {
+  const scene = new Scene();
+  const floors = [1, 2, 3].map((floor) => buildFloor(scene, floor));
+  const findRole = (floor, role) => {
+    let result; floor.traverse((node) => { if (node.userData.environmentRole === role) result ||= node; }); return result;
+  };
+  const nodes = [];
+  scene.traverse((node) => nodes.push({ node, geometry: node.geometry, material: node.material }));
+  const sky = findRole(floors[0], 'sky');
+  const otherSky = findRole(floors[1], 'sky');
+  const nightSky = sky.material.color.getHex();
+  assert.notEqual(sky.material, otherSky.material);
+  applyFloorTheme(floors[0], 'light');
+  assert.notEqual(sky.material.color.getHex(), nightSky);
+  assert.equal(otherSky.material.color.getHex(), nightSky);
+  floors[0].visible = false;
+  for (const theme of ['light', 'dark', 'light', 'dark']) for (const floor of floors) {
+    const dark = theme === 'dark';
+    applyFloorTheme(floor, theme);
+    floor.traverse((node) => {
+      if (node.userData.environmentPeriod) assert.equal(node.visible, node.userData.environmentPeriod === (dark ? 'night' : 'day'));
+    });
+    assert.equal(findRole(floor, 'roomLight').intensity > 0, dark);
+    assert.equal(findRole(floor, 'lamp').material.emissiveIntensity > 1, dark);
+  }
+  assert.equal(floors[0].visible, false, 'theme changes must not reveal unselected floors');
+  assert.equal(sky.material.color.getHex(), nightSky);
+  const after = []; scene.traverse((node) => after.push(node));
+  assert.deepEqual(after, nodes.map(({ node }) => node));
+  for (const { node, geometry, material } of nodes) {
+    assert.equal(node.geometry, geometry); assert.equal(node.material, material);
+  }
 });
 
 test('missing WebGL preserves room navigation and does not block entry with reduced motion', async () => {

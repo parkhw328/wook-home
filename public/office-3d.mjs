@@ -1,6 +1,6 @@
 import * as T from './vendor/three/three.module.js';
 import { gesturePose } from './office-gestures.mjs';
-import { buildFloor, createPerson, createLiftPlatform } from './office-models.mjs';
+import { buildFloor, applyFloorTheme, createPerson, createLiftPlatform } from './office-models.mjs';
 import { ROOMS, FLOOR_HEIGHT, CORRIDOR_Z, LIFT_X, BUILDING, MEETING_CENTER, roomById, worldPoint, occupantRoom, occupantPosition, routeBetween, pathToDoor } from './rooms.mjs';
 
 const vec = (point) => new T.Vector3(point.x, point.y, point.z);
@@ -65,6 +65,7 @@ export class OfficeScene {
       const light = new T.DirectionalLight(0xffd8a3, 3.5); light.position.set(-6, 24, 14); light.castShadow = true;
       light.shadow.mapSize.set(2048, 2048); Object.assign(light.shadow.camera, { left: -24, right: 24, top: 25, bottom: -20, far: 90 });
       light.shadow.normalBias = .045; light.shadow.bias = -.0001; this.scene.add(light);
+      this.keyLight = light;
       const fill = new T.DirectionalLight(0x86b6f0, 1.2); fill.position.set(8, 9, -7); this.scene.add(fill);
       this.fillLight = fill;
       this.floors = [1, 2, 3].map((floor) => buildFloor(this.scene, floor));
@@ -92,12 +93,20 @@ export class OfficeScene {
   setTheme(theme) {
     if (!this.ambientLight) return;
     const dark = theme === 'dark';
-    this.ambientLight.color.setHex(dark ? 0xb9d5ef : 0xe1efff);
+    this.ambientLight.color.setHex(dark ? 0x95b4db : 0xdcefff);
     this.ambientLight.groundColor.setHex(dark ? 0x3b302b : 0x9d8e7d);
-    this.ambientLight.intensity = dark ? 2.1 : 2.8;
-    this.fillLight.intensity = dark ? 1.2 : 1.7;
-    this.renderer.toneMappingExposure = dark ? 1.1 : 1.25;
+    this.ambientLight.intensity = dark ? 1.05 : 2.8;
+    if (this.keyLight) {
+      this.keyLight.color.setHex(dark ? 0xffce94 : 0xfff1d7);
+      this.keyLight.intensity = dark ? 2.4 : 3.8;
+    }
+    this.fillLight.color.setHex(dark ? 0x769bd6 : 0xb4ddff);
+    this.fillLight.intensity = dark ? .7 : 1.6;
+    this.renderer.toneMappingExposure = dark ? 1.05 : 1.18;
     this.routeMaterial.color.setHex(dark ? 0x9bebe1 : 0x327b70);
+    for (const floor of this.floors || []) applyFloorTheme(floor, theme);
+    if (this.root) this.root.dataset.environment = dark ? 'night' : 'day';
+    this.renderer.domElement?.setAttribute('aria-label', `${dark ? '도시 불빛과 실내 조명이 켜진 밤' : '밝은 하늘과 자연광이 비치는 낮'}의 입체 사무실. 층별 방과 복도, 움직이는 동료`);
   }
   resizeScene() {
     if (!this.camera) return;

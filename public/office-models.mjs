@@ -104,21 +104,37 @@ function woodFloor(parent, left, right, back, front) {
 }
 function cityWindows(parent) {
   const { back } = BUILDING;
-  box(parent, 0x0b1830, [22.7, 2.8, .1], [1, 1.82, back + .12], { emissive: 0x0b2445, emissiveIntensity: .35 });
+  environmentSurface(box(parent, 0x0b1830, [22.7, 2.8, .1], [1, 1.82, back + .12], { emissive: 0x0b2445, emissiveIntensity: .35 }), 'sky');
+  const day = group(parent); day.userData.environmentPeriod = 'day';
+  const night = group(parent); night.userData.environmentPeriod = 'night';
+  const disc = (target, color, radius, x, y) => {
+    const node = new T.Mesh(new T.CircleGeometry(radius, 24), new T.MeshBasicMaterial({ color }));
+    node.position.set(x, y, back + .175); target.add(node);
+  };
+  disc(day, 0xfff2b8, .22, 6.8, 2.87);
+  disc(night, 0xd9e6f5, .15, 6.8, 2.9);
+  for (const [x, y] of [[-8.3, 3.02], [-5.6, 2.95], [-2.4, 3.1], [.5, 2.97], [3.4, 3.08], [9.4, 3.02], [11.5, 2.96]]) disc(night, 0xb9d3eb, .018, x, y);
+  for (const [x, y, width] of [[-7.5, 2.99, .8], [-1.5, 3.08, .55], [9.6, 2.95, .7]]) {
+    const cloud = sphere(day, 0xffffff, [width, .09, .012], [x, y, back + .17]);
+    cloud.material = new T.MeshBasicMaterial({ color: 0xf1f8ff }); cloud.castShadow = false;
+  }
   const warm = []; const blue = [];
   for (let b = 0; b < 22; b++) {
     const x = -9.9 + b * 1.04; const h = 1.15 + (b * 7 % 11) * .13;
-    box(parent, b % 2 ? 0x13243d : 0x192b44, [.85, h, .05], [x, .45 + h / 2, back + .18]);
+    environmentSurface(box(parent, b % 2 ? 0x13243d : 0x192b44, [.85, h, .05], [x, .45 + h / 2, back + .18]), b % 2 ? 'cityFar' : 'cityNear');
     for (let row = 0; row < 9; row++) for (let col = 0; col < 3; col++) {
       const y = .65 + row * .21;
       if (y > h + .3 || (b * 5 + row * 3 + col) % 4 === 0) continue;
       ((b + row + col) % 3 ? blue : warm).push({ size: [.055, .075, .015], at: [x - .22 + col * .22, y, back + .22] });
     }
   }
-  instances(parent, 0xa4bfd0, blue); instances(parent, 0xddbc78, warm);
+  for (const [color, entries] of [[0xa4bfd0, blue], [0xddbc78, warm]]) {
+    const lights = instances(night, color, entries);
+    lights.material = new T.MeshBasicMaterial({ color });
+  }
   for (let x = -10.3; x < 12.7; x += 2.8) {
     const width = Math.min(2.68, 12.7 - x);
-    box(parent, 0x6b93b3, [width, 2.8, .025], [x + width / 2, 1.82, back + .28], { transparent: true, opacity: .12, depthWrite: false, roughness: .12 });
+    environmentSurface(box(parent, 0x6b93b3, [width, 2.8, .025], [x + width / 2, 1.82, back + .28], { transparent: true, opacity: .12, depthWrite: false, roughness: .12 }), 'windowGlass');
   }
   for (let x = -10.3; x < 12.7; x += 2.8) box(parent, 0x182534, [.075, 2.92, .1], [x, 1.84, back + .34]);
   for (const y of [.42, 1.85, 3.24]) box(parent, 0x182534, [23.1, .075, .12], [1.2, y, back + .34]);
@@ -131,7 +147,34 @@ function slats(parent, x, z, count, side = false) {
 function lamp(parent, x, z) {
   cylinder(parent, colors.brass, .24, .045, [x, .04, z]);
   cylinder(parent, colors.brass, .035, 1.75, [x, .9, z]);
-  cylinder(parent, 0xf7dba1, .32, .48, [x, 1.83, z], { emissive: 0xffc16c, emissiveIntensity: .55 });
+  environmentSurface(cylinder(parent, 0xf7dba1, .32, .48, [x, 1.83, z], { emissive: 0xffc16c, emissiveIntensity: .55 }), 'lamp');
+}
+
+// Only environment surfaces own mutable materials. Furniture and characters keep
+// their cached materials, and changing one scene cannot recolor another scene.
+function environmentSurface(node, role) {
+  node.material = node.material.clone(); node.userData.environmentRole = role;
+  if (role !== 'lamp') node.castShadow = false;
+  return node;
+}
+
+export function applyFloorTheme(floor, theme) {
+  const dark = theme === 'dark';
+  const palette = dark ? {
+    sky: { color: 0x0b1830, emissive: 0x0b2445, emissiveIntensity: .35 },
+    cityFar: { color: 0x13243d }, cityNear: { color: 0x192b44 },
+    windowGlass: { color: 0x6b93b3, opacity: .12 }, lamp: { emissiveIntensity: 1.15 },
+  } : {
+    sky: { color: 0x92c6e7, emissive: 0x92c6e7, emissiveIntensity: .65 },
+    cityFar: { color: 0x8eaabd }, cityNear: { color: 0x68889f },
+    windowGlass: { color: 0xb8e0ed, opacity: .07 }, lamp: { emissiveIntensity: .04 },
+  };
+  floor.traverse((node) => {
+    if (node.userData.environmentPeriod) node.visible = node.userData.environmentPeriod === (dark ? 'night' : 'day');
+    if (node.userData.environmentRole === 'roomLight') node.intensity = dark ? 22 : 0;
+    const values = palette[node.userData.environmentRole];
+    if (values) node.material.setValues(values);
+  });
 }
 function glassLine(parent, start, end, fixed, side = false, door = null, height = 2.9) {
   const parts = door === null ? [[start, end]] : [[start, door - .72], [door + .72, end]];
@@ -170,10 +213,19 @@ function architecture(scene, floor) {
   box(node, 0x526278, [right - left + .2, .16, .35], [0, wallHeight, back]);
   box(node, 0x526278, [.35, .16, 3.6 - back], [left, wallHeight, (back + 3.6) / 2]);
   cityWindows(node);
+  const sunlight = group(node); sunlight.userData.environmentPeriod = 'day';
+  const sunlightMaterial = new T.MeshBasicMaterial({ color: 0xffefc5, transparent: true, opacity: .14, depthWrite: false });
+  for (const x of [-8.5, -5.5, -2.5, 6.2, 9.2]) {
+    const patch = new T.Mesh(boxGeometry, sunlightMaterial);
+    patch.scale.set(1.7, .006, 4.3); patch.position.set(x, .048, -6.8); patch.rotation.y = -.23;
+    sunlight.add(patch);
+  }
+  const roomLight = new T.PointLight(0xffcf94, 22, 22, 2);
+  roomLight.position.set(-3, 3, -3); roomLight.userData.environmentRole = 'roomLight'; node.add(roomLight);
   slats(node, left + .15, -8.9, 26, true);
   for (const z of [-7.2, -3.3, .2]) {
     box(node, colors.brass, [.24, .1, .25], [left + .25, 2.9, z]);
-    box(node, 0xffdfa5, [.26, .05, .29], [left + .27, 2.82, z], { emissive: 0xffb65e, emissiveIntensity: 1 });
+    environmentSurface(box(node, 0xffdfa5, [.26, .05, .29], [left + .27, 2.82, z], { emissive: 0xffb65e, emissiveIntensity: 1 }), 'lamp');
   }
   box(node, 0x111d2a, [2.6, 3.2, .3], [LIFT_X, 1.6, 3.52]);
   for (const dx of [-.53, .53]) box(node, 0x9b8c73, [1.02, 2.65, .08], [LIFT_X + dx, 1.34, 3.72], { metalness: .55, roughness: .38 });
@@ -258,7 +310,7 @@ function furnish(node, floor) {
   for (let i = 0; i < 3; i++) box(slide, [0x577b89, 0xb58654, 0xac646b][i], [.3, .4 + i * .25, .025], [.6 + i * .5, 1.25 + i * .125, .15]);
   plant(node, 12.1, -8.5, 1.5); lamp(node, 4.2, -7.4);
 }
-export function buildFloor(scene, floor) { const node = architecture(scene, floor); furnish(node, floor); return node; }
+export function buildFloor(scene, floor) { const node = architecture(scene, floor); furnish(node, floor); applyFloorTheme(node, 'dark'); return node; }
 export function createLiftPlatform(scene) {
   const node = group(scene); box(node, 0x756c59, [2.35, .13, 2.65], [0, -.04, 0]);
   box(node, 0xddc68f, [2.35, .035, .055], [0, .04, 1.3], { emissive: 0x8c713d, emissiveIntensity: .4 });
