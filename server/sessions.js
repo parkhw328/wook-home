@@ -81,8 +81,9 @@ export function createSessionObserver({ file, clock = Date.now } = {}) {
         const age = clock() - Date.parse(data.generatedAt);
         const fresh = state.status === 'connected' && age >= -5000 && age <= 20000;
         return { ...result, status: !fresh ? 'disconnected' : messages.length ? 'ready' : 'empty', updatedAt: new Date(data.generatedAt).toISOString(), messages, truncated: data.truncated === true || characters > 24000 };
-      } catch {
-        return { ...result, status: state.status === 'connected' ? 'unavailable' : 'disconnected' };
+      } catch (error) {
+        return { ...result, status: state.status === 'connected' ? 'unavailable' : 'disconnected',
+          reason: ['EACCES', 'EPERM'].includes(error.code) ? 'permission_denied' : error.code === 'ENOENT' ? 'missing_record' : 'unreadable_record' };
       } finally { if (descriptor !== undefined) closeSync(descriptor); }
     },
   };

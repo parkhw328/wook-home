@@ -1,5 +1,6 @@
 import { createReadStream } from 'node:fs';
-import { open, readdir, stat, mkdir, writeFile, rename } from 'node:fs/promises';
+import { open, readdir, stat } from 'node:fs/promises';
+import { prepareBridgeDirectory, writeBridgeJson } from './bridge-files.mjs';
 import { createHash } from 'node:crypto';
 import { createInterface } from 'node:readline';
 import { basename, join, resolve } from 'node:path';
@@ -134,14 +135,14 @@ async function filesUnder(directory, pattern, depth, result, budget) {
   }
 }
 
-export function createSearchHistoryCollector({ workspace, sessionsDir, archiveDir = join(resolve(sessionsDir, '..'), 'archived_sessions'), claudeDir = join(process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude'), 'projects'), geminiDir = join(process.env.GEMINI_CLI_HOME || homedir(), '.gemini', 'tmp'), output, clock = Date.now }) {
+export function createSearchHistoryCollector({ workspace, sessionsDir, archiveDir = join(resolve(sessionsDir, '..'), 'archived_sessions'), claudeDir = join(process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude'), 'projects'), geminiDir = join(process.env.GEMINI_CLI_HOME || homedir(), '.gemini', 'tmp'), output, clock = Date.now, sharedGid = null }) {
   const cache = new Map();
   let busy;
   return {
     collect() {
       if (busy) return busy;
       busy = (async () => {
-        await mkdir(output, { recursive: true, mode: 0o700 });
+        await prepareBridgeDirectory(output, sharedGid);
         const candidates = [];
         const sources = [];
         let skipped = 0;
@@ -175,8 +176,7 @@ export function createSearchHistoryCollector({ workspace, sessionsDir, archiveDi
             const key = hash(`${data.workspaceKey}:${item.provider}:${data.originId}`);
             if (items.some((entry) => entry.key === key)) continue;
             if (record.published !== fingerprint) {
-              await writeFile(join(output, `${key}.json.tmp`), JSON.stringify({ schemaVersion: 1, ...data }), { mode: 0o600 });
-              await rename(join(output, `${key}.json.tmp`), join(output, `${key}.json`));
+              await writeBridgeJson(join(output, `${key}.json`), { schemaVersion: 1, ...data }, sharedGid);
               record.published = fingerprint;
             }
             items.push({ key, provider: item.provider, updatedAt: data.updatedAt });
@@ -185,8 +185,7 @@ export function createSearchHistoryCollector({ workspace, sessionsDir, archiveDi
         const paths = new Set(candidates.map((item) => item.file));
         for (const file of cache.keys()) if (!paths.has(file)) cache.delete(file);
         const manifest = { schemaVersion: 1, enabled: true, generatedAt: new Date(clock()).toISOString(), workspaceKey: hash(process.platform === 'win32' ? resolve(workspace).toLowerCase() : resolve(workspace)), workspace: basename(resolve(workspace)), sources, limited, skipped, items };
-        await writeFile(join(output, 'index.json.tmp'), JSON.stringify(manifest), { mode: 0o600 });
-        await rename(join(output, 'index.json.tmp'), join(output, 'index.json'));
+        await writeBridgeJson(join(output, 'index.json'), manifest, sharedGid);
         return manifest;
       })().finally(() => { busy = null; });
       return busy;

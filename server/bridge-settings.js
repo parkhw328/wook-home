@@ -57,6 +57,7 @@ export function createBridgeSettings({ directory, observer }) {
       catch (error) { writable = error.code === 'ENOENT'; }
     }
     return { revision: saved.revision || null, saved: saved.status === 'ready', options, status, writable,
+      readerGroup: process.getgid?.() ?? null,
       workspace: local.workspace || '', updatedAt: local.updatedAt, controlReason: local.control?.reason || 'disconnected',
       applied: connected ? { conversations: local.conversations?.enabled === true, searchHistory: local.searchHistory?.enabled === true, commands: local.control?.enabled === true } : null };
   }

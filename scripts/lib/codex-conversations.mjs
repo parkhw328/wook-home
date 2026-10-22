@@ -1,6 +1,7 @@
 import { redactConversation } from '../../server/search-text.js';
-import { mkdir, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { readdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import { prepareBridgeDirectory, writeBridgeJson } from './bridge-files.mjs';
 
 // Only the visible user/assistant dialogue is exported. Never include reasoning,
 // system/developer instructions, tool calls, tool output, or session metadata.
@@ -40,17 +41,15 @@ export function collectConversation(records, partial = false) {
   return { messages: recent, truncated, limit: maxMessages };
 }
 
-export async function publishConversations(snapshot, directory, enabled) {
+export async function publishConversations(snapshot, directory, enabled, sharedGid = null) {
   const retained = new Set();
   if (enabled) {
-    await mkdir(directory, { recursive: true, mode: 0o700 });
+    await prepareBridgeDirectory(directory, sharedGid);
     for (const session of snapshot.sessions) {
       if (!session.conversation) continue;
       const name = `${session.id}.json`;
       const destination = join(directory, name);
-      const temporary = destination + '.tmp';
-      await writeFile(temporary, JSON.stringify({ schemaVersion: 1, sessionId: session.id, generatedAt: snapshot.generatedAt, ...session.conversation }), { mode: 0o600 });
-      await rename(temporary, destination);
+      await writeBridgeJson(destination, { schemaVersion: 1, sessionId: session.id, generatedAt: snapshot.generatedAt, ...session.conversation }, sharedGid);
       retained.add(name);
       delete session.conversation;
     }

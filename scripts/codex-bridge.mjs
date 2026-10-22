@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { collectSessions } from './lib/codex-observer.mjs';
 import { publishConversations } from './lib/codex-conversations.mjs';
+import { sharedGroup } from './lib/bridge-files.mjs';
 import { createCommandPump, findCodex, sendToCodex, supportsQueue } from './lib/codex-commands.mjs';
 import { createCliLifecycle } from './lib/cli-lifecycle.mjs';
 import { collectCliTools } from './lib/cli-tools.mjs';
@@ -35,6 +36,7 @@ async function main() {
     workspace: { type: 'string', default: process.cwd() },
     'sessions-dir': { type: 'string' },
     'output-dir': { type: 'string' },
+    'shared-gid': { type: 'string' },
     'allow-commands': { type: 'boolean', default: false },
     'include-conversations': { type: 'boolean', default: false },
     'include-search-history': { type: 'boolean', default: false },
@@ -46,11 +48,12 @@ async function main() {
     help: { type: 'boolean', default: false },
   } });
   if (values.help) {
-    process.stdout.write('Usage: npm run bridge:codex -- --workspace . [--once]\nChoose conversation reading, search history and command delivery in the office Connection settings. Saved settings apply while running and survive restart.\nAdvanced initial defaults (only without saved settings): --allow-commands --include-conversations --include-search-history\nOptions: --codex-bin <executable-or-js> --remote <Codex endpoint> --remote-auth-token-env <variable-name>\nStop: npm run bridge:codex -- --stop\nWithout saved settings or explicit flags, observation is read-only. See docs/wiki/CLI.md.\n');
+    process.stdout.write('Usage: npm run bridge:codex -- --workspace . [--once]\nChoose conversation reading, search history and command delivery in the office Connection settings. Saved settings apply while running and survive restart.\nAdvanced initial defaults (only without saved settings): --allow-commands --include-conversations --include-search-history\nOptions: --shared-gid <server-group-id> (Linux redacted exports only)\n--codex-bin <executable-or-js> --remote <Codex endpoint> --remote-auth-token-env <variable-name>\nStop: npm run bridge:codex -- --stop\nWithout saved settings or explicit flags, observation is read-only. See docs/wiki/CLI.md.\n');
     return;
   }
   if (values['remote-auth-token-env'] && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(values['remote-auth-token-env'])) throw new Error('Invalid environment variable name.');
   const workspace = resolve(values.workspace);
+  const sharedGid = sharedGroup(values['shared-gid']);
   const sessionsDir = resolve(values['sessions-dir'] || join(process.env.CODEX_HOME || join(homedir(), '.codex'), 'sessions'));
   const output = resolve(values['output-dir'] || fileURLToPath(new URL('../data/bridge/', import.meta.url)));
   const stopFile = join(output, 'stop.request');
@@ -112,7 +115,7 @@ async function main() {
           lastModels = -Infinity;
           execution = { status: settings.options.commands ? 'unavailable' : 'disabled', models: [] };
           if (settings.options.searchHistory && !history) {
-            history = createSearchHistoryCollector({ workspace, sessionsDir, output: join(output, 'search-history') });
+            history = createSearchHistoryCollector({ workspace, sessionsDir, output: join(output, 'search-history'), sharedGid });
             lastHistory = -Infinity;
           }
           if (!settings.options.searchHistory) history = null;
@@ -139,7 +142,7 @@ async function main() {
           snapshot = { ...observed, generatedAt: new Date().toISOString(), control, execution, processes, cliTools, searchHistory: { enabled: Boolean(history) } };
           snapshot.conversations = { enabled: settings.options.conversations };
           snapshot.settings = { version: 1, ...settings };
-          await publishConversations(snapshot, conversationsDir, settings.options.conversations);
+          await publishConversations(snapshot, conversationsDir, settings.options.conversations, sharedGid);
           await writeFile(temporary, JSON.stringify(snapshot) + '\n', { mode: 0o644 });
           await rename(temporary, destination);
           lastCollection = Date.now();

@@ -67,6 +67,9 @@ npm run bridge:codex -- --workspace .</textarea><button type="button" class="but
     render();
   }
   function render() {
+    const group = state?.readerGroup;
+    const command = `npm ci\nnpm run bridge:codex -- --workspace .${Number.isInteger(group) && group >= 0 ? ` --shared-gid ${group}` : ''}`;
+    if (find('#bridge-start-command').value !== command) find('#bridge-start-command').value = command;
     find('#bridge-settings-status').textContent = readFailed ? '서버 연결 끊김 · 현재 상태를 가져오지 못했습니다. 선택한 내용은 유지됩니다.' : settingsMessage(state);
     find('#bridge-settings-status').dataset.tone = connectionTone(readFailed ? 'disconnected' : !state ? 'loading' : state.status === 'applied' && state.options.commands && !state.applied?.commands ? 'unavailable' : state.status);
     if (online && pendingSince && Date.now() - pendingSince > 20000) find('#bridge-settings-status').textContent = '설정은 저장됐지만 적용 응답이 늦어지고 있습니다. 연결 프로그램의 실행 상태와 공유 폴더 권한을 확인해 주세요.';

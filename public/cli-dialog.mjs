@@ -1,5 +1,5 @@
 import { DialogLayer } from './dialog-layer.mjs';
-import { ConversationReader, conversationMarkup } from './conversation.mjs';
+import { ConversationReader, conversationMarkup, conversationReadError } from './conversation.mjs';
 import { escapeHtml as esc, orderedLocalSessions, observedSessionStatus, sessionStatusLabel } from './model.mjs';
 
 export class CliConversationDialog {
@@ -72,7 +72,7 @@ export class CliConversationDialog {
     const notes = {
       disabled: '공개 대화 읽기가 꺼져 있습니다. 아래 대화 · 지시 설정에서 켜고 저장해 주세요.',
       empty: '아직 수집된 공개 메시지가 없습니다.',
-      unavailable: '현재 기록을 읽을 수 없습니다. 종료된 과거 기록은 전체 자료 검색에서 확인하세요.',
+      unavailable: conversationReadError(data) || '현재 기록을 읽을 수 없습니다. 연결 프로그램과 선택한 작업 폴더를 확인하세요.',
       disconnected: '연결이 끊겼거나 갱신이 멈췄습니다. 마지막으로 받은 내용을 표시합니다.',
     };
     const status = connected ? data?.status : 'disconnected';

@@ -1,5 +1,12 @@
 import { escapeHtml as esc, displayTime } from './model.mjs';
 
+export function conversationReadError(data) {
+  if (data?.status !== 'unavailable') return '';
+  return data.reason === 'permission_denied'
+    ? '대화는 수집 중이지만 사무실 서버에 기록을 읽을 권한이 없습니다. 연결 설정의 실행 안내에서 명령을 복사해 연결 프로그램만 다시 실행하세요. 작업이 끝날 때까지 기다릴 필요는 없습니다.'
+    : data.reason === 'missing_record' ? '대화 기록 파일이 아직 전달되지 않았습니다. 연결 프로그램의 수집 상태를 확인하고 다시 불러와 주세요.' : '';
+}
+
 export function filterMessages(messages, query = '', role = 'all') {
   const needle = query.trim().toLocaleLowerCase();
   return messages.filter((message) => (role === 'all' || message.role === role)

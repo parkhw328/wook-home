@@ -1,7 +1,7 @@
 import { ROOMS, FLOORS, roomById, routeBetween, roomTasks, taskRoom, occupantRoom, isHall, hallForFloor } from './rooms.mjs';
 import { OfficeScene } from './office-3d.mjs';
 import { OfficeViewControls } from './office-view.mjs';
-import { ConversationReader, conversationMarkup } from './conversation.mjs';
+import { ConversationReader, conversationMarkup, conversationReadError } from './conversation.mjs';
 import { officeOccupants, sessionRoom, activityRoomMarkup, activitySummaryMarkup } from './office-activity.mjs';
 import { escapeHtml as esc, statusLabel, statusClass, displayTime, orderedLocalSessions, unassignedLocalSessions, observedSessionStatus, sessionStatusLabel, taskUnavailableReason } from './model.mjs';
 
@@ -283,7 +283,7 @@ export class OfficeWorkspace {
     const notes = {
       disabled: '공개 대화 읽기가 꺼져 있습니다. 대화 읽기 설정에서 켜고 저장해 주세요.',
       empty: '수집 범위에 공개 대화가 없습니다. 세션에 첫 메시지를 보내고 다음 갱신을 기다려 주세요.',
-      unavailable: '이 세션의 기록을 읽을 수 없습니다. 연결 프로그램과 선택한 작업 폴더를 확인하세요.',
+      unavailable: conversationReadError(data) || '이 세션의 기록을 읽을 수 없습니다. 연결 프로그램과 선택한 작업 폴더를 확인하세요.',
       disconnected: '연결이 끊겼거나 기록 갱신이 멈췄습니다. 마지막 수신 내용을 표시합니다.',
     };
     this.find('#terminal-notice').textContent = !data ? '대화기록을 불러오는 중입니다.' : notes[status] || (isTask ? '체험 대화 · 실제 AI 응답이 아닙니다.' : `로컬 기록 · ${data.updatedAt ? displayTime(data.updatedAt) + ' 수신 · ' : ''}최근 최대 60개 / 읽기 전용`);
