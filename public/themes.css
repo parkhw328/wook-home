@@ -39,7 +39,6 @@
   --mark-bg: #ffdfa6;
   --mark-ink: #533300;
   --backdrop: #21172799;
-  --shadow: #3f201b26;
   --toast-bg: #493a42;
   --toast-ink: #fff;
   --action-bg: var(--surface);
@@ -107,7 +106,6 @@
   --mark-bg: #755617;
   --mark-ink: #fff3cd;
   --backdrop: #020612b3;
-  --shadow: #0006;
   --toast-bg: #dce6f5;
   --toast-ink: #142133;
   --action-ink: #dae5f5;
@@ -154,7 +152,6 @@ mark { background: var(--mark-bg); color: var(--mark-ink); }
   color: var(--action-selected-ink);
   background: var(--action-selected);
   border-color: var(--action-selected-border);
-  box-shadow: inset 0 -3px 0 var(--action-selected-border);
   font-weight: 700;
 }
 @media (hover: hover) {
@@ -164,6 +161,11 @@ mark { background: var(--mark-bg); color: var(--mark-ink); }
   #office-workspace :is(.floor-tab, .room-navigation button, .scene-controls button, .room-hotspot, .room-entry)[aria-pressed="true"]:hover:not(:disabled) {
     color: var(--action-selected-ink); background: var(--action-selected-hover); border-color: var(--action-selected-border);
   }
+}
+#office-workspace :is(.floor-tab, .room-navigation button, .scene-controls button, .room-hotspot, .room-entry):active:not(:disabled) {
+  color: var(--action-selected-ink);
+  background: var(--action-selected-hover);
+  border-color: var(--action-selected-border);
 }
 #office-workspace :is(.scene-controls button, .room-navigation button):disabled {
   color: var(--disabled-ink); background: var(--disabled-bg); border-color: var(--disabled-border); box-shadow: none;

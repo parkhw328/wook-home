@@ -23,7 +23,6 @@
   background: var(--action-primary);
   border-color: var(--action-primary);
   font-weight: 700;
-  box-shadow: 0 2px 3px var(--shadow);
 }
 .button.button-secondary { background: var(--action-bg); }
 .button.button-quiet { background: transparent; border-color: transparent; font-weight: 500; }
@@ -42,7 +41,7 @@
 .text-link, .inline-link { color: var(--action-selected-ink); font-weight: 500; text-decoration: underline; text-underline-offset: 4px; }
 .text-link { border-radius: 6px; }
 
-/* Selected navigation and toggles use weight and an inset bar as well as color. */
+/* Flat selection uses a contrasting border and weight, never a raised edge. */
 .floor-tab { color: var(--action-ink); background: var(--action-bg); border-color: var(--action-border); }
 .floor-tab strong { font-weight: 600; color: inherit; }
 .floor-tab.is-current, .room-nav-button.is-current, .room-hotspot.is-current,
@@ -53,13 +52,12 @@
   color: var(--action-selected-ink);
   background: var(--action-selected);
   border-color: var(--action-selected-border);
-  box-shadow: inset 0 -3px 0 var(--action-primary);
   font-weight: 700;
 }
 .floor-tab.is-current strong, .room-entry[aria-pressed="true"] strong { font-weight: 700; color: inherit; }
 .room-nav-button.is-current > span, .room-hotspot.is-current > span { color: inherit; }
-.nav-link { font-weight: 500; }
-.nav-link.active { color: var(--action-selected-ink); background: var(--action-selected); box-shadow: inset 3px 0 0 var(--action-primary); font-weight: 700; }
+.nav-link { border-inline-start: 3px solid transparent; font-weight: 500; }
+.nav-link.active { color: var(--action-selected-ink); background: var(--action-selected); border-inline-start-color: var(--action-primary); font-weight: 700; }
 .discovery-tabs [role="tab"] { color: var(--action-ink); font-weight: 500; }
 .discovery-tabs [aria-selected="true"] { color: var(--action-selected-ink); border-bottom-color: var(--action-primary); background: var(--action-selected); font-weight: 700; }
 .leave-room { color: var(--action-ink); background: var(--surface-alt); font-weight: 600; }
@@ -97,8 +95,18 @@
   cursor: not-allowed;
 }
 .text-link:disabled { color: var(--disabled-ink); opacity: 1; text-decoration: none; }
+/* Press feedback changes the surface color without moving or shading the control. */
 .button:active:not(:disabled), .icon-button:active:not(:disabled),
-.scene-controls .scene-control:active:not(:disabled) { box-shadow: inset 0 2px 4px var(--shadow); }
+.scene-controls .scene-control:active:not(:disabled), .motion-toggle:active:not(:disabled),
+.room-nav-button:active:not(:disabled), .floor-tab:active:not(:disabled),
+.room-hotspot:active:not(:disabled), .office-person:active:not(:disabled) {
+  color: var(--action-selected-ink);
+  background: var(--action-selected);
+  border-color: var(--action-selected-border);
+}
+.button.button-primary:active:not(:disabled) { color: #fff; background: var(--action-primary-hover); border-color: var(--action-primary-hover); }
+.button.button-caution:active:not(:disabled) { color: var(--warning-ink); background: var(--action-caution-hover); border-color: var(--warning-border); }
+.button.button-danger:active:not(:disabled) { color: var(--danger-ink); background: var(--action-danger-hover); border-color: var(--danger-ink); }
 
 /* A cool focus ring stays distinct from red action and selection states. */
 button:focus-visible, a:focus-visible, summary:focus-visible,

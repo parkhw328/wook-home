@@ -17,14 +17,14 @@ body:has(#view-office:not([hidden])) .page-heading { margin-bottom: 14px; }
 #office-view-status { color: var(--muted); font-size: var(--font-caption); }
 #office-workspace .floor-scroll { flex: 1 1 auto; min-height: 400px; overflow-x: auto; background: var(--scene-bg); scrollbar-color: var(--line-strong) var(--scene-bg); }
 #office-workspace .office-scene { min-width: 720px; width: 100%; height: 100%; min-height: 400px; background: radial-gradient(ellipse at 53% 35%,var(--scene-glow) 0%,var(--scene-mid) 54%,var(--scene-edge) 100%); }
-#office-workspace .room-hotspot { color: var(--ink); background: var(--scene-label-bg); border: 1px solid var(--line-strong); padding: 7px 10px; box-shadow: 0 5px 18px var(--shadow); }
+#office-workspace .room-hotspot { color: var(--ink); background: var(--scene-label-bg); border: 1px solid var(--line-strong); padding: 7px 10px; }
 #office-workspace .room-hotspot small { color: var(--muted); }
 #office-workspace .room-hotspot[aria-pressed="true"] { background: var(--action-selected); border-color: var(--action-selected-border); color: var(--action-selected-ink); }
 #office-workspace .office-person { color: var(--ink); background: var(--scene-label-bg); border-color: var(--line-strong); padding: 4px 8px; font-size: var(--font-control); }
 #office-workspace .office-person.is-active { background: var(--success-bg); border-color: var(--success-border); }
 #office-workspace .office-person[data-activity="presenting"] { background: var(--purple-bg); border-color: var(--purple-border); }
 #office-workspace .floor-label { color: var(--warning-ink); background: var(--scene-label-bg); border-color: var(--line-strong); }
-.scene-floor-card { position: absolute; z-index: 3; left: 20px; bottom: 16px; display: flex; align-items: center; gap: 16px; max-width: calc(100% - 40px); padding: 13px 18px; color: var(--ink); background: var(--scene-label-bg); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px var(--shadow); pointer-events: none; }
+.scene-floor-card { position: absolute; z-index: 3; left: 20px; bottom: 16px; display: flex; align-items: center; gap: 16px; max-width: calc(100% - 40px); padding: 13px 18px; color: var(--ink); background: var(--scene-label-bg); border: 1px solid var(--line); border-radius: 10px; pointer-events: none; }
 .scene-floor-card > span { font-size: 2.5rem; font-weight: 500; line-height: 1; color: var(--warning-ink); }
 .scene-floor-card > div { display: grid; gap: 2px; }
 #scene-floor-name { font-size: var(--font-emphasis); }
