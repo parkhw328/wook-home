@@ -22,6 +22,7 @@
     <script type="module" src="/session-search.mjs"></script>
     <link rel="stylesheet" href="/actions.css">
     <link rel="stylesheet" href="/sidebar.css">
+    <link rel="stylesheet" href="/office-stats.css">
     <script type="module" src="/discovery.mjs"></script>
   </head>
   <body>
@@ -44,8 +45,10 @@
           <summary id="program-heading">프로그램 · 블로그</summary>
           <div class="program-grid" id="program-list" aria-labelledby="program-heading"></div>
         </details>
-        <div class="sidebar-bottom"><span class="commander-avatar" aria-hidden="true">C</span><div><strong>Commander</strong><span>워크스페이스 관리자</span></div></div>
-        <footer class="sidebar-footer"><a class="inline-link footer-help" href="https://github.com/parkhw328/wook-home/wiki/UI" target="_blank" rel="noopener noreferrer">화면 사용법 ↗</a><span id="app-version">로컬 작업 공간</span></footer>
+        <div class="sidebar-meta">
+          <section class="sidebar-user" aria-labelledby="sidebar-user-heading"><h2 id="sidebar-user-heading" class="sidebar-section-title">현재 사용자</h2><div class="sidebar-bottom"><span class="commander-avatar" aria-hidden="true">C</span><div><strong>Commander</strong><span>워크스페이스 관리자</span></div></div></section>
+          <footer class="sidebar-footer" aria-labelledby="sidebar-info-heading"><h2 id="sidebar-info-heading" class="sidebar-section-title">도움말 · 버전</h2><a class="inline-link footer-help" href="https://github.com/parkhw328/wook-home/wiki/UI" target="_blank" rel="noopener noreferrer">화면 사용법 ↗</a><div class="sidebar-version"><span>앱 버전</span><span id="app-version">확인 중</span></div></footer>
+        </div>
       </aside>
 
       <div class="main-shell">
@@ -88,12 +91,13 @@
                   <div id="scene-empty" class="floor-invite"><span>첫 동료와 업무를 시작하세요.</span><button type="button" id="scene-hire-button" class="text-link">체험 직원 채용 ↗</button></div>
                 </section>
                 <aside class="office-directory" aria-label="층과 공간 안내">
-                  <section class="panel floor-directory"><header><p class="eyebrow">BUILDING DIRECTORY</p><h2>층 둘러보기</h2><p>3개 층 · 5개 공간</p></header><nav id="floor-navigation" class="floor-navigation" aria-label="층별 보기"></nav></section>
+                  <section class="panel floor-directory"><header><h2>층 둘러보기</h2><span aria-label="3개 층 · 5개 공간">3층 · 5실</span></header><nav id="floor-navigation" class="floor-navigation" aria-label="층별 보기"></nav></section>
                 <aside class="panel room-panel" id="room-panel" aria-labelledby="room-heading"><div class="room-panel-header"><p class="eyebrow" id="room-number">WELCOME / 1F</p><h2 id="room-heading" tabindex="-1">복도</h2><p id="room-description"></p></div><div id="room-content" class="room-content"></div><section class="stat-grid room-stats" aria-label="사무실 현황" id="stat-grid">
-            <div class="stat-card"><span class="stat-icon" data-icon="people"></span><div><span>함께하는 직원</span><strong id="stat-agents">—<small>명</small></strong></div></div>
-            <div class="stat-card"><span class="stat-icon" data-icon="activity"></span><div><span>진행 중인 업무</span><strong id="stat-working">—<small>건</small></strong></div></div>
-            <div class="stat-card"><span class="stat-icon stat-amber" data-icon="message"></span><div><span>응답·승인 대기</span><strong id="stat-waiting">—<small>건</small></strong></div></div>
-            <div class="stat-card"><span class="stat-icon stat-green" data-icon="check"></span><div><span>완료한 업무</span><strong id="stat-completed">—<small>건</small></strong></div></div>
+            <p class="stat-scope">사무실 전체 현황 · 눌러서 상세 보기</p>
+            <button type="button" class="stat-card" data-office-stat="agents" aria-haspopup="dialog"><span class="stat-label">함께하는 직원</span><strong id="stat-agents">—<small>명</small></strong><span class="stat-arrow" aria-hidden="true">↗</span></button>
+            <button type="button" class="stat-card" data-office-stat="working" aria-haspopup="dialog"><span class="stat-label">진행 중인 업무</span><strong id="stat-working">—<small>건</small></strong><span class="stat-arrow" aria-hidden="true">↗</span></button>
+            <button type="button" class="stat-card" data-office-stat="waiting" aria-haspopup="dialog"><span class="stat-label">응답·승인 대기</span><strong id="stat-waiting">—<small>건</small></strong><span class="stat-arrow" aria-hidden="true">↗</span></button>
+            <button type="button" class="stat-card" data-office-stat="completed" aria-haspopup="dialog"><span class="stat-label">완료한 업무</span><strong id="stat-completed">—<small>건</small></strong><span class="stat-arrow" aria-hidden="true">↗</span></button>
           </section><button type="button" id="leave-room" class="leave-room" data-leave-room disabled>← 복도로 나오기 <kbd>Esc</kbd></button></aside>
                 </aside>
               </div>

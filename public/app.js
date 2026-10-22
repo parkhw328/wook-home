@@ -10,7 +10,7 @@ import {
 } from './commands.mjs';
 import {
   escapeHtml as esc, statusLabel, statusClass, isOpenTask, needsAttention,
-  officeCounts, taskUnavailableReason, filterTasks, displayTime, normalizeState, programUrl, providerLinks,
+  officeCounts, officeStatItems, taskUnavailableReason, filterTasks, displayTime, normalizeState, programUrl, providerLinks,
   officeName, observedSessionStatus, sessionStatusLabel, characterMotion, orderedLocalSessions,
 } from './model.mjs';
 
@@ -104,6 +104,7 @@ function setConnection(value) {
   updateControls();
   renderCharacters();
   renderSessions();
+  renderStatDetails();
 }
 
 function toast(message, isError = false) {
@@ -117,6 +118,7 @@ function toast(message, isError = false) {
 
 function updateControls() {
   const unavailable = !connected || pending;
+  $$('[data-office-stat]').forEach((button) => { button.disabled = !loaded; });
   ['#hire-button', '#scene-hire-button', '#resume-banner-button', '#pause-button', '#download-button'].forEach((selector) => {
     $(selector).disabled = unavailable;
   });
@@ -138,7 +140,7 @@ function renderStats() {
   $('#nav-task-count').textContent = counts.unfinished;
   $('#paused-notice').hidden = !state.office.paused;
   $('#office-meta').textContent = state.office.paused ? '업무 일시 중지' : '로컬 사무실';
-  $('#app-version').textContent = `v${state.office.version || '개발 중'} · 로컬 작업 공간`;
+  $('#app-version').textContent = state.office.version ? `v${state.office.version}` : '개발 중';
   const name = officeName(state.office);
   $$('[data-office-name]').forEach((node) => { node.textContent = name; node.title = name; });
   $('#brand-link').setAttribute('aria-label', `${name} 사무실`);
@@ -516,14 +518,56 @@ function openNewTask(agentId) {
   $('#task-title', body).focus();
 }
 
-function openTask(id) {
+async function openTask(id) {
   if (modal.open) modal.close();
   location.hash = 'office';
-  void workspace.selectTask(id);
+  await workspace.selectTask(id);
+  if (workspace.selection?.type === 'task' && workspace.selection.id === id) {
+    $('#workbench-title').tabIndex = -1;
+    $('#workbench-title').focus({ preventScroll: true });
+    $('#workbench-detail').scrollIntoView({ block: 'start' });
+  }
+}
+
+const STAT_DETAILS = {
+  agents: { title: '함께하는 직원', unit: '명', description: '사무실 전체에 등록된 직원입니다. 직원을 선택하면 역할·연결 상태와 맡은 업무를 확인합니다.', empty: '아직 등록된 직원이 없습니다.' },
+  working: { title: '진행 중인 업무', unit: '건', description: '접수·실행 중이거나 답변·승인을 기다리는 업무입니다. 항목을 선택하면 해당 방의 업무보고로 이동합니다.', empty: '지금 진행 중인 업무가 없습니다.' },
+  waiting: { title: '응답·승인 대기', unit: '건', description: 'Commander의 답변 또는 결과 승인을 기다리는 업무입니다. 항목을 선택해 질문과 보고 내용을 확인하세요.', empty: '응답이나 승인을 기다리는 업무가 없습니다.' },
+  completed: { title: '완료한 업무', unit: '건', description: '완료 처리된 업무입니다. 항목을 선택해 결과와 대화를 다시 확인하세요.', empty: '아직 완료한 업무가 없습니다.' },
+};
+
+function openStatDetails(key) {
+  if (!Object.hasOwn(STAT_DETAILS, key)) return;
+  const detail = STAT_DETAILS[key];
+  openModal(detail.title, '사무실 전체 현황', `<p class="stat-detail-description">${esc(detail.description)}</p><p id="stat-detail-connection" class="stat-detail-notice" role="status" hidden>서버 연결이 끊겨 마지막으로 받은 목록을 표시합니다.</p><div id="stat-detail-list" class="stat-detail-list" tabindex="-1" aria-label="${esc(detail.title)} 목록"></div>`, { type: 'stats', key });
+  renderStatDetails();
+}
+
+function renderStatDetails() {
+  if (!modal.open || modalContext?.type !== 'stats') return;
+  const { key } = modalContext;
+  const detail = STAT_DETAILS[key];
+  const items = officeStatItems(state, key);
+  $('#modal-title').textContent = `${detail.title} · ${items.length}${detail.unit}`;
+  $('#stat-detail-connection', body).hidden = connected;
+  const list = $('#stat-detail-list', body);
+  const content = items.length ? items.map((item) => key === 'agents'
+    ? `<button type="button" class="agent-card stat-detail-entry" data-stat-agent="${esc(item.id)}">${avatar(item)}<span class="agent-info"><strong>${esc(item.name)}</strong><small>${esc(item.role)}</small></span>${badge(item.status)}<span class="stat-entry-link">직원 상세 ↗</span></button>`
+    : taskRow(item)).join('') : emptyState(detail.empty, '현황이 바뀌면 이 목록에도 자동으로 반영됩니다.', key === 'agents' ? 'people' : 'task');
+  if (list.dataset.signature === content) return;
+  const focus = document.activeElement;
+  const field = key === 'agents' ? 'statAgent' : 'task';
+  const focusId = list.contains(focus) ? focus.dataset[field] : null;
+  const scroll = list.scrollTop;
+  list.innerHTML = content;
+  list.dataset.signature = content;
+  if (focusId) ([...list.querySelectorAll('button')].find((node) => node.dataset[field] === focusId) || list).focus({ preventScroll: true });
+  list.scrollTop = scroll;
 }
 
 function syncModal() {
   if (!modal.open || !modalContext || pending) return;
+  renderStatDetails();
   if (modalContext.type === 'agent' && agentSignature(modalContext.id) !== modalContext.signature) {
     openAgent(modalContext.id);
   }
@@ -570,6 +614,8 @@ document.addEventListener('click', (event) => {
   const button = event.target.closest('button');
   if (!button || button.disabled) return;
   if (button.hasAttribute('data-close')) { closeModal(); return; }
+  if (button.dataset.officeStat) { openStatDetails(button.dataset.officeStat); return; }
+  if (button.dataset.statAgent) { openAgent(button.dataset.statAgent); return; }
   if (button.hasAttribute('data-room-assign')) { openNewTask(); return; }
   if (button.dataset.sessionCommand) { openSession(button.dataset.sessionCommand); return; }
   if (button.dataset.retryCommand) { void commandDeliveries.get(button.dataset.retryCommand)?.retry(); return; }
@@ -673,7 +719,12 @@ modal.addEventListener('click', (event) => {
   if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closeModal();
 });
 modal.addEventListener('close', () => {
+  // A queued close event may arrive after another detail dialog has opened.
+  if (modal.open) return;
   modalContext = null;
+  if (document.querySelector('dialog[open]')) return;
+  const focus = document.activeElement;
+  if (focus !== document.body && !modal.contains(focus) && focus !== modalTrigger) return;
   if (modalTrigger?.isConnected) modalTrigger.focus({ preventScroll: true });
   else $('#hire-button').focus({ preventScroll: true });
 });

@@ -2,6 +2,55 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ROOMS, HALL, routeBetween, roomTasks, taskRoom, worldPoint, isHall, roomById, hallForFloor, CORRIDOR_Z, LIFT_X, DESKS, occupantPosition, pathToDoor } from '../../public/rooms.mjs';
 import { ConversationReader, conversationMarkup, filterMessages } from '../../public/conversation.mjs';
+import { OfficeWorkspace } from '../../public/workspace.mjs';
+
+function movingWorkspace() {
+  const moves = [];
+  const workspace = Object.assign(Object.create(OfficeWorkspace.prototype), {
+    room: 'corridor-2', moving: false, selection: null,
+    reader: { select() {} },
+    find: () => ({ setAttribute() {}, focus() {} }),
+    renderRoom() {}, renderSelection() {}, focusFloor() {},
+    scene: { moveCommander() {
+      return new Promise((resolve) => { moves.push(resolve); });
+    } },
+  });
+  return { workspace, moves };
+}
+
+test('selecting details during movement waits until the queued room and task are ready', async () => {
+  const { workspace, moves } = movingWorkspace();
+  const initial = workspace.enter('lounge');
+  let ready = false;
+  const selection = { type: 'task', id: 'report' };
+  const visit = workspace.enter('executive', selection).then(() => { ready = true; });
+  assert.equal(moves.length, 1);
+  moves[0]();
+  await new Promise(setImmediate);
+  assert.equal(moves.length, 2);
+  assert.equal(ready, false);
+  moves[1]();
+  await Promise.all([initial, visit]);
+  assert.equal(ready, true);
+  assert.equal(workspace.room, 'executive');
+  assert.deepEqual(workspace.selection, selection);
+});
+
+test('replacing a queued visit releases its caller and keeps the latest selection', async () => {
+  const { workspace, moves } = movingWorkspace();
+  const initial = workspace.enter('lounge');
+  const superseded = workspace.enter('office', { type: 'task', id: 'old' });
+  const selection = { type: 'task', id: 'latest' };
+  const latest = workspace.enter('executive', selection);
+  await superseded;
+  assert.equal(workspace.selection, null);
+  moves[0]();
+  await new Promise(setImmediate);
+  moves[1]();
+  await Promise.all([initial, latest]);
+  assert.equal(workspace.room, 'executive');
+  assert.deepEqual(workspace.selection, selection);
+});
 
 test('every floor and room route uses doors, corridors and the open lift shaft without crossing walls or slabs', () => {
   const spaces = [HALL, hallForFloor(2), hallForFloor(3), ...ROOMS];

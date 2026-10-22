@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  escapeHtml, statusLabel, statusClass, officeCounts, taskUnavailableReason,
+  escapeHtml, statusLabel, statusClass, officeCounts, officeStatItems, taskUnavailableReason,
   filterTasks, normalizeState, programUrl, providerLinks,
   officeName, observedSessionStatus, sessionStatusLabel, characterMotion, orderedLocalSessions,
 } from '../../public/model.mjs';
@@ -29,6 +29,37 @@ test('only explicit completed events count as completed, while failed and paused
     assert.equal(statusLabel(status), '상태 확인 필요');
     assert.equal(statusClass(status), 'unknown');
   }
+});
+
+test('stat details match every count and exclude paused, failed, cancelled and observed sessions', () => {
+  const state = fixture();
+  state.tasks = ['working', 'running', 'queued', 'waiting_input', 'waiting_approval', 'completed', 'paused', 'failed', 'cancelled', 'disconnected', 'unknown']
+    .map((status, index) => ({ id: status, status, updatedAt: `2026-10-22T03:${String(index).padStart(2, '0')}:00Z` }));
+  state.localSessions = { sessions: [{ id: 'cli', status: 'completed' }] };
+  const originalTasks = [...state.tasks];
+  assert.deepEqual(officeStatItems(state, 'working').map((task) => task.id), ['waiting_approval', 'waiting_input', 'queued', 'running', 'working']);
+  assert.deepEqual(officeStatItems(state, 'waiting').map((task) => task.id), ['waiting_approval', 'waiting_input']);
+  assert.deepEqual(officeStatItems(state, 'completed').map((task) => task.id), ['completed']);
+  assert.deepEqual(officeStatItems(state, 'agents').map((agent) => agent.id), ['one', 'two']);
+  const counts = officeCounts(state);
+  for (const key of ['agents', 'working', 'waiting', 'completed']) assert.equal(officeStatItems(state, key).length, counts[key]);
+  assert.deepEqual(state.tasks, originalTasks);
+});
+
+test('stat details follow transitions without mutating staff and handle empty or unsupported categories', () => {
+  const state = fixture();
+  const task = { id: 'task', status: 'waiting_input' };
+  state.tasks.push(task);
+  assert.equal(officeStatItems(state, 'waiting')[0], task);
+  task.status = 'completed';
+  assert.equal(officeStatItems(state, 'waiting').length, 0);
+  assert.equal(officeStatItems(state, 'working').length, 0);
+  assert.equal(officeStatItems(state, 'completed')[0], task);
+  officeStatItems(state, 'agents').reverse();
+  assert.equal(state.agents[0].id, 'one');
+  assert.deepEqual(officeStatItems(state, 'invalid'), []);
+  state.agents = []; state.tasks = [];
+  for (const key of ['agents', 'working', 'waiting', 'completed']) assert.deepEqual(officeStatItems(state, key), []);
 });
 
 test('task execution requires a supported provider, an open office, and no unfinished task', () => {

@@ -88,7 +88,10 @@ export class OfficeWorkspace {
     const room = roomById(id);
     // Finish the current doorway traversal before taking a new route. Rapid
     // selections cannot teleport through a wall or run competing animations.
-    if (this.moving) { this.nextVisit = { id: room.id, selection }; return; }
+    if (this.moving) {
+      this.nextVisit?.resolve?.();
+      return new Promise((resolve) => { this.nextVisit = { id: room.id, selection, resolve }; });
+    }
     if (room.id !== this.room) {
       this.moving = true;
       this.selection = null;
@@ -108,7 +111,8 @@ export class OfficeWorkspace {
     if (this.nextVisit) {
       const next = this.nextVisit;
       this.nextVisit = null;
-      return this.enter(next.id, next.selection);
+      try { return await this.enter(next.id, next.selection); }
+      finally { next.resolve?.(); }
     }
     if (selection) this.selection = selection;
     else if (!this.selection && this.state) {

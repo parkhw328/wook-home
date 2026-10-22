@@ -41,12 +41,22 @@ export function needsAttention(task) {
   return ATTENTION_STATUSES.has(task.status);
 }
 
+export function officeStatItems(state, key) {
+  if (key === 'agents') return [...state.agents];
+  return state.tasks.filter((task) => {
+    if (key === 'working') return ['working', 'running', 'queued', 'waiting_input', 'waiting_approval'].includes(task.status);
+    if (key === 'waiting') return needsAttention(task);
+    if (key === 'completed') return task.status === 'completed';
+    return false;
+  }).sort((a, b) => String(b.updatedAt ?? '').localeCompare(String(a.updatedAt ?? '')));
+}
+
 export function officeCounts(state) {
   return {
-    agents: state.agents.length,
-    working: state.tasks.filter((task) => ['working', 'running', 'queued', 'waiting_input', 'waiting_approval'].includes(task.status)).length,
-    waiting: state.tasks.filter(needsAttention).length,
-    completed: state.tasks.filter((task) => task.status === 'completed').length,
+    agents: officeStatItems(state, 'agents').length,
+    working: officeStatItems(state, 'working').length,
+    waiting: officeStatItems(state, 'waiting').length,
+    completed: officeStatItems(state, 'completed').length,
     unfinished: state.tasks.filter(isOpenTask).length,
   };
 }
