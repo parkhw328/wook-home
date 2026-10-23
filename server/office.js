@@ -88,6 +88,7 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
   } else if (state.tasks.some((task) => !finished.has(task.status) && task.status !== 'paused')) {
     pauseState(state, '이전 실행의 미완료 업무를 일시 중지했습니다. 확인 후 재개해 주세요.');
   }
+  state.releasedAgents ??= [];
   state.office.version = VERSION;
   state.office.name = officeName;
   for (const agent of state.agents) {
@@ -119,7 +120,7 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
     snapshot() {
       const output = structuredClone(state);
       output.tasks.forEach((task) => delete task.previousStatus);
-      return { office: output.office, providers: structuredClone(providers), agents: output.agents, tasks: output.tasks, events: output.events, programs: structuredClone(programs) };
+      return { office: output.office, providers: structuredClone(providers), agents: output.agents, releasedAgents: output.releasedAgents, tasks: output.tasks, events: output.events, programs: structuredClone(programs) };
     },
     hire(body, preference = null, archiveNote = null) {
       fields(body, ['name', 'role', 'provider', 'model', 'reasoningEffort', 'projectName']);
@@ -144,6 +145,41 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
         next.agents.push(agent);
         refreshAgent(next, agent.id);
         event(next, 'agent.created', '직원 정보를 등록했습니다.');
+        return agent;
+      });
+    },
+    releaseAgent(id, body) {
+      fields(body, ['settingsRevision']);
+      return update((next) => {
+        const agent = next.agents.find((item) => item.id === id);
+        if (!agent) fail(404, 'NOT_FOUND', '직원을 찾을 수 없습니다.');
+        if (!Number.isSafeInteger(body.settingsRevision)) fail(400, 'VALIDATION_ERROR', '최신 직원 설정 버전이 필요합니다.');
+        if (agent.settingsRevision !== body.settingsRevision) fail(409, 'SETTINGS_CONFLICT', '직원 정보가 변경되었습니다. 상세를 다시 열어 확인해 주세요.');
+        if (next.tasks.some((task) => task.agentId === id && !finished.has(task.status))) fail(409, 'AGENT_BUSY', '진행 중인 체험 업무를 완료하거나 취소한 뒤 등록을 해제해 주세요.');
+        if (next.releasedAgents.length >= 1000) fail(409, 'LIMIT_REACHED', '직원 해제 기록 한도에 도달했습니다.');
+        delete agent.connectionPreference;
+        agent.settingsRevision += 1;
+        agent.releasedAt = now();
+        next.agents = next.agents.filter((item) => item.id !== id);
+        next.releasedAgents.unshift(agent);
+        event(next, 'agent.released', '직원 등록을 해제하고 업무·메모를 해제 기록에 보존했습니다.');
+        return { id, released: true };
+      });
+    },
+    restoreAgent(id, body) {
+      fields(body, ['settingsRevision']);
+      return update((next) => {
+        const agent = next.releasedAgents.find((item) => item.id === id);
+        if (!agent) fail(404, 'NOT_FOUND', '해제 기록을 찾을 수 없습니다.');
+        if (!Number.isSafeInteger(body.settingsRevision)) fail(400, 'VALIDATION_ERROR', '최신 직원 설정 버전이 필요합니다.');
+        if (body.settingsRevision !== agent.settingsRevision) fail(409, 'SETTINGS_CONFLICT', '해제 기록을 다시 확인해 주세요.');
+        if (next.agents.length >= 100) fail(409, 'LIMIT_REACHED', '직원은 100명까지 등록할 수 있습니다.');
+        delete agent.releasedAt;
+        agent.settingsRevision += 1;
+        next.releasedAgents = next.releasedAgents.filter((item) => item.id !== id);
+        next.agents.push(agent);
+        refreshAgent(next, id);
+        event(next, 'agent.restored', '직원을 다시 등록했습니다. 외부 연결은 직접 선택해 주세요.');
         return agent;
       });
     },
@@ -302,7 +338,7 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
       return {
         schemaVersion: 1, exportedAt: now(),
         notice: '사용자가 입력한 업무·대화가 포함됩니다. 공개 전 내용을 검토하세요. 인증 정보는 수집하지 않습니다. 이 버전은 가져오기를 지원하지 않습니다.',
-        office: structuredClone(state.office), agents: state.agents.map(({ connectionPreference: _, workArchive: _archive, ...agent }) => structuredClone(agent)), tasks: structuredClone(state.tasks),
+        office: structuredClone(state.office), agents: state.agents.map(({ connectionPreference: _, workArchive: _archive, ...agent }) => structuredClone(agent)), releasedAgents: state.releasedAgents.map(({ workArchive: _, ...agent }) => structuredClone(agent)), tasks: structuredClone(state.tasks),
       };
     },
   };

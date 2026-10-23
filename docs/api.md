@@ -120,3 +120,7 @@
 - `POST /api/local-sessions/:id/archive`: `{ "note": "다음 행동" }`로 현재 또는 마지막 관찰 CLI를 직원 업무로 보관합니다. 응답은 201과 연결 정보를 포함한 직원입니다. 기존 직원에게 연결된 항목은 409이며 직원 보관 API를 사용합니다. 관찰 식별자는 영속 저장하지 않습니다.
 - `PUT /api/agents/:id/archive`: `{ "stored": true, "note": "다음 행동", "settingsRevision": 0 }`. `false`는 복귀이며 실제 실행·재연결은 하지 않습니다. 4,000자 한도와 직원 설정 버전 충돌을 검사합니다. 체험 직원은 지원하지 않습니다.
 - 직원의 `workArchive`에는 `stored`, `note`, `updatedAt`을 반환합니다. 로컬 DB에서 유지하고 인계에서 제외합니다. 보관 중 새 지시는 `409 WORK_ARCHIVED`, 이미 접수된 동일 ID·본문 요청은 기존 접수 결과를 반환합니다.
+
+## 직원 등록 해제
+
+`POST /api/agents/:id/release`와 `/restore`는 `{ "settingsRevision": 0 }`을 받습니다. 해제는 `{ "id": "…", "released": true }`, 재등록은 직원 정보를 반환합니다. 진행 중 체험 업무와 버전 충돌은 409입니다. `/api/state`의 `agents`는 등록 직원만, `releasedAgents`는 업무·보관 메모를 보존한 해제 기록입니다. 해제 시 연결 매핑을 제거하고 재등록으로 자동 연결하지 않습니다. 인계에는 보고 담당자를 유지하기 위한 해제 직원 정보도 포함하지만 보관 메모는 제외합니다.

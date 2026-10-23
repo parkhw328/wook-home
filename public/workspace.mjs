@@ -98,6 +98,7 @@ export class OfficeWorkspace {
       button.classList.toggle('is-current', active); button.setAttribute('aria-pressed', String(active));
     }
     const level = FLOORS.find((item) => item.id === floor);
+    this.find('#floor-description').textContent = level ? `${floor}층 · ${level.description}` : '층을 선택하면 공간과 인원을 확인할 수 있습니다.';
     this.find('#floor-view-title').textContent = level ? `${floor}F · ${level.title}` : '세 개의 층, 하나의 팀';
     this.find('#scene-floor-number').textContent = floor ? `${floor}F` : 'ALL';
     this.find('#scene-floor-name').textContent = level?.title || '하나의 오피스';
@@ -201,7 +202,7 @@ export class OfficeWorkspace {
       const stored = actors.filter((actor) => occupantRoom(actor) === 'warehouse');
       content = '<p class="field-help">창고 보관과 연결 확인 대기를 구분합니다. 보관 메모는 이 PC에 저장되며 대화 원문은 자료 검색에서 별도로 확인하세요.</p>'
         + (stored.map((actor) => `<div class="room-news"><strong>${esc(actor.name)}</strong><p>${actor.workArchive?.stored ? '창고 보관 중' : '연결 확인 필요 · 아직 보관하지 않음'}</p><p>${esc(actor.workArchive?.note || '다음 행동 메모 없음')}</p><div class="detail-actions">${actor.source === 'agent' ? `<button type="button" class="button" data-stat-agent="${esc(actor.id)}">업무 · 연결 관리</button><button type="button" class="button" data-archive-agent="${esc(actor.id)}">보관 · 복귀 · 메모</button>` : `<button type="button" class="button" data-workspace-session="${esc(actor.id)}">대화 보기</button><button type="button" class="button" data-archive-session="${esc(actor.id)}">업무 보관</button>`}</div></div>`).join('') || '<p class="room-empty">보관하거나 연결을 확인할 업무가 없습니다.</p>')
-        + '<div class="detail-actions"><button type="button" class="button" data-workbench-connections>보관할 업무 선택</button><a class="button" href="#search">이전 대화 검색</a><a class="button" href="#connection-settings" data-open-connection-settings>연결 설정</a></div>';
+        + '<div class="detail-actions"><button type="button" class="button" data-workbench-connections>보관할 업무 선택</button><button type="button" class="button" data-released-agents>직원 등록 해제 기록</button><a class="button" href="#search">이전 대화 검색</a><a class="button" href="#connection-settings" data-open-connection-settings>연결 설정</a></div>';
     } else if (this.room === 'pantry') {
       content = '<div class="room-section-label">사무실 소식</div>' + (this.state.events.slice(0, 6).map((event) => `<div class="room-news"><p>${esc(event.message)}</p><time>${displayTime(event.createdAt)}</time></div>`).join('') || '<p class="room-empty">아직 등록된 소식이 없습니다.</p>');
     }
@@ -211,7 +212,7 @@ export class OfficeWorkspace {
     }
     if (tasks.length || this.room === 'executive') {
       content += `<div class="room-section-label">${this.room === 'executive' ? '질문 · 업무보고' : '진행 업무'} <span>${tasks.length}</span></div>`;
-      content += tasks.map((task) => `<button class="room-entry report-entry" type="button" data-workspace-task="${esc(task.id)}" aria-pressed="${this.selection?.id === task.id}"><span><strong>${esc(task.title)}</strong><small>${esc(this.state.agents.find((agent) => agent.id === task.agentId)?.name || '직원')}</small></span><span class="status ${statusClass(task.status)}">${statusLabel(task.status)}</span></button>`).join('') || '<p class="room-empty">아직 이 공간에서 확인할 업무가 없습니다. 사무실에서 직원에게 업무를 맡겨 보세요.</p>';
+      content += tasks.map((task) => `<button class="room-entry report-entry" type="button" data-workspace-task="${esc(task.id)}" aria-pressed="${this.selection?.id === task.id}"><span><strong>${esc(task.title)}</strong><small>${esc([...this.state.agents, ...(this.state.releasedAgents || [])].find((agent) => agent.id === task.agentId)?.name || '직원')}</small></span><span class="status ${statusClass(task.status)}">${statusLabel(task.status)}</span></button>`).join('') || '<p class="room-empty">아직 이 공간에서 확인할 업무가 없습니다. 사무실에서 직원에게 업무를 맡겨 보세요.</p>';
     }
     const list = this.find('#room-content');
     if (list.dataset.signature !== content) {
@@ -249,7 +250,7 @@ export class OfficeWorkspace {
     this.find('#workbench-status').className = `status ${statusClass(task.status)}`;
     this.find('#report-detail').hidden = false;
     if (task) {
-      this.find('#report-owner').textContent = this.state.agents.find((agent) => agent.id === task.agentId)?.name || '직원';
+      this.find('#report-owner').textContent = [...this.state.agents, ...(this.state.releasedAgents || [])].find((agent) => agent.id === task.agentId)?.name || '직원';
       this.find('#report-goal').textContent = task.description || task.title;
       this.find('#report-result').textContent = task.result ? (typeof task.result === 'string' ? task.result : JSON.stringify(task.result, null, 2)) : task.status === 'waiting_input' ? '직원의 질문에 답하면 결과 보고로 이어집니다.' : '아직 보고된 결과가 없습니다.';
       this.find('#report-next').textContent = task.status === 'waiting_input' ? '대표이사실에서 질문 발표 · Commander 답변 대기' : task.status === 'waiting_approval' ? '대표이사실에서 결과 검토 후 승인' : task.status === 'completed' ? 'Commander 승인 완료' : statusLabel(task.status);

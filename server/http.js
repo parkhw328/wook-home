@@ -90,6 +90,8 @@ export function createHttpServer(office, { publicDir = resolve('public'), bridge
       if (method === 'GET' && path === '/api/handoff') return json(response, 200, office.handoff(), { 'Content-Disposition': 'attachment; filename="wook-home-handoff.json"' });
       if (method === 'POST' && path === '/api/agents') return json(response, 201, office.hire(await bodyOf(request)));
       if (method === 'POST' && path === '/api/agents/from-discovery') return json(response, 201, staff.hire(await bodyOf(request)));
+      const agentRegistration = /^\/api\/agents\/([a-f0-9-]{36})\/(release|restore)$/.exec(path);
+      if (method === 'POST' && agentRegistration) return json(response, 200, staff[agentRegistration[2]](agentRegistration[1], await bodyOf(request)));
       const agentArchive = /^\/api\/agents\/([a-f0-9-]{36})\/archive$/.exec(path);
       if (method === 'PUT' && agentArchive) return json(response, 200, staff.archive(agentArchive[1], await bodyOf(request)));
       const sessionArchive = /^\/api\/local-sessions\/([a-f0-9-]{36})\/archive$/.exec(path);

@@ -96,6 +96,15 @@ export function createStaffConnections({ office, discovery, observer }) {
       remember(agent.id, entry);
       return currentAgent(agent.id);
     },
+    release(id, body) {
+      const result = office.releaseAgent(id, body);
+      links.delete(id);
+      return result;
+    },
+    restore(id, body) {
+      office.restoreAgent(id, body);
+      return currentAgent(id);
+    },
     archive(id, body) {
       office.archiveAgent(id, body);
       return currentAgent(id);

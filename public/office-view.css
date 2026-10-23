@@ -144,3 +144,44 @@ body:has(#view-office:not([hidden])) .commander-avatar { font-size: var(--font-c
 .person-label-leaders { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
 .person-label-leaders > i { position: absolute; display: block; width: 1px; background: var(--scene-route); transform-origin: top center; opacity: .8; }
 .person-label-leaders > i[hidden] { display: none; }
+
+/* Give room descriptions and work lists their own space, without a second
+   scrolling directory wrapped around the list. */
+#office-workspace .floor-workspace { grid-template-columns: minmax(0, 1fr) clamp(360px, 27vw, 440px); }
+#office-workspace .floor-panel { min-height: 640px; height: clamp(640px, calc(100dvh - 118px), 1040px); }
+#office-workspace .office-scene { min-width: 0; }
+#office-workspace .office-directory,
+#office-workspace:is(.is-expanded,:fullscreen) .office-directory {
+  height: auto; min-height: 0; max-height: none; overflow: visible;
+}
+#office-workspace .floor-navigation { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+#office-workspace .floor-tab { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 2px 7px; min-height: 68px; padding: 8px; }
+#office-workspace .floor-number { grid-row: 1 / 3; width: 28px; height: 32px; }
+#office-workspace .floor-tab-copy { min-width: 0; }
+#office-workspace .floor-tab-copy > span { display: none; }
+#office-workspace .floor-people { grid-column: 2; margin: 0; }
+#office-workspace .floor-tab[data-floor="0"] { min-height: 68px; margin: 0; border-top-color: transparent; }
+#office-workspace .floor-description { margin: 0; padding: 0 18px 12px; font-size: var(--font-small); color: var(--muted); line-height: 1.75; }
+#office-workspace .room-panel { flex: none; min-width: 0; }
+#office-workspace .room-panel-header { padding: 14px 18px; }
+#office-workspace .room-panel-header .eyebrow { margin-bottom: 4px; }
+#office-workspace #room-content { min-height: 220px; max-height: clamp(448px, 65dvh, 768px); overflow-y: auto; scrollbar-gutter: stable; }
+#office-workspace .room-entry :is(strong,small) { white-space: normal; overflow-wrap: anywhere; }
+#office-workspace .room-stats { margin: 0; padding: 10px 12px; }
+#office-workspace .room-stats .stat-card { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto; gap: 4px; padding: 8px; }
+#office-workspace .room-stats .stat-card .stat-label { grid-column: 1; }
+#office-workspace .room-stats .stat-arrow { display: none; }
+@media (max-width: 1100px) {
+  #office-workspace .floor-workspace { grid-template-columns: minmax(0, 1fr); }
+  #office-workspace .floor-navigation { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  #office-workspace #room-content { max-height: none; overflow: visible; }
+}
+@media (max-width: 700px) {
+  #office-workspace .floor-navigation { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  #office-workspace .floor-panel { height: auto; min-height: 0; }
+  #office-workspace .office-scene { min-width: 820px; }
+  #office-workspace .floor-tab { gap: 2px 6px; padding: 8px 6px; }
+  #office-workspace .floor-tab-copy strong { overflow-wrap: anywhere; }
+}

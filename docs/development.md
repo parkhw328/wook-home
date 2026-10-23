@@ -109,3 +109,7 @@ CLI 전용 검증은 같은 합성 서버에서 실행하며 결과와 화면을
 ## 업무 창고 검증
 
 합성 서버 `node tests/browser/layer-preview.mjs`를 실행한 뒤 `python tests/browser/work-archive.py`로 보관·메모·복귀·재연결과 보고 답변·승인·취소를 검증합니다. 실제 업무 데이터나 AI에는 실행하지 않습니다. 결과 화면은 Git 제외 `artifacts/work-archive/`에 남습니다. `tests/server/work-archive.test.js`와 `tests/server/commands.test.js`는 재시작·메모 보존·인계 제외·충돌·중복 접수와 보관 중 새 지시 차단을 검사합니다.
+
+## 층 안내와 직원 등록 해제 검증
+
+`LAYER_TEST_PORT=18086 node tests/browser/layer-preview.mjs`로 합성 서버를 실행한 뒤 `python tests/browser/directory-release.py`와 `python tests/browser/staff-release-flows.py`를 실행합니다. 두 테마·5개 화면 폭·실제 200% 확대에서 목록 높이·스크롤·글꼴, 직원 해제·메모 보존·재등록과 진행 업무 보호·기존 보고 담당자 표시·전체화면을 검사합니다. 실제 업무 서버에는 실행하지 않습니다.
