@@ -24,13 +24,6 @@ main { max-width: 1960px; padding: 24px 28px; }
 .floor-panel .panel-heading { padding: 22px 24px 16px; }
 .floor-panel .eyebrow { margin-bottom: 5px; color: var(--muted); font-size: 14px; letter-spacing: .08em; }
 .floor-panel h2 { font-size: 23px; }
-.floor-navigation { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 7px; padding: 0 20px 12px; }
-.floor-tab { display: grid; gap: 5px; text-align: left; padding: 12px 13px; min-height: 74px; background: var(--surface-alt); border: 1px solid var(--line); border-radius: 9px; color: var(--muted); }
-.floor-tab strong { font-size: 17px; color: var(--ink); }
-.floor-tab strong > span { font-size: 14px; font-weight: 600; }
-.floor-tab > span { font-size: 14px; line-height: 1.5; }
-.floor-tab.is-current { background: var(--action-selected); border-color: var(--action-selected-border); }
-.floor-tab.is-current strong { color: var(--action-selected-ink); }
 .room-navigation { display: flex; flex-wrap: wrap; gap: 7px; padding: 0 20px 12px; }
 .room-nav-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); padding: 7px 12px; font-size: 16px; font-weight: 600; white-space: nowrap; }
 .room-nav-button > span { color: var(--muted); font-size: 14px; }
@@ -199,9 +192,6 @@ main { max-width: 1960px; padding: 24px 28px; }
 @media (prefers-reduced-motion: reduce) { .commander-marker.walking > span { animation: none; } }
 
 @media (max-width: 780px) {
-  .floor-navigation { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-inline: 14px; }
-  .floor-tab { min-height: 68px; }
-  .floor-tab > span, .floor-tab strong > span, .room-nav-button > span { font-size: 14px; }
   .room-nav-button { font-size: 16px; min-height: 42px; }
   .floor-footer { flex-wrap: wrap; font-size: 14px; }
   .motion-toggle { font-size: 14px; }

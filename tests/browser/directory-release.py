@@ -10,10 +10,10 @@ def check(page, label, agent):
     page.goto(BASE)
     page.locator('#room-navigation [data-room="office"]').click()
     expect(page.locator('#room-heading')).to_have_text('사무실')
-    metrics=page.evaluate('''()=>{const d=document.querySelector('.office-directory'),r=document.querySelector('#room-content'),f=document.querySelector('.floor-directory');return {width:innerWidth,directoryWidth:d.getBoundingClientRect().width,directoryScroll:getComputedStyle(d).overflowY,roomHeight:r.clientHeight,roomMaxHeight:parseFloat(getComputedStyle(r).maxHeight)||0,floorHeight:f.getBoundingClientRect().height,overflow:document.documentElement.scrollWidth>innerWidth+1,minFont:Math.min(...[...document.querySelectorAll('.floor-directory button,.room-panel p,.room-panel strong')].filter(e=>e.checkVisibility()).map(e=>parseFloat(getComputedStyle(e).fontSize)))}}''')
+    metrics=page.evaluate('''()=>{const d=document.querySelector('.office-directory'),r=document.querySelector('#room-content');return {width:innerWidth,directoryWidth:d.getBoundingClientRect().width,directoryScroll:getComputedStyle(d).overflowY,roomHeight:r.clientHeight,roomMaxHeight:parseFloat(getComputedStyle(r).maxHeight)||0,overflow:document.documentElement.scrollWidth>innerWidth+1,minFont:Math.min(...[...document.querySelectorAll('#room-navigation button,.room-panel p,.room-panel strong')].filter(e=>e.checkVisibility()).map(e=>parseFloat(getComputedStyle(e).fontSize)))}}''')
     assert not metrics['overflow'] and metrics['minFont']>=14,metrics
     if metrics['width']>1100:
-        assert metrics['directoryWidth']>=360 and metrics['directoryScroll']=='visible' and metrics['roomMaxHeight']>=448 and metrics['floorHeight']<320,metrics
+        assert metrics['directoryWidth']>=360 and metrics['directoryScroll']=='visible' and metrics['roomMaxHeight']>=448,metrics
     else: assert page.locator('#room-content').evaluate('e=>getComputedStyle(e).overflowY')=='visible'
     page.locator('#room-panel').scroll_into_view_if_needed()
     page.screenshot(path=str(OUT/f'{label}-layout.png'))

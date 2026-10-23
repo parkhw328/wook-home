@@ -37,21 +37,6 @@ body:has(#view-office:not([hidden])) .page-heading { margin-bottom: 14px; }
 #office-workspace .scene-activity-strip { background: var(--identity-bg); border-color: var(--line); padding: 9px 16px; color: var(--muted); }
 #office-workspace .scene-activity-strip button { min-height: 44px; font-size: var(--font-control); }
 #office-workspace .office-directory { display: flex; flex-direction: column; gap: 14px; height: calc(100dvh - 118px); min-height: 840px; max-height: 1180px; min-width: 0; overflow-y: auto; scrollbar-color: var(--line-strong) var(--scene-bg); }
-#office-workspace .floor-directory { flex: 0 0 auto; background: var(--surface); border-color: var(--line); border-radius: 14px; overflow: hidden; }
-#office-workspace .floor-directory > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 14px 18px 6px; white-space: nowrap; }
-#office-workspace .floor-directory header p { margin: 0 0 4px; color: var(--muted); font-size: var(--font-caption); letter-spacing: .04em; }
-#office-workspace .floor-directory h2 { margin: 0; font-size: var(--font-heading); }
-#office-workspace .floor-directory header span { color: var(--muted); font-size: var(--font-caption); }
-#office-workspace .floor-navigation { display: grid; grid-template-columns: 1fr; gap: 6px; padding: 8px 10px 12px; background: transparent; border: 0; }
-#office-workspace .floor-tab { display: flex; align-items: center; gap: 11px; min-height: 76px; padding: 12px 10px; text-align: left; color: var(--ink); background: transparent; border: 1px solid transparent; border-radius: 8px; }
-#office-workspace .floor-tab[aria-pressed="true"] { color: var(--action-selected-ink); background: var(--action-selected); border-color: var(--action-selected-border); }
-#office-workspace .floor-number { flex: 0 0 37px; height: 37px; display: grid; place-items: center; color: var(--ink); background: var(--surface-alt); border-radius: 8px; font-size: var(--font-emphasis); }
-#office-workspace .floor-tab[aria-pressed="true"] .floor-number { color: var(--action-selected-ink); background: var(--surface-muted); }
-#office-workspace .floor-tab-copy { display: grid; flex: 1; gap: 3px; min-width: 0; }
-#office-workspace .floor-tab-copy strong { font-size: var(--font-control); }
-#office-workspace .floor-tab-copy > span { font-size: var(--font-caption); font-weight: 400; color: var(--muted); line-height: 1.6; }
-#office-workspace .floor-people { color: var(--muted); font-size: var(--font-caption); white-space: nowrap; }
-#office-workspace .floor-tab[data-floor="0"] { min-height: 65px; margin-top: 5px; border-top-color: var(--line); }
 #office-workspace .room-panel { display: flex; flex-direction: column; flex: 1 0 auto; min-height: 0; background: var(--surface); border-color: var(--line); }
 #office-workspace .room-panel .panel-heading { padding: 16px 18px; border-color: var(--line); background: transparent; }
 #office-workspace .room-panel h2 { font-size: var(--font-heading); }
@@ -77,7 +62,6 @@ body.office-expanded main { margin: 0; max-width: none; padding: 12px; }
 @media (max-width: 1100px) {
   #office-workspace .floor-workspace { grid-template-columns: minmax(0,1fr); }
   #office-workspace .office-directory { height: auto; min-height: 0; max-height: none; overflow: visible; }
-  #office-workspace .floor-navigation { grid-template-columns: repeat(2,minmax(0,1fr)); }
   #office-workspace .floor-panel { height: 780px; min-height: 0; }
   #office-workspace:is(.is-expanded,:fullscreen) .office-directory { height: auto; }
   #office-workspace #room-content { max-height: 320px; }
@@ -90,13 +74,9 @@ body.office-expanded main { margin: 0; max-width: none; padding: 12px; }
   #office-workspace .office-scene { min-width: 820px; width: 820px; height: 560px; }
   .scene-floor-card { left: 14px; bottom: 12px; }
   #office-workspace .scene-controls button { padding: 8px 9px; }
-  #office-workspace .floor-tab { flex-wrap: wrap; gap: 7px; padding: 10px 8px; }
-  #office-workspace .floor-tab-copy { flex-basis: calc(100% - 44px); }
-  #office-workspace .floor-people { margin-left: 44px; }
   #office-workspace .stat-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
 
-#office-workspace .floor-tab strong { color: inherit; }
 #office-workspace .room-panel-header { padding: 16px 18px; background: var(--surface-alt); border-color: var(--line); }
 #office-workspace .room-panel-header .eyebrow { color: var(--muted); }
 #office-workspace .room-panel-header > p:last-child { color: var(--muted); }
@@ -118,13 +98,11 @@ body.office-expanded { overflow: hidden; }
 body.office-expanded .main-shell { margin-left: 0; }
 #office-workspace .scene-header .scene-controls button:focus-visible,
 #office-workspace button:focus-visible { outline: 3px solid var(--action-focus); outline-offset: 3px; }
-#office-workspace .floor-tab:focus-visible { outline-offset: -3px; }
 
 @media (max-width: 1100px) {
   #office-workspace .office-directory { display: contents; }
-  #office-workspace .floor-directory { grid-row: 1; }
-  #office-workspace .floor-panel { grid-row: 2; }
-  #office-workspace .room-panel { grid-row: 3; }
+  #office-workspace .floor-panel { grid-row: 1; }
+  #office-workspace .room-panel { grid-row: 2; }
 }
 
 #office-workspace .office-scene[data-rendering="unavailable"] { width: 100%; min-width: 0; height: auto; min-height: 220px; }
@@ -154,14 +132,6 @@ body:has(#view-office:not([hidden])) .commander-avatar { font-size: var(--font-c
 #office-workspace:is(.is-expanded,:fullscreen) .office-directory {
   height: auto; min-height: 0; max-height: none; overflow: visible;
 }
-#office-workspace .floor-navigation { grid-template-columns: minmax(0, 1fr); gap: 6px; }
-#office-workspace .floor-tab { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 2px 7px; min-height: 44px; padding: 6px 8px; }
-#office-workspace .floor-number { grid-row: 1; width: 28px; height: 32px; }
-#office-workspace .floor-tab-copy { min-width: 0; }
-#office-workspace .floor-tab-copy > span { display: none; }
-#office-workspace .floor-people { grid-column: 3; margin: 0; }
-#office-workspace .floor-tab[data-floor="0"] { min-height: 44px; margin: 0; border-top-color: transparent; }
-#office-workspace .floor-description { margin: 0; padding: 0 18px 12px; font-size: var(--font-small); color: var(--muted); line-height: 1.75; }
 #office-workspace .room-panel { flex: none; min-width: 0; }
 #office-workspace .room-panel-header { padding: 14px 18px; }
 #office-workspace .room-panel-header .eyebrow { margin-bottom: 4px; }
@@ -178,6 +148,4 @@ body:has(#view-office:not([hidden])) .commander-avatar { font-size: var(--font-c
 @media (max-width: 600px) {
   #office-workspace .floor-panel { height: auto; min-height: 0; }
   #office-workspace .office-scene { min-width: 820px; }
-  #office-workspace .floor-tab { gap: 2px 6px; padding: 8px 6px; }
-  #office-workspace .floor-tab-copy strong { overflow-wrap: anywhere; }
 }

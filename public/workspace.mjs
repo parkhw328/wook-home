@@ -19,8 +19,7 @@ export class OfficeWorkspace {
     this.motion = true;
     this.moving = false;
     this.find = (selector) => root.querySelector(selector);
-    this.find('#room-navigation').innerHTML = ROOMS.toSorted((a, b) => b.floor - a.floor).map((room) => `<button type="button" class="room-nav-button" data-room="${room.id}" aria-pressed="false"><span>${room.floor}F</span>${room.name}</button>`).join('');
-    this.find('#floor-navigation').innerHTML = FLOORS.map((floor) => `<button type="button" data-floor="${floor.id}" class="floor-tab" aria-pressed="false"><span class="floor-number">${floor.id}</span><span class="floor-tab-copy"><strong>${floor.title}</strong><span>${floor.description}</span></span><span class="floor-people" data-floor-people="${floor.id}">0명</span></button>`).join('') + '<button type="button" data-floor="0" class="floor-tab overview-tab" aria-pressed="false"><span class="floor-number">▤</span><span class="floor-tab-copy"><strong>전체 건물</strong><span>모든 층의 배치 보기</span></span></button>';
+    this.find('#room-navigation').innerHTML = ROOMS.toSorted((a, b) => b.floor - a.floor).map((room) => `<button type="button" class="room-nav-button" data-room="${room.id}" aria-pressed="false"><span>${room.floor}F</span>${room.name}</button>`).join('') + '<button type="button" class="room-nav-button" data-floor="0" aria-pressed="false">전체 건물</button>';
     this.find('#room-hotspots').innerHTML = ROOMS.map((room) => `<button type="button" class="room-hotspot room-${room.id}" data-room="${room.id}" aria-label="${room.floor}층 ${room.name} 입장"><span>${room.number}</span><strong>${room.name}</strong><span class="room-count" data-room-count="${room.id}">0</span></button>`).join('');
     this.scene = new OfficeScene(this.find('#office-scene'));
     this.activityStrip = document.createElement('div');
@@ -98,11 +97,10 @@ export class OfficeWorkspace {
       button.classList.toggle('is-current', active); button.setAttribute('aria-pressed', String(active));
     }
     const level = FLOORS.find((item) => item.id === floor);
-    this.find('#floor-description').textContent = level ? `${floor}층 · ${level.description}` : '층을 선택하면 공간과 인원을 확인할 수 있습니다.';
     this.find('#floor-view-title').textContent = level ? `${floor}F · ${level.title}` : '세 개의 층, 하나의 팀';
     this.find('#scene-floor-number').textContent = floor ? `${floor}F` : 'ALL';
     this.find('#scene-floor-name').textContent = level?.title || '하나의 오피스';
-    this.find('#scene-floor-detail').textContent = floor === 2 ? '집중하는 자리, 함께 논의하는 방' : floor === 3 ? '질문을 나누고, 다음 방향을 정하는 곳' : floor === 1 ? '잠깐의 휴식, 새로운 대화' : '층을 선택해 동료의 공간으로';
+    this.find('#scene-floor-detail').textContent = floor === 2 ? '집중하는 자리, 함께 논의하는 방' : floor === 3 ? '질문을 나누고, 다음 방향을 정하는 곳' : floor === 1 ? '잠깐의 휴식, 새로운 대화' : '하단의 방을 선택해 입장하세요';
   }
 
   async enter(id, selection = null) {
@@ -136,6 +134,7 @@ export class OfficeWorkspace {
       try { return await this.enter(next.id, next.selection); }
       finally { next.resolve?.(); }
     }
+    this.focusFloor(room.floor);
     if (selection) this.selection = selection;
     else if (!this.selection && this.state) {
       const tasks = roomTasks(this.room, this.state.tasks);
@@ -175,7 +174,6 @@ export class OfficeWorkspace {
     const officeActors = actors.filter((actor) => occupantRoom(actor) === 'office');
     const sessions = officeActors.filter((actor) => actor.source === 'session');
     const officeAgents = officeActors.filter((actor) => actor.source === 'agent');
-    for (const node of this.root.querySelectorAll('[data-floor-people]')) node.textContent = `${actors.filter((actor) => roomById(occupantRoom(actor)).floor === Number(node.dataset.floorPeople)).length}명`;
     const activitySummary = activitySummaryMarkup(actors);
     if (this.activityStrip.dataset.signature !== activitySummary) {
       this.activityStrip.innerHTML = activitySummary;
