@@ -149,3 +149,13 @@ body:has(#view-office:not([hidden])) .commander-avatar { font-size: var(--font-c
   #office-workspace .floor-panel { height: auto; min-height: 0; }
   #office-workspace .office-scene { min-width: 820px; }
 }
+
+/* Keep map navigation and motion on one row; descriptions share the next row. */
+#office-workspace .map-toolbar { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 8px 16px 0; background: var(--surface); }
+#office-workspace .map-toolbar .room-navigation { flex: 1; min-width: 0; flex-wrap: nowrap; overflow-x: auto; padding: 4px 3px; scrollbar-width: thin; }
+#office-workspace .map-toolbar .room-navigation button { flex: none; }
+#office-workspace .map-toolbar .motion-toggle { flex: none; min-height: 44px; }
+#office-workspace .floor-footer { justify-content: flex-start; flex-wrap: nowrap; gap: 18px; overflow-x: auto; white-space: nowrap; padding: 6px 16px 8px; scrollbar-width: thin; }
+#office-workspace .floor-footer > p { flex: none; margin: 0; }
+#office-workspace .floor-footer .scene-legend { flex: none; flex-wrap: nowrap; gap: 18px; padding: 0; }
+#office-workspace .floor-footer:focus-visible { outline: 3px solid var(--action-focus); outline-offset: -3px; }
