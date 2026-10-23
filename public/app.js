@@ -168,7 +168,7 @@ function renderCharacters() {
     used[room] = (used[room] || 0) + 1;
     return used[room] <= (room === 'office' ? 8 : ['meeting', 'executive'].includes(room) ? 4 : 2);
   }).slice(0, 16);
-  const signature = JSON.stringify([displayed.map(({ id, source, status, name, sceneActivity, workArchive, connection }) => ({ id, source, status, name, sceneActivity, workArchive, connection })), connected, state.office.paused]);
+  const signature = JSON.stringify([displayed.map(({ id, source, status, name, sessionStatus, sceneActivity, workArchive, connection }) => ({ id, source, status, name, sessionStatus, sceneActivity, workArchive, connection })), connected, state.office.paused]);
   $('#office-scene').classList.toggle('motion-disabled', !motionEnabled);
   $('#scene-empty').hidden = occupants.length > 0;
   $('#office-meta').textContent = `${state.localSessions?.sessions?.length || 0} CLI · ${state.agents.length} 직원${occupants.length > displayed.length ? ` · 화면 ${displayed.length}명 표시` : ''}`;
@@ -179,7 +179,7 @@ function renderCharacters() {
   const previousId = previousSource ? previous.dataset[previousSource] : null;
   $('#desk-grid').innerHTML = displayed.map((occupant) => {
     const isSession = occupant.source === 'session';
-    const label = occupant.sceneActivity?.label || (isSession ? sessionStatusLabel(occupant.status) : statusLabel(occupant.status));
+    const label = occupant.sceneActivity?.label || (isSession || occupant.sessionStatus ? sessionStatusLabel(occupant.sessionStatus || occupant.status) : statusLabel(occupant.status));
     const compactName = isSession ? occupant.name.replace(/^Codex\s*·\s*/, '') : occupant.name;
     return `<button type="button" class="office-person ${statusClass(occupant.status)}" data-person-id="${esc(occupant.id)}" data-${occupant.source}="${esc(occupant.id)}" data-activity="${esc(occupant.sceneActivity?.kind || '')}" title="${esc(label)}" aria-label="${esc(occupant.name)} · ${label} 상세 보기"><i aria-hidden="true"></i>${esc(compactName)}${occupant.sceneActivity ? `<span class="person-activity" aria-hidden="true">${occupant.sceneActivity.kind === 'collaborating' ? '협업' : '발표'}</span>` : ''}</button>`;
   }).join('');

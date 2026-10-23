@@ -49,8 +49,8 @@ def modal_case(page, label):
     errors = []
     page.on('pageerror', lambda e: errors.append(str(e)))
     page.goto(BASE + '/#office')
-    page.locator('#room-navigation [data-room="office"]').click()
-    expect(page.locator('#room-heading')).to_have_text('사무실')
+    page.locator('#room-navigation [data-room="warehouse"]').click()
+    expect(page.locator('#room-heading')).to_have_text('창고')
     assert 'CLI 대화' not in page.locator('#workbench-detail').inner_text()
     entry = page.locator('#room-content [data-workspace-session]').first
     entry.scroll_into_view_if_needed()
@@ -60,7 +60,7 @@ def modal_case(page, label):
     metrics = check_modal(page, label)
     assert page.evaluate('location.hash') == route
     assert abs(page.evaluate('scrollY') - scroll) <= 1
-    expect(page.locator('#room-heading')).to_have_text('사무실')
+    expect(page.locator('#room-heading')).to_have_text('창고')
     assert 'CLI 대화' not in page.locator('#workbench-detail').inner_text()
     options = page.locator('.cli-dialog-options')
     if not options.evaluate('(e)=>e.open'): options.locator('summary').click()
@@ -82,8 +82,8 @@ def entry_flows(page):
     page.goto(BASE + '/#office')
     reads = []
     page.on('request', lambda r: reads.append(r.url) if '/conversation' in r.url else None)
-    page.locator('#room-navigation [data-room="office"]').click()
-    expect(page.locator('#room-heading')).to_have_text('사무실')
+    page.locator('#room-navigation [data-room="warehouse"]').click()
+    expect(page.locator('#room-heading')).to_have_text('창고')
     page.wait_for_timeout(2800)
     assert not reads, 'Room entry must not start a background CLI reader'
     page.locator('#room-navigation [data-room="lounge"]').click()
@@ -121,8 +121,8 @@ def entry_flows(page):
     expect(page.locator('#report-answer')).to_have_value('모달 열람 뒤에도 남아야 하는 답변')
     expect(page.locator('#room-heading')).to_have_text(room)
     page.locator('#office-fullscreen').click()
-    page.locator('#room-navigation [data-room="office"]').click()
-    expect(page.locator('#room-heading')).to_have_text('사무실')
+    page.locator('#room-navigation [data-room="warehouse"]').click()
+    expect(page.locator('#room-heading')).to_have_text('창고')
     page.locator('#room-content [data-workspace-session]').first.click()
     check_modal(page, 'fullscreen')
     close(page)

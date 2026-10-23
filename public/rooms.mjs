@@ -53,6 +53,9 @@ export function roomTasks(roomId, tasks) {
 export function occupantRoom(occupant) {
   if (occupant.workArchive?.stored || ['disconnected', 'interrupted'].includes(occupant.status) || ['missing', 'ended', 'not_connected'].includes(occupant.connection?.status)) return 'warehouse';
   if (['meeting', 'executive'].includes(occupant.sceneActivity?.room)) return occupant.sceneActivity.room;
+  // A saved turn is not evidence that a CLI is still occupying a desk.
+  const sessionStatus = occupant.source === 'session' ? occupant.status : occupant.sessionStatus;
+  if (sessionStatus && sessionStatus !== 'working') return 'warehouse';
   if (occupant.source === 'session') return 'office';
   if (['waiting_input', 'waiting_approval'].includes(occupant.status)) return 'executive';
   if (occupant.status === 'idle') return 'lounge';

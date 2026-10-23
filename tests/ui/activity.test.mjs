@@ -63,7 +63,7 @@ test('room participants open their own session, escape names and never offer a f
   const actors = officeOccupants(value, true, time);
   assert.equal(sessionRoom(value, 'a', true, time), 'meeting');
   assert.equal(sessionRoom(value, 'b', true, time), 'executive');
-  assert.equal(sessionRoom(value, 'b', false, time), 'office');
+  assert.equal(sessionRoom(value, 'b', false, time), 'warehouse');
   const meeting = activityRoomMarkup('meeting', actors, 'a');
   const presentation = activityRoomMarkup('executive', actors, 'b');
   assert.match(meeting, /data-workspace-session="a"/); assert.doesNotMatch(meeting, /<script>/);

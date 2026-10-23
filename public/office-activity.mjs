@@ -1,3 +1,4 @@
+import { occupantRoom } from './rooms.mjs';
 import { orderedLocalSessions, unassignedLocalSessions, observedSessionStatus, escapeHtml as esc } from './model.mjs';
 
 export function sceneActivity(activity, connected = true, now = Date.now()) {
@@ -32,14 +33,16 @@ export function officeOccupants(state, connected = true, now = Date.now()) {
         label: task.status === 'waiting_input' ? '질문 대기 · 대표이사실' : '결과 발표 · 대표이사실', phase: 'active', taskId: task.id, peerSessionIds: [] };
     }
     if (agent.workArchive?.stored) activity = null;
-    actors.push({ ...agent, source: 'agent', status: connected ? agent.status : 'disconnected', sceneActivity: activity });
+    const sessionStatus = agent.connection?.sessionId
+      ? observedSessionStatus(state.localSessions, linked || { status: 'unknown' }, connected) : undefined;
+    actors.push({ ...agent, source: 'agent', sessionStatus, status: connected ? agent.status : 'disconnected', sceneActivity: activity });
   }
   return actors;
 }
 
 export function sessionRoom(state, id, connected = true, now = Date.now()) {
   const actor = officeOccupants(state, connected, now).find((item) => item.source === 'session' ? item.id === id : item.connection?.sessionId === id);
-  return actor?.sceneActivity?.room || 'office';
+  return actor ? occupantRoom(actor) : 'warehouse';
 }
 
 export function activityRoomMarkup(room, actors, selectedId) {
