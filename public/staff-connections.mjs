@@ -17,24 +17,26 @@ export function connectionLocation(agent) {
   return `호스트 PC${link.scope ? ` · ${link.scope}` : ''}`;
 }
 
-export function connectionSummary(agent, provider) {
+export function connectionSummary(agent, provider, connected = true) {
   if (provider?.kind === 'demo') return '체험용 · 외부 AI 호출 없음';
+  if (!connected) return '서버 연결 끊김 · 마지막으로 받은 연결 정보';
   return agent.connection ? `${connectionType(agent.connection)} · ${agent.connection.statusLabel}` : '감지한 CLI·웹을 연결해 주세요';
 }
 
-export function connectionMarkup(agent, provider) {
+export function connectionMarkup(agent, provider, connected = true) {
   if (provider?.kind === 'demo') return '';
   const link = agent.connection;
   const service = providerLinks(provider);
-  const explanation = !link ? '이미 열어 둔 CLI 또는 AI 웹 탭을 선택해 이 직원에게 연결하세요.'
+  const explanation = !connected ? '서버와 연결이 끊겨 마지막으로 받은 정보를 표시합니다. 연결이 복구되면 현재 관찰 상태를 다시 확인합니다.'
+    : !link ? '이미 열어 둔 CLI 또는 AI 웹 탭을 선택해 이 직원에게 연결하세요.'
     : link.status === 'not_connected' ? '서버가 재시작되었습니다. 직원 정보는 유지되며, 현재 감지 목록에서 연결을 다시 선택해 주세요.'
       : link.source === 'web' ? '웹 탭의 열림 상태를 관찰합니다. 로그인·응답 생성 여부는 확인하지 않으며, 대화 읽기와 지시 전송은 해당 서비스에서 진행하세요.'
         : link.kind === 'process' ? '실행 프로세스를 관찰합니다. 저장 대화와의 연결이 확인되지 않아 이 항목으로 지시를 보내지는 않습니다.'
           : '연결한 Codex 대화를 확인할 수 있습니다. 지시 전송은 호스트에서 명시적으로 허용한 경우에 사용할 수 있습니다.';
-  return `<section class="staff-connection-box" aria-label="직원 연결">${connectionBadge(link ? `${connectionType(link)} · ${link.statusLabel}` : '연결 미지정', link?.status === 'not_connected' ? 'unknown' : link?.status || 'not_connected')}<p>${esc(explanation)}</p>
+  return `<section class="staff-connection-box" aria-label="직원 연결">${connectionBadge(!connected ? '서버 연결 끊김 · 마지막 수신 정보' : link ? `${connectionType(link)} · ${link.statusLabel}` : '연결 미지정', !connected ? 'disconnected' : link?.status === 'not_connected' ? 'unknown' : link?.status || 'not_connected')}<p>${esc(explanation)}</p>
     ${link?.source === 'web' && link.tabCount ? `<p class="field-help">같은 감지 항목의 탭 ${esc(link.tabCount)}개</p>` : ''}
     <div class="detail-actions"><button type="button" class="button" data-connect-agent="${esc(agent.id)}" data-mutation>${link ? '연결 변경·다시 연결' : 'CLI·웹 연결'}</button>
-    ${link ? `<button type="button" class="button button-caution" data-disconnect-agent="${esc(agent.id)}" data-mutation>연결 해제</button>` : ''}
+    ${link ? `<button type="button" class="button button-caution" data-disconnect-agent="${esc(agent.id)}" data-revision="${agent.settingsRevision}" data-mutation>연결 해제</button>` : ''}
     ${link?.sessionId ? `<button type="button" class="button" data-session="${esc(link.sessionId)}">CLI 대화 보기</button>` : ''}
     ${link?.source === 'web' && service.webUrl ? `<a class="button" href="${service.webUrl}" target="_blank" rel="noopener noreferrer">${esc(service.label)} 열기 ↗</a>` : ''}</div>
     <p class="field-help">연결 해제는 직원·CLI·웹 탭을 삭제하거나 종료하지 않습니다.</p></section>`;
@@ -64,6 +66,8 @@ function initialize() {
   let entries = [];
   let agents = [];
   let requestedAgent = null;
+  let requestedAgentId;
+  let requestedEntryId;
   let sessionsOnly = false;
 
   const find = (selector) => dialog.querySelector(selector);
@@ -111,6 +115,8 @@ function initialize() {
     saveDraft();
     draftId = `${agentId || ''}:${sessionOnly}:${entryId || ''}`;
     requestedAgent = null;
+    requestedAgentId = agentId;
+    requestedEntryId = entryId;
     sessionsOnly = sessionOnly;
     frame('<p role="status">직원과 감지 목록을 확인하고 있습니다.</p>');
     try {
@@ -148,13 +154,13 @@ function initialize() {
     }
   }
 
-  async function disconnect(agentId) {
+  async function disconnect(agentId, settingsRevision) {
     if (pending) return;
     frame('<p role="status">직원 연결을 해제하고 있습니다. 창을 닫아도 요청은 계속 처리됩니다.</p><div id="staff-error" class="form-error" role="alert" hidden></div>');
     const revision = layer.revision;
     setPending(true);
     try {
-      await apiRequest(`/agents/${encodeURIComponent(agentId)}/connection`, { method: 'DELETE' });
+      await apiRequest(`/agents/${encodeURIComponent(agentId)}/connection`, { method: 'DELETE', body: { settingsRevision } });
       const showDetails = dialog.open && revision === layer.revision;
       if (showDetails) layer.close({ restoreFocus: false });
       document.dispatchEvent(new CustomEvent('office:staff-changed', { detail: { agentId, showDetails } }));
@@ -172,7 +178,7 @@ function initialize() {
     setPending(true);
     try {
       const result = await apiRequest(values.agentId ? `/agents/${encodeURIComponent(values.agentId)}/connection` : '/agents/from-discovery', {
-        method: values.agentId ? 'PUT' : 'POST', body: values.agentId ? { entryId: entry.id } : { entryId: entry.id, name: values.name.trim(), role: values.role.trim(), projectName: values.projectName?.trim() || '' },
+        method: values.agentId ? 'PUT' : 'POST', body: values.agentId ? { entryId: entry.id, settingsRevision: agents.find((agent) => agent.id === values.agentId)?.settingsRevision } : { entryId: entry.id, name: values.name.trim(), role: values.role.trim(), projectName: values.projectName?.trim() || '' },
       });
       event.target.dataset.saved = 'true'; drafts.delete(draftId);
       const showDetails = dialog.open && revision === layer.revision;
@@ -186,7 +192,7 @@ function initialize() {
   });
   dialog.addEventListener('click', (event) => {
     if (pending) return;
-    if (event.target.closest('[data-staff-refresh]')) void open({ agentId: requestedAgent?.id, sessionOnly: sessionsOnly });
+    if (event.target.closest('[data-staff-refresh]')) void open({ entryId: requestedEntryId, agentId: requestedAgentId, sessionOnly: sessionsOnly });
   });
   document.addEventListener('office:connect-entry', (event) => { void open({ entryId: event.detail?.entryId }); });
   document.addEventListener('click', (event) => {
@@ -195,7 +201,7 @@ function initialize() {
     if (button.hasAttribute('data-open-staff-connection')) void open();
     if (button.dataset.connectAgent) void open({ agentId: button.dataset.connectAgent });
     if (button.dataset.connectCommandAgent) void open({ agentId: button.dataset.connectCommandAgent, sessionOnly: true });
-    if (button.dataset.disconnectAgent) void disconnect(button.dataset.disconnectAgent);
+    if (button.dataset.disconnectAgent) void disconnect(button.dataset.disconnectAgent, Number(button.dataset.revision));
   });
 }
 

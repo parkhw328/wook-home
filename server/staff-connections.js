@@ -137,16 +137,17 @@ export function createStaffConnections({ office, discovery, observer }) {
       return currentAgent(id);
     },
     connect(id, body) {
-      input(body, ['entryId']);
+      input(body, ['entryId', 'settingsRevision']);
       const agent = requireAgent(id);
       const entry = requireEntry(body.entryId, id);
       if (agent.provider !== entry.provider) fail(409, 'PROVIDER_MISMATCH', '같은 공급자의 직원과 감지 대상만 연결할 수 있습니다.');
-      office.setAgentConnection(id, { source: entry.source, kind: entry.kind });
+      office.setAgentConnection(id, { source: entry.source, kind: entry.kind }, body.settingsRevision);
       remember(id, entry);
       return currentAgent(id);
     },
-    disconnect(id) {
-      office.setAgentConnection(id, null);
+    disconnect(id, body = {}) {
+      if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).some((key) => key !== 'settingsRevision')) fail(400, 'INVALID_STAFF_CONNECTION', '직원 연결 설정을 확인해 주세요.');
+      office.setAgentConnection(id, null, body.settingsRevision);
       links.delete(id);
       return currentAgent(id);
     },

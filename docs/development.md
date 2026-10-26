@@ -57,7 +57,7 @@ Linux 프로세스 감지기는 `scripts/lib/linux-processes.mjs`다. `/proc/<pi
 
 ## 테스트와 완료 기준
 
-`npm test`는 서버와 UI 테스트를 실행하고 `npm run test:server`는 서버 테스트만 실행한다. 서버 테스트는 임시 DB에서 업무 전환, 중복 실행 방지, 재시작 보존, 입력·origin 검증과 정적 파일 제공을 확인한다. Codex 관찰 테스트는 프로젝트 필터, 부분 기록, 민감 필드 제외, 오래된 활동과 연결 끊김을 검증한다. 대화 테스트는 역할 제외·마스킹·분량 제한·프로젝트/세션 격리와 인계 제외를 검증한다. UI 테스트는 모든 방 사이 문·복도 경로, 보고 상태 분류, HTML 비실행과 늦은 세션 응답 차단도 검증한다. `public/model.mjs`의 `officeStatItems`는 현황 카드와 상세 목록에 같은 집계 기준을 제공하며 `tests/ui/model.test.mjs`에서 상태 전환·완료 제외 조건·정렬과 원본 보존을 확인한다. 현황 목록·탐색 레이아웃의 브라우저 검증은 [현황 상세 검증](room-details-validation.md)에 기록한다.
+`npm test`는 서버·UI·확장 테스트를 실행하고 `npm run test:server`는 서버 테스트만 실행한다. 서버 테스트는 임시 DB에서 업무 전환, 중복 실행 방지, 재시작 보존, 입력·origin 검증과 정적 파일 제공을 확인한다. Codex 관찰 테스트는 프로젝트 필터, 부분 기록, 민감 필드 제외, 오래된 활동과 연결 끊김을 검증한다. 대화 테스트는 역할 제외·마스킹·분량 제한·프로젝트/세션 격리와 인계 제외를 검증한다. UI 테스트는 모든 방 사이 문·복도 경로, 보고 상태 분류, HTML 비실행과 늦은 세션 응답 차단도 검증한다. `public/model.mjs`의 `officeStatItems`는 현황 카드와 상세 목록에 같은 집계 기준을 제공하며 `tests/ui/model.test.mjs`에서 상태 전환·완료 제외 조건·정렬과 원본 보존을 확인한다. 현황 목록·탐색 레이아웃의 브라우저 검증은 [현황 상세 검증](room-details-validation.md)에 기록한다.
 
 변경 범위에 맞는 자동 검증 후, Docker 빌드·health check와 브라우저의 실제 사용 흐름을 확인한다. 검사에 사용한 가상 직원과 실제 AI 연결을 구분하고 검증 결과를 커밋에 연결한다. [검증 기록](validation.md)과 [실내 배치 검증](office-layout-validation.md)을 참고한다.
 
@@ -68,6 +68,23 @@ Linux 프로세스 감지기는 `scripts/lib/linux-processes.mjs`다. `/proc/<pi
 작업 전에 rules의 두 문서를 읽는다. [협업 현황](collaboration.md)의 파일 소유 범위와 [API 계약](api.md)을 따른다. 감지와 연결 진단의 상세 계약은 [감지 API](discovery-api.md), [연결 점검 API](connections-api.md)에 기록한다. JavaScript는 ES modules, 들여쓰기는 두 칸을 사용하며 `.editorconfig`를 적용한다. 별도 formatter/linter는 아직 도입하지 않았다.
 
 Node SQLite와 Compose 참고: [Node.js SQLite](https://nodejs.org/download/release/v24.14.0/docs/api/sqlite.html), [Docker Compose 서비스](https://docs.docker.com/reference/compose-file/services/).
+
+## 데이터 저장과 인계
+
+| 데이터 | 기본 로컬 경로 | Docker 위치·보존 범위 |
+| --- | --- | --- |
+| 직원·체험 업무·해제 기록·보관 메모 | `data/office.sqlite` | `office-data` 볼륨의 `/app/data/office.sqlite` |
+| 검색을 켠 CLI·웹의 공개 메시지 사본 | `data/session-search.sqlite` | 같은 볼륨의 `/app/data/session-search.sqlite`. 업무 DB·인계와 분리 |
+| 호스트 관찰 상태·최근 공개 대화 | `data/bridge/codex.json`, `data/bridge/conversations/` | `/app/bridge` 읽기 전용 마운트. 최근 관찰용이며 업무 인계에서 제외 |
+| CLI 검색 수집 사본 | `data/bridge/search-history/` | `/app/bridge/search-history/`에서 읽어 검색 DB에 반영 |
+| 연결 설정·지시 접수 기록 | `data/bridge/commands/` | `/app/commands` 읽기·쓰기 마운트. `bridge-settings.json`과 지시별 JSON |
+| 직원 연결 매핑·웹 탭 감지 | 서버 메모리 | 재시작하면 재연결 필요. DB·인계에 관찰 식별자를 저장하지 않음 |
+
+`DATA_DIR`, `CODEX_BRIDGE_FILE`, `CODEX_COMMANDS_DIR`로 직접 실행 경로를 바꿀 수 있다. SQLite는 WAL 모드로 쓰며 `office_state.payload`에 `schemaVersion: 1`인 업무 상태 JSON을 저장한다. 상태 변경은 저장 성공 후 메모리에 반영한다. 검색 DB는 별도 파일이며 수집을 꺼도 기존 검색 사본을 유지한다.
+
+`GET /api/handoff`는 검토용 JSON을 내려준다. 현재 직원과 보고 담당자 확인에 필요한 해제 직원·업무·사용자 입력은 포함하고, 보관 메모·관찰 연결·CLI/웹 공개 대화 사본·설정·지시 접수 기록은 제외한다. 필드는 [API 계약](api.md)을 따른다. 다운로드는 DB 백업이나 가져오기 기능이 아니며 PC 간 볼륨 복제·GitHub 전송을 수행하지 않는다. 사용자 입력은 공개 전 검토해야 한다.
+
+정상 종료와 재시작 시 미완료 체험 업무를 일시 중지하는 복구만 제공한다. DB 백업·손상 복원·자동 데이터 이전은 후속 범위다. 이 절의 로컬 데이터는 Git·Docker 이미지·공개 Wiki에 복제하지 않는다.
 
 ## 세션 자료 검색 개발
 
@@ -113,3 +130,5 @@ CLI 전용 검증은 같은 합성 서버에서 실행하며 결과와 화면을
 ## 층 안내와 직원 등록 해제 검증
 
 `LAYER_TEST_PORT=18086 node tests/browser/layer-preview.mjs`로 합성 서버를 실행한 뒤 `python tests/browser/directory-release.py`와 `python tests/browser/staff-release-flows.py`를 실행합니다. 두 테마·5개 화면 폭·실제 200% 확대에서 목록 높이·스크롤·글꼴, 직원 해제·메모 보존·재등록과 진행 업무 보호·기존 보고 담당자 표시·전체화면을 검사합니다. 실제 업무 서버에는 실행하지 않습니다.
+
+같은 합성 서버의 `python tests/browser/staff-connection-refresh.py`는 연결 목록 새로고침·조회 실패 후 대상과 초안 보존, 실제 409 충돌과 명시적 재시도, 해제 버전 전송, 서버 연결 실패·복구 전후 지시 초안을 검증합니다. 실행 결과와 후속 범위는 [서비스 재점검](service-review-2026-10-26.md)에 기록합니다.

@@ -98,7 +98,10 @@ export function createHttpServer(office, { publicDir = resolve('public'), bridge
       if (method === 'POST' && sessionArchive) return json(response, 201, staff.archiveSession(sessionArchive[1], await bodyOf(request)));
       const agentConnection = /^\/api\/agents\/([a-f0-9-]{36})\/connection$/.exec(path);
       if (method === 'PUT' && agentConnection) return json(response, 200, staff.connect(agentConnection[1], await bodyOf(request)));
-      if (method === 'DELETE' && agentConnection) return json(response, 200, staff.disconnect(agentConnection[1]));
+      if (method === 'DELETE' && agentConnection) {
+        const hasBody = request.headers['transfer-encoding'] || Number(request.headers['content-length']) > 0;
+        return json(response, 200, staff.disconnect(agentConnection[1], hasBody ? await bodyOf(request, 4096) : {}));
+      }
       if (method === 'POST' && path === '/api/tasks') return json(response, 201, office.assign(await bodyOf(request)));
       const sessionConversation = /^\/api\/local-sessions\/([a-f0-9-]{36})\/conversation$/.exec(path);
       if (method === 'GET' && sessionConversation) return json(response, 200, observer.conversation(sessionConversation[1]));

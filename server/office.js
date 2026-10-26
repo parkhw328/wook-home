@@ -198,11 +198,13 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
         return agent;
       });
     },
-    setAgentConnection(id, preference) {
+    setAgentConnection(id, preference, settingsRevision) {
       const connection = connectionPreference(preference);
       return update((next) => {
         const agent = next.agents.find((item) => item.id === id);
         if (!agent) fail(404, 'NOT_FOUND', '직원을 찾을 수 없습니다.');
+        if (settingsRevision !== undefined && (!Number.isSafeInteger(settingsRevision) || settingsRevision < 0)) fail(400, 'VALIDATION_ERROR', '직원 설정 버전을 확인해 주세요.');
+        if (settingsRevision !== undefined && settingsRevision !== agent.settingsRevision) fail(409, 'SETTINGS_CONFLICT', '다른 화면에서 직원 설정 또는 연결을 변경했습니다. 최신 정보를 확인한 뒤 다시 연결해 주세요.');
         if (agent.provider === 'demo') fail(409, 'PROVIDER_MISMATCH', '체험 직원에는 외부 세션을 연결할 수 없습니다.');
         if (connection) agent.connectionPreference = connection;
         else delete agent.connectionPreference;

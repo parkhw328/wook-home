@@ -15,6 +15,7 @@
   "office": { "name": "StackQueue Office", "paused": false, "mode": "local", "version": "0.1.0-dev" },
   "providers": [],
   "agents": [],
+  "releasedAgents": [],
   "tasks": [],
   "events": [],
   "programs": [],
@@ -33,7 +34,7 @@
 - demo의 모델은 `local-demo`, 추론 강도는 `none`. 외부 공급자 models/ reasoningEfforts는 빈 배열. 미확인 모델 목록을 만들어 내지 않는다.
 - `POST /api/agents`: `{ name, role, provider, model?, reasoningEffort?, projectName? }`. 이름 1~40자, 역할 1~120자. 외부 공급자는 model과 reasoningEffort를 비워 등록만 가능하다.
 - `PATCH /api/agents/:id`: `{ name?, role?, projectName?, executionPreference?, settingsRevision? }`. 기존 `model`/`reasoningEffort`의 관찰값 변경은 지원하지 않는다. 공급자 변경은 불가.
-- 직원: `{ id, name, role, provider, model, reasoningEffort, projectName, executionPreference, settingsRevision, status, location, createdAt, updatedAt }`. status는 idle / working / waiting_input / waiting_approval / paused / unavailable. location은 local-container.
+- 직원: `{ id, name, role, provider, model, reasoningEffort, projectName, executionPreference, settingsRevision, status, location, createdAt, updatedAt }`. 기본 status는 idle / working / waiting_input / waiting_approval / paused / unavailable이며 관찰 연결을 합친 응답은 observing / unknown / disconnected도 사용한다. 연결 상태·추가 필드는 [직원 연결 API](staff-connections-api.md)를 따른다. location은 local-container.
 
 - `projectName`은 수동 배정한 대표 프로젝트 이름(0~80자, 한 줄)이며 빈 문자열은 미배정이다. 감지 등록에도 입력할 수 있다. 실제 실행 경로나 관찰 범위를 바꾸지 않는다.
 - `executionPreference`는 `null`(CLI 설정 유지) 또는 `{ model, reasoningEffort }`다. 새 값은 현재 연결된 Codex 대화의 실제 모델 목록으로 검증한다. 저장은 AI 요청을 만들지 않으며 화면이 다음 지시 요청에 저장값을 명시적으로 포함한다. 끊긴 연결에서도 기존 값을 유지하거나 해제할 수 있다.
@@ -57,7 +58,7 @@
 - `office.name`은 실행 시 `OFFICE_NAME`으로 지정한다. 기본값은 `StackQueue Office`, 앞뒤 공백을 제외한 1~80자다. 재시작하면 기존 DB에도 새 이름이 적용되며 직원·업무는 유지된다.
 - `POST /api/office/pause`: `{}`. 새 업무와 진행을 중지하고 미완료 업무를 paused로 저장. 이전 상태를 내부 보관한다.
 - `POST /api/office/resume`: `{}`. 이전 상태 복원. 위 두 응답은 office 객체.
-- `GET /api/handoff`: 검토용 JSON 파일 다운로드. `{ schemaVersion, exportedAt, office, agents, tasks }`. tasks는 제목·설명·상태·결과·messages를 포함한다. 내용에 사용자 입력이 포함되므로 공개 전 검토가 필요하며 자동 커밋·푸시하지 않는다. 인계 가져오기는 후속 기능이다.
+- `GET /api/handoff`: 검토용 JSON 파일 다운로드. `{ schemaVersion: 1, exportedAt, notice, office, agents, releasedAgents, tasks }`. tasks는 제목·설명·상태·결과·messages를 포함한다. 해제 직원은 기존 보고 담당자 확인을 위해 포함하지만 직원 연결 매핑·선택한 연결 종류·보관 메모, CLI/웹 대화 사본·설정·지시 접수 기록은 제외한다. 내용에 사용자 입력이 포함되므로 공개 전 검토가 필요하며 자동 커밋·푸시하지 않는다. 인계 가져오기·DB 백업은 후속 기능이다. 저장 위치는 [개발 안내](development.md#데이터-저장과-인계)를 따른다.
 - SIGTERM 종료 시 업무 상태를 저장하며 미완료 작업은 paused로 남긴다. 재시작 후 Commander가 resume을 눌러 이어간다.
 - 프로그램: `{ name, description, url }` 네 개(StackQueue Blog, wShell, wPost, wText).
 
@@ -80,9 +81,9 @@
 
 ## 로컬 Codex 지시 전송
 
-- `localSessions.control`: `{ enabled, reason, bridgeId? }`. reason은 ready / not_enabled / cli_unavailable / disconnected. 최신 연결 프로그램이 `--allow-commands`로 실행되고 공식 CLI의 큐 지원이 확인된 경우 활성화된다. 화면에 저장한 지시 전송 설정이 있으면 해당 선택이 실행 옵션보다 우선한다. 개별 전달 성공은 접수 결과로 확인한다.
+- `localSessions.control`: `{ enabled, reason, bridgeId? }`. reason은 ready / not_enabled / cli_unavailable / disconnected. 화면의 Codex 지시 전송 설정을 연결기가 적용하고 공식 CLI의 큐 지원이 확인된 경우 활성화된다. 저장된 설정이 없을 때만 호환 옵션 `--allow-commands`를 초기값으로 사용한다. 개별 전달 성공은 접수 결과로 확인한다.
 - `POST /api/local-sessions/:sessionId/commands`: `{ id, content }`. 클라이언트가 생성한 UUID와 1~4000자의 지시. 현재 프로젝트의 관찰 세션만 대상이다. 사무실 중지·관찰 연결 끊김·제어 미활성화는 409, 없는 세션은 404.
-- HTTP 202: `{ id, sessionId, status, createdAt, updatedAt, code? }`. 새 요청은 pending. 같은 ID·내용을 다시 보내면 기존 상태를 반환하며 다른 내용은 409 COMMAND_ID_CONFLICT. 응답 유실 시 같은 ID로 조회·재시도한다.
+- HTTP 202: `{ id, sessionId, status, createdAt, updatedAt, code? }`. 새 요청은 pending. 같은 ID·대상·내용·추론 설정을 다시 보내면 기존 상태를 반환하며 다른 요청은 409 COMMAND_ID_CONFLICT. 응답 유실 시 같은 ID의 접수 기록을 조회하며 UI는 자동 재전송하지 않는다. 수동으로 접수를 재시도할 때도 기존 ID를 유지한다.
 - `GET /api/local-commands/:id`: 위 접수 객체. 지시 원문은 반환하지 않는다. 기록 없음은 404 COMMAND_NOT_FOUND.
 - status: pending(전달 대기), sending(CLI 호출 중), accepted(공식 큐 접수), failed(거절), unknown(전달 여부 불명), expired(만료). **accepted는 업무 완료가 아니다.** 결과·승인·중단은 원래 Codex에서 처리한다.
 - code: QUEUED / CLI_REJECTED / DELIVERY_UNCERTAIN / REQUEST_EXPIRED / SESSION_UNAVAILABLE / BRIDGE_RESTARTED. 원시 CLI 오류 출력은 전달하지 않는다.

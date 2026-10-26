@@ -22,6 +22,16 @@ test('late searches and aborted failures cannot overwrite the newest results', a
   assert.deepEqual(second, { value: 'newest' });
 });
 
+test('normalized highlights include decomposed Korean and accents without losing source characters', () => {
+  assert.equal(highlightedText('앞 한글 뒤', '한글'), '앞 <mark>한글</mark> 뒤');
+  assert.equal(highlightedText('cafe\u0301 자료', 'café'), '<mark>cafe\u0301</mark> 자료');
+  assert.equal(highlightedText('ﬃ ﬁ', 'fi'), '<mark>ﬃ</mark> <mark>ﬁ</mark>');
+  assert.equal(highlightedText('ﬃ', 'f'), '<mark>ﬃ</mark>');
+  assert.equal(highlightedText('<한>', '한'), '&lt;<mark>한</mark>&gt;');
+  assert.equal(highlightedText('ΟΣ İ 뒤', 'ος'), '<mark>ΟΣ</mark> İ 뒤');
+  assert.equal(highlightedText('İ 한글', '한글'), 'İ <mark>한글</mark>');
+});
+
 test('closing a search detail cancels old reads before a new detail is opened', async () => {
   const request = new SearchRequest(); let fail;
   const old = request.run((signal) => new Promise((resolve, reject) => { fail = reject; signal.addEventListener('abort', () => reject(new Error('aborted'))); }));

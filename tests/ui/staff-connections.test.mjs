@@ -48,3 +48,17 @@ test('a registered CLI employee occupies one place while unrelated and unlinked 
   delete state.agents[0].connection;
   assert.deepEqual(unassignedLocalSessions(state).map((session) => session.id), ['one', 'two']);
 });
+
+test('server disconnect marks retained employee observations as stale without changing the stored connection', () => {
+  const agent = { id: 'employee', settingsRevision: 4, connection: { source: 'cli', kind: 'session', status: 'connected', statusLabel: '연결 관찰', sessionId: 'linked-session' } };
+  const offline = connectionMarkup(agent, providers[1], false);
+  assert.match(offline, /data-tone="error"/);
+  assert.match(offline, /서버 연결 끊김/);
+  assert.match(offline, /마지막으로 받은 정보/);
+  assert.doesNotMatch(offline, /data-tone="healthy"/);
+  assert.match(connectionSummary(agent, providers[1], false), /서버 연결 끊김/);
+  assert.equal(agent.connection.status, 'connected');
+  assert.match(connectionMarkup(agent, providers[1]), /data-tone="healthy"/);
+  assert.match(connectionMarkup(agent, providers[1]), /data-revision="4"/);
+  assert.equal(connectionMarkup(agent, providers[0], false), '');
+});

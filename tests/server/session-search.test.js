@@ -112,6 +112,19 @@ test('partial browser updates preserve previous messages and malformed batches d
   assert.equal((await search.query({})).total, 2);
 });
 
+test('normalized searches keep the matching text in excerpts when Unicode source offsets differ', async (t) => {
+  const search = createSessionSearch();
+  t.after(() => search.close());
+  search.configure({ webEnabled: true });
+  search.receiveWeb(web(['ﬁ'.repeat(200) + 'needle', '한'.repeat(200) + '대상 자료']));
+  const expanded = await search.query({ query: 'needle' });
+  assert.equal(expanded.total, 1);
+  assert.match(expanded.results[0].snippet, /needle/);
+  const composed = await search.query({ query: '대상' });
+  assert.equal(composed.total, 1);
+  assert.match(composed.results[0].snippet, /대상 자료/);
+});
+
 test('CLI imports are opt-in and project scoped; ended sessions remain searchable after bridge disconnection', async (t) => {
   const f = fixture(t);
   const bridgeFile = join(f.root, 'bridge', 'codex.json');
@@ -130,6 +143,50 @@ test('CLI imports are opt-in and project scoped; ended sessions remain searchabl
   rmSync(bridgeFile);
   await search.sync(true);
   assert.equal((await search.query({ query: '보관' })).total, 1);
+});
+
+test('CLI collection reports stopped, stale and future bridges without losing saved search records', async (t) => {
+  const f = fixture(t);
+  const bridgeFile = join(f.root, 'bridge', 'codex.json');
+  writeLines(join(f.archiveDir, 'rollout-old.jsonl'), [{ type: 'session_meta', payload: { id, cwd: f.workspace } }, msg('user', '보관 유지')]);
+  await createSearchHistoryCollector(f).collect();
+  const bridge = { schemaVersion: 1, generatedAt: timestamp, sessions: [], searchHistory: { enabled: true } };
+  writeFileSync(bridgeFile, JSON.stringify(bridge));
+  const search = createSessionSearch({ bridgeFile, clock: f.clock });
+  t.after(() => search.close());
+  assert.equal((await search.status()).collection, 'enabled');
+  for (const change of [
+    { stopped: true },
+    { generatedAt: new Date(f.clock() - 21000).toISOString() },
+    { generatedAt: new Date(f.clock() + 6000).toISOString() },
+  ]) {
+    writeFileSync(bridgeFile, JSON.stringify({ ...bridge, ...change }));
+    await search.sync(true);
+    assert.equal((await search.status()).collection, 'disconnected');
+    assert.equal((await search.query({ query: '보관 유지' })).total, 1);
+  }
+  writeFileSync(bridgeFile, JSON.stringify(bridge));
+  await search.sync(true);
+  assert.equal((await search.status()).collection, 'enabled');
+});
+
+test('unreadable CLI records are counted and invalid bridge data is not reported as disabled capture', async (t) => {
+  const f = fixture(t);
+  const bridgeFile = join(f.root, 'bridge', 'codex.json');
+  writeLines(join(f.archiveDir, 'rollout-old.jsonl'), [{ type: 'session_meta', payload: { id, cwd: f.workspace } }, msg('user', '검증 자료')]);
+  const manifest = await createSearchHistoryCollector(f).collect();
+  writeFileSync(join(f.output, `${manifest.items[0].key}.json`), JSON.stringify({ schemaVersion: 9 }));
+  writeFileSync(bridgeFile, JSON.stringify({ schemaVersion: 1, generatedAt: timestamp, sessions: [], searchHistory: { enabled: true } }));
+  const search = createSessionSearch({ bridgeFile, clock: f.clock });
+  t.after(() => search.close());
+  const status = await search.status();
+  assert.equal(status.cli.skipped, manifest.skipped + 1);
+  assert.equal((await search.query({})).total, 0);
+
+  writeFileSync(bridgeFile, '{');
+  const restarted = createSessionSearch({ bridgeFile, clock: f.clock });
+  t.after(() => restarted.close());
+  assert.equal((await restarted.status()).collection, 'unavailable');
 });
 
 test('search API isolates private archives from state/handoff and rejects cross-origin capture and reads', async (t) => {

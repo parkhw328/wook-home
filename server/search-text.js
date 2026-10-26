@@ -17,9 +17,22 @@ export function redactConversation(value) {
 
 export const normalizedText = (value) => String(value).normalize('NFKC').toLocaleLowerCase('en-US');
 export const publicDialogue = (value) => !/^\s*(?:# AGENTS\.md instructions|<environment_context>|<INSTRUCTIONS>|<permissions instructions>|<system-reminder>)/i.test(value);
+const graphemes = new Intl.Segmenter('und', { granularity: 'grapheme' });
 
 export function excerpt(content, query, length = 240) {
-  const index = normalizedText(content).indexOf(normalizedText(query));
+  const normalized = normalizedText(content);
+  const match = normalized.indexOf(normalizedText(query));
+  let index = Math.max(0, match);
+  let normalizedOffset = 0;
+  // NFKC can expand ligatures and compose Korean Jamo. Map the match back to
+  // the original text instead of slicing it with an offset from normalized text.
+  if (match > 0 && normalized !== content) {
+    for (const part of graphemes.segment(content)) {
+      normalizedOffset += normalizedText(part.segment).length;
+      index = part.index;
+      if (normalizedOffset > match) break;
+    }
+  }
   const start = Math.max(0, index - 65);
   return `${start ? '…' : ''}${content.slice(start, start + length)}${start + length < content.length ? '…' : ''}`;
 }

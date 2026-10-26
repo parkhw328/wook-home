@@ -105,9 +105,11 @@ export function createSessionSearch({ directory, bridgeFile, observer, clock = D
       try {
         if ((await stat(bridgeFile)).size > 65536) throw invalid();
         const bridge = JSON.parse(await readFile(bridgeFile, 'utf8'));
-        collection = bridge.searchHistory?.enabled ? 'enabled' : 'not_enabled';
+        if (bridge?.schemaVersion !== 1 || !validDate(bridge.generatedAt) || !Array.isArray(bridge.sessions) || bridge.sessions.length > 24) throw invalid();
+        collection = bridge.searchHistory?.enabled === true ? 'enabled' : 'not_enabled';
         if (collection !== 'enabled') return;
-        if (!validDate(bridge.generatedAt) || clock() - Date.parse(bridge.generatedAt) > 20000) collection = 'disconnected';
+        const age = clock() - Date.parse(bridge.generatedAt);
+        if (bridge.stopped === true || age < -5000 || age > 20000) collection = 'disconnected';
         const root = join(dirname(bridgeFile), 'search-history');
         const file = join(root, 'index.json');
         if ((await stat(file)).size > 150000) throw invalid();
@@ -118,15 +120,15 @@ export function createSessionSearch({ directory, bridgeFile, observer, clock = D
           sources: Array.isArray(next.sources) ? next.sources.filter((source) => providers.includes(source.provider)).map(({provider, status}) => ({ provider, status: ['ready', 'empty'].includes(status) ? status : 'unavailable' })) : [] };
         db.prepare("INSERT INTO search_settings VALUES ('workspace_key',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(next.workspaceKey);
         for (const item of next.items) {
-          if (!keyPattern.test(item.key) || !providers.includes(item.provider) || !validDate(item.updatedAt)) continue;
+          if (!item || !keyPattern.test(item.key) || !providers.includes(item.provider) || !validDate(item.updatedAt)) { manifest.skipped += 1; continue; }
           if (imported.get(item.key) === item.updatedAt) continue;
           try {
             const path = join(root, `${item.key}.json`);
-            if ((await stat(path)).size > 3 * 1024 * 1024) continue;
+            if ((await stat(path)).size > 3 * 1024 * 1024) throw invalid();
             const data = JSON.parse(await readFile(path, 'utf8'));
             if (data.schemaVersion !== 1 || data.source !== 'cli' || data.provider !== item.provider || data.workspaceKey !== next.workspaceKey
               || typeof data.originId !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(data.originId)
-              || hash(`${data.workspaceKey}:${data.provider}:${data.originId}`) !== item.key) continue;
+              || hash(`${data.workspaceKey}:${data.provider}:${data.originId}`) !== item.key) throw invalid();
             const messages = cleanMessages(data.messages);
             db.exec('BEGIN');
             try { put({ ...data, id: item.key, workspace: manifest.workspace, updatedAt: item.updatedAt }, messages); db.exec('COMMIT'); }
@@ -134,7 +136,7 @@ export function createSessionSearch({ directory, bridgeFile, observer, clock = D
             imported.set(item.key, item.updatedAt);
           } catch { manifest.skipped += 1; }
         }
-      } catch { collection = collection === 'not_enabled' ? 'not_enabled' : 'unavailable'; }
+      } catch (error) { collection = error.code === 'ENOENT' && collection === 'not_enabled' ? 'not_enabled' : 'unavailable'; }
     })().finally(() => { syncing = null; });
     return syncing;
   }
