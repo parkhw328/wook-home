@@ -69,3 +69,32 @@ test('public extraction never falls back to page body or retains marked thought/
   assert.equal(context.StackQueueCapture.extract({ querySelectorAll: () => [] }, 'meta').length, 0);
   assert.doesNotMatch(source, /document\.body|innerHTML|cookie|localStorage/);
 });
+
+test('capture discards navigation during consent lookup or hashing and opt-out during capture', async () => {
+  const source = await readFile(new URL('../../extensions/browser-observer/capture.js', import.meta.url), 'utf8');
+  for (const change of ['lookup-navigation', 'hash-navigation', 'hash-opt-out']) {
+    let listener;
+    let reads = 0;
+    let selected = [{ url }];
+    const location = { hostname: 'claude.ai', pathname: `/chat/${id}` };
+    const navigate = () => { location.pathname = '/chat/00000000-0000-0000-0000-000000000002'; };
+    const window = {}; window.top = window;
+    runInNewContext(source, { window, location, document: {}, TextEncoder,
+      crypto: { subtle: { async digest(...args) {
+        if (change === 'hash-navigation') navigate();
+        if (change === 'hash-opt-out') selected = [];
+        return webcrypto.subtle.digest(...args);
+      } } },
+      chrome: { runtime: { id: 'self', onMessage: { addListener(fn) { listener = fn; } } },
+        storage: { local: { async get() {
+          if (change === 'lookup-navigation') navigate();
+          return { searchSelections: selected };
+        } } } },
+      StackQueueCapture: { extract() { reads += 1; return [{ role: 'user', content: '공개 검증 메시지', identity: 'message-1' }]; } },
+    });
+    const result = await new Promise((done) => listener({ type: 'stackqueue:capture-public', url }, { id: 'self' }, done));
+    assert.equal(result.ok, false, change);
+    assert.equal(result.messages, undefined, change);
+    assert.equal(reads, change === 'lookup-navigation' ? 0 : 1, change);
+  }
+});

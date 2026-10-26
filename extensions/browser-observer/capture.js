@@ -11,14 +11,17 @@
   chrome.runtime.onMessage.addListener((message, sender, reply) => {
     if (sender.id !== chrome.runtime.id || message?.type !== 'stackqueue:capture-public') return;
     (async () => {
-      const config = sites[location.hostname];
+      const hostname = location.hostname;
+      const config = sites[hostname];
       const match = config?.[1].exec(location.pathname);
       if (!match) return { ok: false };
       const [provider, , host, route] = config;
       const url = `https://${host}/${route}/${match[1].toLowerCase()}`;
       if (url !== message.url) return { ok: false };
+      const stillCurrent = () => location.hostname === hostname
+        && config[1].exec(location.pathname)?.[1]?.toLowerCase() === match[1].toLowerCase();
       const settings = await chrome.storage.local.get('searchSelections');
-      if (!settings.searchSelections?.some((entry) => entry.url === url)) return { ok: false };
+      if (!stillCurrent() || !settings.searchSelections?.some((entry) => entry.url === url)) return { ok: false };
       const raw = globalThis.StackQueueCapture.extract(document, provider);
       let previousUser = '';
       let duplicate = 0;
@@ -31,6 +34,10 @@
         characters += item.content.length;
         messages.push({ key: await digest(`${provider}:${identity}`), role: item.role, content: item.content, truncated: item.truncated });
       }
+      // Storage and hashing yield to SPA navigation and opt-out changes. Never
+      // publish another conversation under the original conversation's consent.
+      const latest = await chrome.storage.local.get('searchSelections');
+      if (!stillCurrent() || !latest.searchSelections?.some((entry) => entry.url === url)) return { ok: false };
       return { ok: true, url, messages, truncated: messages.length < raw.length || raw.length >= 1000 || raw.some((item) => item.truncated) };
     })().then(reply).catch(() => reply({ ok: false }));
     return true;
