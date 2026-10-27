@@ -1,4 +1,5 @@
 import { ApiError } from './office.js';
+import { createHash } from 'node:crypto';
 
 const labels = { connected: '연결 관찰', disconnected: '감지 연결 끊김', missing: '감지 대상 없음', ended: '종료 감지', unknown: '확인 필요', not_connected: '다시 연결 필요' };
 const fail = (status, code, message) => { throw new ApiError(status, code, message); };
@@ -21,8 +22,11 @@ function observationStatus(entry, snapshot, reference = entry) {
   return 'connected';
 }
 
-// Only the user-selected source category is persisted on the employee. Live IDs,
-// browser aliases, process identifiers and observations stay in this bounded map.
+const registrationKey = (entry) => entry?.source === 'cli' && entry.kind === 'session'
+  ? createHash('sha256').update(`${entry.provider}:${entry.sessionId.toLowerCase()}`).digest('hex') : null;
+
+// Raw live identifiers stay in memory. The office keeps opaque registration
+// keys locally so aliases and explicit opt-outs survive a server restart.
 export function createStaffConnections({ office, discovery, observer }) {
   const links = new Map();
 
@@ -37,33 +41,67 @@ export function createStaffConnections({ office, discovery, observer }) {
     return null;
   }
 
+  function registeredOwner(entry) {
+    return ownerOf(entry.id) || (registrationKey(entry) ? office.sessionRegistration(registrationKey(entry)) : null);
+  }
+
   function requireEntry(entryId, agentId = null) {
     const snapshot = discovery.snapshot();
     const entry = snapshot.entries.find((item) => item.id === entryId);
     if (!entry || observationStatus(entry, snapshot) !== 'connected') fail(409, 'ENTRY_UNAVAILABLE', '대상이 더 이상 감지되지 않습니다. 목록을 새로고침하고 다시 선택해 주세요.');
-    if (ownerOf(entryId) && ownerOf(entryId) !== agentId) fail(409, 'ENTRY_ALREADY_LINKED', '이미 다른 직원에게 연결되어 있습니다. 목록에서 해당 직원을 확인해 주세요.');
+    if (registeredOwner(entry) && registeredOwner(entry) !== agentId) fail(409, 'ENTRY_ALREADY_LINKED', '이미 다른 직원에게 연결되어 있습니다. 목록에서 해당 직원을 확인해 주세요.');
     return entry;
   }
 
   function remember(agentId, entry) {
-    links.set(agentId, { id: entry.id, source: entry.source, kind: entry.kind });
+    links.set(agentId, { id: entry.id, source: entry.source, kind: entry.kind, ...(entry.sessionId ? { sessionId: entry.sessionId } : {}) });
+  }
+
+  function reconcile(snapshot) {
+    for (const entry of snapshot.entries) {
+      if (entry.source !== 'cli' || entry.kind !== 'session' || entry.lifecycle !== 'live'
+        || observationStatus(entry, snapshot) !== 'connected' || ownerOf(entry.id)) continue;
+      const key = registrationKey(entry);
+      const owner = office.sessionRegistration(key);
+      if (owner === null) continue; // Explicitly detached/released by the user.
+      if (owner) {
+        const agent = office.snapshot().agents.find((item) => item.id === owner);
+        if (agent && !links.has(owner)) remember(owner, entry);
+        continue;
+      }
+      // Legacy employees have no session key. Do not guess their identity or
+      // silently duplicate them while they await an explicit reconnection.
+      if (office.snapshot().agents.some((agent) => agent.provider === entry.provider && agent.connectionPreference?.kind === 'session'
+        && !links.has(agent.id) && !office.hasSessionRegistration(agent.id))) continue;
+      try {
+        const agent = office.hire({ name: 'Codex 직원', role: '현재 프로젝트 세션', provider: entry.provider },
+          { source: 'cli', kind: 'session' }, null, key);
+        remember(agent.id, entry);
+      } catch (error) {
+        if (error.code !== 'LIMIT_REACHED') throw error;
+        // Keep the target available in the unregistered list at the staff cap.
+      }
+    }
   }
 
   function project(agent, snapshot, paused) {
     const { connectionPreference: preference, ...output } = agent;
     const reference = links.get(agent.id);
     if (!reference && !preference) return output;
-    const entry = reference ? snapshot.entries.find((item) => item.id === reference.id) : null;
+    const entry = reference ? snapshot.entries.find((item) => item.id === reference.id)
+      : snapshot.entries.find((item) => registeredOwner(item) === agent.id);
     const status = reference ? observationStatus(entry, snapshot, reference) : 'not_connected';
     const connected = status === 'connected';
     const canControl = connected && !agent.workArchive?.stored && !paused && entry?.source === 'cli' && entry.kind === 'session' && entry.canControl === true;
     output.connection = {
       source: reference?.source || preference.source, kind: reference?.kind || preference.kind,
-      status, statusLabel: labels[status], canControl,
+      status, statusLabel: connected && entry?.kind === 'session'
+        ? entry.lifecycle === 'live' ? '살아 있는 세션' : entry.lifecycle === 'not_loaded' ? '저장 기록 · 현재 적재되지 않음' : '세션 생존 확인 필요'
+        : labels[status], canControl,
       ...(reference ? { entryId: reference.id } : {}),
       ...(entry ? { name: entry.name, scope: entry.scope, tabCount: entry.tabCount,
         updatedAt: entry.updatedAt || entry.lastActivityAt || null } : {}),
-      ...(entry?.kind === 'session' ? { sessionId: entry.sessionId } : {}),
+      ...(reference?.sessionId || entry?.sessionId ? { sessionId: reference?.sessionId || entry.sessionId, lifecycle: connected ? entry?.lifecycle || 'unknown' : 'unknown' } : {}),
     };
     output.status = connected ? 'observing' : status === 'unknown' ? 'unknown' : 'disconnected';
     return output;
@@ -76,15 +114,17 @@ export function createStaffConnections({ office, discovery, observer }) {
 
   return {
     snapshot() {
-      const state = office.snapshot();
       const observed = discovery.snapshot();
+      reconcile(observed);
+      const state = office.snapshot();
       return { ...state, agents: state.agents.map((agent) => project(agent, observed, state.office.paused)) };
     },
     discoverySnapshot() {
       const snapshot = discovery.snapshot();
+      reconcile(snapshot);
       const agents = office.snapshot().agents;
       return { ...snapshot, entries: snapshot.entries.map((entry) => {
-        const agent = agents.find((item) => item.id === ownerOf(entry.id));
+        const agent = agents.find((item) => item.id === registeredOwner(entry));
         return { ...entry, linkedAgentId: agent?.id || null, linkedAgentName: agent?.name || null,
           canRegister: !agent && observationStatus(entry, snapshot) === 'connected' };
       }) };
@@ -92,7 +132,7 @@ export function createStaffConnections({ office, discovery, observer }) {
     hire(body) {
       input(body, ['entryId', 'name', 'role', 'projectName']);
       const entry = requireEntry(body.entryId);
-      const agent = office.hire({ name: body.name, role: body.role, provider: entry.provider, projectName: body.projectName }, { source: entry.source, kind: entry.kind });
+      const agent = office.hire({ name: body.name, role: body.role, provider: entry.provider, projectName: body.projectName }, { source: entry.source, kind: entry.kind }, null, registrationKey(entry));
       remember(agent.id, entry);
       return currentAgent(agent.id);
     },
@@ -119,7 +159,7 @@ export function createStaffConnections({ office, discovery, observer }) {
       // No live identifier is written to the office database.
       const entry = discovery.snapshot().entries.find((item) => item.id === entryId && item.kind === 'session');
       if (!entry) fail(409, 'ENTRY_UNAVAILABLE', '현재 목록에 기록이 없습니다. 자료 검색에서 보관된 대화를 확인해 주세요.');
-      const agent = office.hire({ name: entry.name.slice(0, 40), role: '보관 업무', provider: entry.provider }, { source: 'cli', kind: 'session' }, body.note);
+      const agent = office.hire({ name: 'Codex 직원', role: '보관 업무', provider: entry.provider }, { source: 'cli', kind: 'session' }, body.note, registrationKey(entry));
       remember(agent.id, entry);
       return currentAgent(agent.id);
     },
@@ -141,7 +181,7 @@ export function createStaffConnections({ office, discovery, observer }) {
       const agent = requireAgent(id);
       const entry = requireEntry(body.entryId, id);
       if (agent.provider !== entry.provider) fail(409, 'PROVIDER_MISMATCH', '같은 공급자의 직원과 감지 대상만 연결할 수 있습니다.');
-      office.setAgentConnection(id, { source: entry.source, kind: entry.kind }, body.settingsRevision);
+      office.setAgentConnection(id, { source: entry.source, kind: entry.kind }, body.settingsRevision, registrationKey(entry));
       remember(id, entry);
       return currentAgent(id);
     },

@@ -79,6 +79,18 @@ test('missing, stale, corrupt and oversized bridge data cannot appear live', (t)
   assert.equal(observer.snapshot().sessions.length, 0);
 });
 
+test('fresh liveness evidence is separate from old activity and expires with the bridge', (t) => {
+  const { file, save, snapshot } = fixture(t);
+  snapshot.sessions[0].lifecycle = 'live';
+  snapshot.sessions[0].status = 'idle';
+  save();
+  assert.equal(createSessionObserver({ file, clock: () => current }).snapshot().sessions[0].lifecycle, 'live');
+  assert.equal(createSessionObserver({ file, clock: () => current + 21000 }).snapshot().sessions[0].lifecycle, 'unknown');
+  snapshot.sessions[0].lifecycle = 'guessed-from-pid';
+  save();
+  assert.equal(createSessionObserver({ file, clock: () => current }).snapshot().sessions[0].lifecycle, 'unknown');
+});
+
 test('bridge reader drops extra fields, duplicate IDs and invalid timestamps', (t) => {
   const { file, save, snapshot } = fixture(t);
   const session = { ...snapshot.sessions[0], name: 'private-name', prompt: 'private-prompt', cwd: 'private-path' };
@@ -86,7 +98,7 @@ test('bridge reader drops extra fields, duplicate IDs and invalid timestamps', (
   const result = createSessionObserver({ file, clock: () => current }).snapshot();
   assert.equal(result.sessions.length, 1);
   assert.doesNotMatch(JSON.stringify(result), /private-/);
-  assert.equal(result.sessions[0].name, 'Codex · 0001');
+  assert.equal(result.sessions[0].name, `Codex · ${id}`);
 });
 
 test('HTTP includes observed sessions without granting control or exporting them in handoff', async (t) => {

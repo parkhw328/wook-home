@@ -78,7 +78,7 @@ Node SQLite와 Compose 참고: [Node.js SQLite](https://nodejs.org/download/rele
 | 호스트 관찰 상태·최근 공개 대화 | `data/bridge/codex.json`, `data/bridge/conversations/` | `/app/bridge` 읽기 전용 마운트. 최근 관찰용이며 업무 인계에서 제외 |
 | CLI 검색 수집 사본 | `data/bridge/search-history/` | `/app/bridge/search-history/`에서 읽어 검색 DB에 반영 |
 | 연결 설정·지시 접수 기록 | `data/bridge/commands/` | `/app/commands` 읽기·쓰기 마운트. `bridge-settings.json`과 지시별 JSON |
-| 직원 연결 매핑·웹 탭 감지 | 서버 메모리 | 재시작하면 재연결 필요. DB·인계에 관찰 식별자를 저장하지 않음 |
+| 원문 직원 연결 매핑·웹 탭 감지 | 서버 메모리 | 재시작하면 재연결 필요. DB·인계에 관찰 식별자를 저장하지 않음 |
 
 `DATA_DIR`, `CODEX_BRIDGE_FILE`, `CODEX_COMMANDS_DIR`로 직접 실행 경로를 바꿀 수 있다. SQLite는 WAL 모드로 쓰며 `office_state.payload`에 `schemaVersion: 1`인 업무 상태 JSON을 저장한다. 상태 변경은 저장 성공 후 메모리에 반영한다. 검색 DB는 별도 파일이며 수집을 꺼도 기존 검색 사본을 유지한다.
 
@@ -132,3 +132,17 @@ CLI 전용 검증은 같은 합성 서버에서 실행하며 결과와 화면을
 `LAYER_TEST_PORT=18086 node tests/browser/layer-preview.mjs`로 합성 서버를 실행한 뒤 `python tests/browser/directory-release.py`와 `python tests/browser/staff-release-flows.py`를 실행합니다. 두 테마·5개 화면 폭·실제 200% 확대에서 목록 높이·스크롤·글꼴, 직원 해제·메모 보존·재등록과 진행 업무 보호·기존 보고 담당자 표시·전체화면을 검사합니다. 실제 업무 서버에는 실행하지 않습니다.
 
 같은 합성 서버의 `python tests/browser/staff-connection-refresh.py`는 연결 목록 새로고침·조회 실패 후 대상과 초안 보존, 실제 409 충돌과 명시적 재시도, 해제 버전 전송, 서버 연결 실패·복구 전후 지시 초안을 검증합니다. 실행 결과와 후속 범위는 [서비스 재점검](service-review-2026-10-26.md)에 기록합니다.
+
+## 세션 직원 등록 검증
+
+현재 적재 세션은 공식 `thread/loaded/list`와 본문 없는 `thread/read`로 확인한다. 정확한 작업 폴더가 일치하는 메타데이터와 기존 기록만 상태 파일로 내보내며, 작업 폴더·미리보기·다른 프로젝트 ID는 버린다. 지시 권한과 독립된 읽기 전용 관찰이며 신규 실행·재개·구독을 요청하지 않는다. 메타데이터는 최대 128개 후보·8개 동시 읽기·4.5초 탐색 예산, 출력은 기존처럼 최대 24개다. 저장 기록 탐색의 7일/최근 24시간 제한과 달리 현재 적재 세션은 로그 파일 없이도 표시한다.
+
+직원 레지스트리는 `office.sqlite`의 로컬 상태에 공급자·세션 ID의 SHA-256 키만 저장한다. 별칭 복원·해제 선택을 유지하며 원문 ID와 레지스트리 모두 인계에서 제외한다. 이전 버전의 세션 직원은 먼저 현재 대상에 명시적으로 연결한다.
+
+```bash
+node tests/browser/session-registration-preview.mjs
+# 다른 터미널에서, 합성 서버에만 실행
+python tests/browser/session-registration.py
+```
+
+자동 테스트는 `npm test`에 포함된다. 브라우저 검증은 같은 앞·뒤 글자의 세 세션, 자동 등록·별칭·수동 등록·해제·초안, 두 테마·5개 화면 폭·실제 200% 확대를 검사하며 결과는 Git 제외 `artifacts/session-registration/`에 저장한다. [검증 범위](session-registration-validation.md).

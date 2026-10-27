@@ -1,6 +1,7 @@
 import { DialogLayer } from './dialog-layer.mjs';
 import { ConversationReader, conversationMarkup, conversationReadError } from './conversation.mjs';
 import { escapeHtml as esc, orderedLocalSessions, observedSessionStatus, sessionStatusLabel } from './model.mjs';
+import { identityMarkup, sessionAlias, lifecycleLabel } from './session-identity.mjs';
 
 export class CliConversationDialog {
   constructor({ request, getState, onCommand, onAgent }) {
@@ -64,12 +65,12 @@ export class CliConversationDialog {
     const { state, connected } = this.getState();
     const sessions = orderedLocalSessions(state.localSessions);
     const session = sessions.find((item) => item.id === this.id);
-    const options = sessions.some((item) => item.id === this.id) ? sessions : [...sessions, { id: this.id, name: `Codex · ${this.id.slice(-4)} (보관 중)` }];
+    const options = sessions.some((item) => item.id === this.id) ? sessions : [...sessions, { id: this.id }];
     const select = this.find('#cli-dialog-session');
-    const markup = options.map((item) => `<option value="${esc(item.id)}">${esc(item.name)}</option>`).join('');
+    const markup = options.map((item) => `<option value="${esc(item.id)}">${esc(sessionAlias(state, item))} · ${esc(item.id)}</option>`).join('');
     if (select.dataset.signature !== markup) { select.innerHTML = markup; select.dataset.signature = markup; }
     select.value = this.id;
-    this.find('#cli-dialog-state').textContent = `${session?.name || `Codex · ${this.id.slice(-4)}`} · ${state.localSessions?.workspace || '선택한 프로젝트'} · ${session ? sessionStatusLabel(observedSessionStatus(state.localSessions, session, connected)) : '현재 관찰 목록에서 벗어남'}`;
+    this.find('#cli-dialog-state').innerHTML = `${esc(sessionAlias(state, { id: this.id }))}${identityMarkup(this.id)}${esc(state.localSessions?.workspace || '선택한 프로젝트')} · ${session ? esc(lifecycleLabel(session, connected && state.localSessions?.status === 'connected')) + ' · ' + sessionStatusLabel(observedSessionStatus(state.localSessions, session, connected)) : '현재 관찰 목록에서 벗어남'}`;
     this.agentId = state.agents.find((agent) => agent.connection?.sessionId === this.id)?.id;
     this.find('[data-cli-agent]').hidden = !this.agentId;
     this.find('[data-archive-session]').dataset.archiveSession = this.id;

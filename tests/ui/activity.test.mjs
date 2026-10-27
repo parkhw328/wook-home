@@ -6,7 +6,7 @@ import { gesturePose } from '../../public/office-gestures.mjs';
 const time = Date.parse('2026-10-22T01:00:00Z');
 const activity = (kind = 'collaborating') => ({ kind, phase: kind === 'collaborating' ? 'recent' : 'active', since: new Date(time).toISOString(), expiresAt: new Date(time + 60000).toISOString(), peerSessionIds: ['b'] });
 const state = () => ({ office: { paused: false }, tasks: [], agents: [], localSessions: { status: 'connected', sessions: [
-  { id: 'a', name: 'A', status: 'working', activity: activity() }, { id: 'b', name: 'B', status: 'working', activity: activity() },
+  { id: 'a', name: 'A', status: 'working', lifecycle: 'live', activity: activity() }, { id: 'b', name: 'B', status: 'working', lifecycle: 'live', activity: activity() },
 ] } });
 
 test('collaboration and Commander presentations route differently and expired or disconnected activity disappears', () => {
@@ -24,11 +24,13 @@ test('a linked employee inherits the actual session activity once and never inve
     { id: 'web', status: 'observing', provider: 'openai', connection: { source: 'web', kind: 'conversation', status: 'connected' } });
   const before = structuredClone(value);
   const actors = officeOccupants(value, true, time);
-  assert.equal(actors.length, 3); assert.equal(actors.some((actor) => actor.source === 'session' && actor.id === 'a'), false);
+  assert.equal(actors.length, 2); assert.equal(actors.some((actor) => actor.source === 'session' && actor.id === 'a'), false);
   assert.equal(actors.find((actor) => actor.id === 'employee').sceneActivity.room, 'meeting');
   assert.equal(actors.find((actor) => actor.id === 'web').sceneActivity, null);
   assert.deepEqual(value, before);
   assert.ok(officeOccupants(value, false, time).every((actor) => !actor.sceneActivity));
+  value.localSessions.sessions[0].lifecycle = 'not_loaded';
+  assert.equal(officeOccupants(value, true, time).find((actor) => actor.id === 'employee').sceneActivity, null);
 });
 
 test('demo questions and reviews are presentations until answered, approved, paused or disconnected', () => {
@@ -60,6 +62,7 @@ test('presentation, discussion and walking are distinct and reduced motion has n
 test('room participants open their own session, escape names and never offer a false approval action', () => {
   const value = state(); value.localSessions.sessions[0].name = '<script>private</script>';
   value.localSessions.sessions[1].activity = activity('question');
+  value.agents = value.localSessions.sessions.map((session) => ({ id: `staff-${session.id}`, name: session.name, provider: 'openai', status: 'observing', connection: { source: 'cli', kind: 'session', sessionId: session.id, status: 'connected' } }));
   const actors = officeOccupants(value, true, time);
   assert.equal(sessionRoom(value, 'a', true, time), 'meeting');
   assert.equal(sessionRoom(value, 'b', true, time), 'executive');

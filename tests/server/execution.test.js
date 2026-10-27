@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { WebSocketServer } from 'ws';
-import { collectExecutionOptions, sendConfiguredCommand } from '../../scripts/lib/codex-control.mjs';
+import { collectExecutionOptions, collectLoadedSessions, sendConfiguredCommand } from '../../scripts/lib/codex-control.mjs';
 import { readExecutionOptions } from '../../server/execution-options.js';
 import { summarizeRecords } from '../../scripts/lib/codex-observer.mjs';
 
@@ -10,6 +10,37 @@ const commandId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
 const selection = { model: 'supported-model', reasoningEffort: 'high' };
 const model = { model: 'supported-model', displayName: 'Supported model', isDefault: true,
   supportedReasoningEfforts: [{ reasoningEffort: 'low' }, { reasoningEffort: 'high' }], defaultReasoningEffort: 'low' };
+
+test('live-session discovery pages read-only IDs without executing, resuming, reading conversations or changing permissions', async (t) => {
+  const f = await fixture(t, (message) => message.method === 'thread/loaded/list'
+    ? { result: message.params.cursor ? { data: [commandId], nextCursor: null } : { data: [sessionId], nextCursor: 'page2' } } : undefined);
+  assert.deepEqual(await collectLoadedSessions(f.options), { status: 'ready', ids: [sessionId, commandId] });
+  assert.deepEqual(f.calls.map((entry) => entry.method), ['initialize', 'initialized', 'thread/loaded/list', 'thread/loaded/list']);
+});
+
+test('invalid, partial, looping, and failed liveness queries discard all IDs rather than declaring sessions dead', async () => {
+  for (const result of [{ data: ['invalid'] }, { data: [sessionId], nextCursor: 'loop' }, { secret: 'private' }, null]) {
+    let closed = false;
+    const connect = async () => ({ request: async () => { if (!result) throw new Error('private'); return result; }, close: () => { closed = true; } });
+    assert.deepEqual(await collectLoadedSessions({}, connect), { status: 'unavailable', ids: [] });
+    assert.equal(closed, true);
+  }
+});
+
+test('live metadata discovers empty and paginated threads only in the exact selected workspace', async (t) => {
+  const f = await fixture(t, (message) => {
+    if (message.method === 'thread/loaded/list') return { result: { data: [sessionId, commandId], nextCursor: null } };
+    if (message.method === 'thread/read') return { result: { thread: {
+      id: message.params.threadId, cwd: message.params.threadId === sessionId ? '/selected-project' : '/other-project',
+      updatedAt: 1793059200, status: { type: 'idle' }, preview: 'private preview', turns: [], private: 'not exported',
+    } } };
+  });
+  const result = await collectLoadedSessions({ ...f.options, workspace: '/selected-project' });
+  assert.deepEqual(result.sessions, [{ id: sessionId, lifecycle: 'live', status: 'idle', lastActivityAt: new Date(1793059200 * 1000).toISOString() }]);
+  assert.doesNotMatch(JSON.stringify(result.sessions), /private|cwd|preview|other-project|turns/);
+  assert.ok(f.calls.filter((call) => call.method === 'thread/read').every((call) => call.params.includeTurns === false));
+  assert.ok(f.calls.every((call) => ['initialize', 'initialized', 'thread/loaded/list', 'thread/read'].includes(call.method)));
+});
 
 async function fixture(t, handler = () => undefined) {
   const server = new WebSocketServer({ host: '127.0.0.1', port: 0 });

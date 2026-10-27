@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { Duplex } from 'node:stream';
+import { resolve } from 'node:path';
 import WebSocket from 'ws';
 import { readExecutionOptions, supportsExecutionOptions } from '../../server/execution-options.js';
 
@@ -88,6 +89,51 @@ export async function collectExecutionOptions(options, connect = connectCodex) {
   let client;
   try { client = await connect(options); return await modelsFrom(client); }
   catch { return { status: 'unavailable', updatedAt: null, models: [] }; }
+  finally { client?.close(); }
+}
+
+// Read-only liveness evidence. A partial/failed page must never imply that
+// another session ended. No thread is resumed, subscribed to, or executed.
+export async function collectLoadedSessions(options, connect = connectCodex) {
+  let client;
+  try {
+    client = await connect({ ...options, timeout: 1500 });
+    const ids = new Set();
+    const cursors = new Set();
+    let cursor;
+    for (let page = 0; page < 8; page += 1) {
+      const result = await client.request('thread/loaded/list', { limit: 100, ...(cursor ? { cursor } : {}) });
+      if (!Array.isArray(result?.data) || result.data.length > 100
+        || result.data.some((id) => typeof id !== 'string' || !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id))) throw new Error('Invalid loaded sessions.');
+      result.data.forEach((id) => ids.add(id));
+      if (result.nextCursor == null) {
+        if (!options.workspace) return { status: 'ready', ids: [...ids] };
+        const sessions = [];
+        const pathKey = (path) => process.platform === 'win32' ? resolve(path).toLowerCase() : resolve(path);
+        const deadline = Date.now() + 4500;
+        const candidates = [...ids].slice(0, 128);
+        for (let offset = 0; offset < candidates.length && sessions.length < 24 && Date.now() < deadline; offset += 8) {
+          const results = await Promise.allSettled(candidates.slice(offset, offset + 8).map(async (id) => {
+            const value = await client.request('thread/read', { threadId: id, includeTurns: false });
+            const thread = value?.thread;
+            // Modern paginated/empty threads need no rollout log. Check exact
+            // workspace metadata first; never retain previews, paths or turns.
+            if (thread?.id !== id || typeof thread.cwd !== 'string' || pathKey(thread.cwd) !== pathKey(options.workspace)
+              || !Number.isSafeInteger(thread.updatedAt) || !Number.isFinite(new Date(thread.updatedAt * 1000).getTime())
+              || thread.status?.type === 'notLoaded') return null;
+            return { id, lifecycle: 'live', status: thread.status?.type === 'active' ? 'working' : thread.status?.type === 'idle' ? 'idle' : 'unknown',
+              lastActivityAt: new Date(thread.updatedAt * 1000).toISOString() };
+          }));
+          for (const result of results) if (result.status === 'fulfilled' && result.value) sessions.push(result.value);
+        }
+        return { status: 'ready', ids: [...ids], sessions: sessions.slice(0, 24) };
+      }
+      cursor = result.nextCursor;
+      if (typeof cursor !== 'string' || !cursor || cursor.length > 4096 || cursors.has(cursor)) break;
+      cursors.add(cursor);
+    }
+    return { status: 'unavailable', ids: [] };
+  } catch { return { status: 'unavailable', ids: [] }; }
   finally { client?.close(); }
 }
 

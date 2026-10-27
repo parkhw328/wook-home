@@ -28,21 +28,21 @@ test('archived linked staff remain one actor and never announce live activity or
   assert.match(commandUnavailableReason(state, 's'), /지원하지/);
 });
 
-test('saved session location follows observed activity for linked and unassigned actors without changing records', () => {
-  const state = { office: {}, tasks: [], agents: [], localSessions: { status: 'connected', sessions: [{ id: 's', status: 'working' }] } };
-  const room = () => occupantRoom(officeOccupants(state)[0]);
-  assert.equal(room(), 'office');
-  for (const status of ['idle', 'unknown', 'interrupted']) {
-    state.localSessions.sessions[0].status = status;
-    assert.equal(room(), 'warehouse');
-  }
+test('only registered employees occupy rooms and live idle sessions retain a desk without mutating records', () => {
+  const state = { office: {}, tasks: [], agents: [], localSessions: { status: 'connected', sessions: [{ id: 's', status: 'working', lifecycle: 'live' }] } };
+  assert.deepEqual(officeOccupants(state), [], 'unregistered sessions belong in the waiting list');
   state.agents.push({ id: 'a', status: 'observing', connection: { sessionId: 's', status: 'connected' } });
-  for (const status of ['working', 'idle', 'unknown']) {
+  const room = () => occupantRoom(officeOccupants(state)[0]);
+  for (const status of ['working', 'idle', 'unknown', 'interrupted']) {
     state.localSessions.sessions[0].status = status;
     const before = structuredClone(state);
     assert.equal(officeOccupants(state).length, 1);
-    assert.equal(room(), status === 'working' ? 'office' : 'warehouse');
+    assert.equal(room(), 'office', 'turn completion or inactivity is not session death');
     assert.deepEqual(state, before);
+  }
+  for (const lifecycle of ['not_loaded', 'unknown']) {
+    state.localSessions.sessions[0].lifecycle = lifecycle;
+    assert.equal(room(), 'warehouse');
   }
   state.localSessions.sessions = [];
   assert.equal(room(), 'warehouse');

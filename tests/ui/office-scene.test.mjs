@@ -100,9 +100,9 @@ test('zero-length walking requests finish without invalid route geometry', async
 test('observed activities move actors through the lift and queue new destinations without cutting across floors', () => {
   const scene = Object.create(OfficeScene.prototype);
   Object.assign(scene, { actorRoot: new Object3D(), people: new Map() });
-  const actor = { source: 'session', id: 'session-a', status: 'working' };
+  const actor = { source: 'agent', id: 'session-a', status: 'observing', sessionLifecycle: 'live' };
   scene.syncPeople([actor]);
-  const item = scene.people.get('session:session-a');
+  const item = scene.people.get('agent:session-a');
   scene.syncPeople([{ ...actor, sceneActivity: { room: 'meeting', pose: 'discussing' } }]);
   assert.equal(item.room, 'meeting'); assert.equal(item.pose, 'discussing');
   for (let index = 1; index < item.transfer.path.length; index++) {
@@ -144,5 +144,14 @@ test('crowded person labels separate within the scene without shrinking controls
     assert.equal(item.width, 90); assert.equal(item.height, 44);
     assert.ok(item.x >= 53 && item.x <= 767 && item.y >= 30 && item.y <= 530);
     for (const other of arranged.slice(index + 1)) assert.ok(Math.abs(item.x - other.x) >= 96 || Math.abs(item.y - other.y) >= 50, 'names remain independently clickable');
+  }
+});
+
+test('three wrapped full session IDs fit near a mobile map edge even when anchor rings miss available gaps', () => {
+  const labels = [[283, 183], [234, 220], [185, 256]].map(([x, y], id) => ({ id, x, y, width: 256, height: 116 }));
+  const result = arrangePersonLabels(labels, 820, 560);
+  for (const [i, label] of result.entries()) {
+    assert.ok(label.x >= 136 && label.x <= 684 && label.y >= 66 && label.y <= 494);
+    for (const other of result.slice(i + 1)) assert.ok(Math.abs(label.x - other.x) >= 262 || Math.abs(label.y - other.y) >= 122);
   }
 });

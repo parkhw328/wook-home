@@ -65,10 +65,10 @@
 ## 로컬 Codex 관찰
 
 - `localSessions`는 호스트의 읽기 전용 연결 프로그램이 생성한 상태를 보여준다. `status`는 connected / disconnected / not_connected, `updatedAt`은 마지막 상태 수집 시각, `workspace`는 선택한 작업 폴더의 이름이다.
-- `sessions`: `{ id, name, provider: "openai", status, lastActivityAt }` 배열. ID는 Codex 세션 UUID, 이름은 ID 일부로 만든 중립적인 별칭이다. 사용자 대화 제목·내용·인증 정보·절대 경로는 전달하지 않는다.
+- `sessions`: `{ id, name, provider: "openai", status, lifecycle, lastActivityAt }` 배열. ID는 전체 Codex 세션 UUID, 이름은 `Codex · 전체 UUID`다. 직원의 별칭은 별도 `agent.name`으로 저장한다. 사용자 대화 제목·내용·인증 정보·절대 경로는 전달하지 않는다.
 - 세션 상태: working(최근 활동 기록), idle(턴 종료 기록), interrupted(중단 기록), unknown(확인 필요), disconnected(연결 프로그램 갱신 중단).
-- 5초마다 수집한다. 연결 프로그램의 스냅샷이 20초 이상 갱신되지 않으면 disconnected, working 기록이 120초 이상 오래되면 unknown으로 표시한다. 프로세스 생존이나 프로젝트 완료를 판정하지 않는다.
-- 직원·업무 집계, SQLite 저장과 인계 JSON에는 관찰 세션을 넣지 않는다. 사무실 pause는 새 지시 접수를 막지만 이미 전달된 지시나 호스트 CLI를 중단하지 않는다.
+- 5초마다 수집한다. 연결 프로그램의 스냅샷이 20초 이상 갱신되지 않으면 disconnected, working 기록이 120초 이상 오래되면 unknown으로 표시한다. 활동 시각만으로 프로세스 생존이나 프로젝트 완료를 판정하지 않는다. 별도 `lifecycle`은 공식 현재 적재 목록을 근거로 `live` / `not_loaded` / `unknown`을 표시하며 연결이 오래되면 `unknown`으로 바꾼다.
+- 살아 있는 현재 프로젝트 세션은 직원으로 등록해 직원 수에 포함한다. 미등록 기록은 직원·업무 집계에서 제외한다. 원문 관찰 세션과 로컬 해시 등록 기록은 인계 JSON에 넣지 않는다. [직원 자동 등록 계약](staff-connections-api.md)을 따른다. 사무실 pause는 새 지시 접수를 막지만 이미 전달된 지시나 호스트 CLI를 중단하지 않는다.
 - Docker는 상태 JSON 폴더를 읽기 전용으로, 지시 폴더를 별도 읽기·쓰기로 연결한다. 상세 실행법은 [CLI 연결 안내](wiki/CLI.md)를 따른다.
 
 ## CLI 프로세스 추가·종료

@@ -89,6 +89,7 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
     pauseState(state, '이전 실행의 미완료 업무를 일시 중지했습니다. 확인 후 재개해 주세요.');
   }
   state.releasedAgents ??= [];
+  state.sessionRegistry ??= {};
   state.office.version = VERSION;
   state.office.name = officeName;
   for (const agent of state.agents) {
@@ -116,13 +117,25 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
     if (next.office.paused) fail(409, 'OFFICE_PAUSED', '사무실을 재개한 후 진행해 주세요.');
   }
 
+  // Local-only opaque keys retain alias ownership and explicit opt-outs across
+  // restarts. Raw provider IDs and this registry never enter public snapshots.
+  function registerSession(next, agentId, key = null) {
+    if (key !== null && (typeof key !== 'string' || !/^[a-f0-9]{64}$/.test(key))) throw new Error('Invalid session registration key');
+    if (key && next.sessionRegistry[key] && next.sessionRegistry[key] !== agentId) fail(409, 'ENTRY_ALREADY_LINKED', '이미 다른 직원에게 연결되어 있습니다.');
+    if (key && !Object.hasOwn(next.sessionRegistry, key) && Object.keys(next.sessionRegistry).length >= 4096) fail(409, 'LIMIT_REACHED', '로컬 세션 등록 기록 한도에 도달했습니다.');
+    for (const [previous, owner] of Object.entries(next.sessionRegistry)) if (owner === agentId) next.sessionRegistry[previous] = null;
+    if (key) next.sessionRegistry[key] = agentId;
+  }
+
   return {
+    sessionRegistration(key) { return state.sessionRegistry[key]; },
+    hasSessionRegistration(id) { return Object.values(state.sessionRegistry).includes(id); },
     snapshot() {
       const output = structuredClone(state);
       output.tasks.forEach((task) => delete task.previousStatus);
       return { office: output.office, providers: structuredClone(providers), agents: output.agents, releasedAgents: output.releasedAgents, tasks: output.tasks, events: output.events, programs: structuredClone(programs) };
     },
-    hire(body, preference = null, archiveNote = null) {
+    hire(body, preference = null, archiveNote = null, registrationKey = null) {
       fields(body, ['name', 'role', 'provider', 'model', 'reasoningEffort', 'projectName']);
       const connection = connectionPreference(preference);
       return update((next) => {
@@ -142,6 +155,7 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
         };
         if (connection) agent.connectionPreference = connection;
         if (archiveNote !== null) agent.workArchive = { stored: true, note: text(archiveNote, '보관 메모', 4000, false), updatedAt: now() };
+        registerSession(next, agent.id, registrationKey);
         next.agents.push(agent);
         refreshAgent(next, agent.id);
         event(next, 'agent.created', '직원 정보를 등록했습니다.');
@@ -158,6 +172,7 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
         if (next.tasks.some((task) => task.agentId === id && !finished.has(task.status))) fail(409, 'AGENT_BUSY', '진행 중인 체험 업무를 완료하거나 취소한 뒤 등록을 해제해 주세요.');
         if (next.releasedAgents.length >= 1000) fail(409, 'LIMIT_REACHED', '직원 해제 기록 한도에 도달했습니다.');
         delete agent.connectionPreference;
+        registerSession(next, id);
         agent.settingsRevision += 1;
         agent.releasedAt = now();
         next.agents = next.agents.filter((item) => item.id !== id);
@@ -198,7 +213,7 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
         return agent;
       });
     },
-    setAgentConnection(id, preference, settingsRevision) {
+    setAgentConnection(id, preference, settingsRevision, registrationKey = null) {
       const connection = connectionPreference(preference);
       return update((next) => {
         const agent = next.agents.find((item) => item.id === id);
@@ -206,6 +221,7 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
         if (settingsRevision !== undefined && (!Number.isSafeInteger(settingsRevision) || settingsRevision < 0)) fail(400, 'VALIDATION_ERROR', '직원 설정 버전을 확인해 주세요.');
         if (settingsRevision !== undefined && settingsRevision !== agent.settingsRevision) fail(409, 'SETTINGS_CONFLICT', '다른 화면에서 직원 설정 또는 연결을 변경했습니다. 최신 정보를 확인한 뒤 다시 연결해 주세요.');
         if (agent.provider === 'demo') fail(409, 'PROVIDER_MISMATCH', '체험 직원에는 외부 세션을 연결할 수 없습니다.');
+        registerSession(next, id, registrationKey);
         if (connection) agent.connectionPreference = connection;
         else delete agent.connectionPreference;
         agent.settingsRevision += 1;

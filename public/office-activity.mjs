@@ -1,5 +1,6 @@
 import { occupantRoom } from './rooms.mjs';
-import { orderedLocalSessions, unassignedLocalSessions, observedSessionStatus, escapeHtml as esc } from './model.mjs';
+import { orderedLocalSessions, observedSessionStatus, escapeHtml as esc } from './model.mjs';
+import { staffIdentity } from './session-identity.mjs';
 
 export function sceneActivity(activity, connected = true, now = Date.now()) {
   if (!connected || !activity || !['collaborating', 'question', 'approval'].includes(activity.kind)) return null;
@@ -20,10 +21,8 @@ export function sceneActivity(activity, connected = true, now = Date.now()) {
 export function officeOccupants(state, connected = true, now = Date.now()) {
   const sessions = orderedLocalSessions(state.localSessions);
   const live = connected && state.localSessions?.status === 'connected';
-  const observe = (session) => ['interrupted', 'disconnected'].includes(session?.status) ? null : sceneActivity(session?.activity, live, now);
-  const actors = unassignedLocalSessions(state).map((session) => ({
-    ...session, source: 'session', status: observedSessionStatus(state.localSessions, session, connected), sceneActivity: observe(session),
-  }));
+  const observe = (session) => session?.lifecycle !== 'live' || ['interrupted', 'disconnected'].includes(session?.status) ? null : sceneActivity(session?.activity, live, now);
+  const actors = [];
   for (const agent of state.agents) {
     const linked = agent.connection?.status === 'connected' && sessions.find((session) => session.id === agent.connection?.sessionId);
     let activity = linked ? observe(linked) : null;
@@ -35,7 +34,7 @@ export function officeOccupants(state, connected = true, now = Date.now()) {
     if (agent.workArchive?.stored) activity = null;
     const sessionStatus = agent.connection?.sessionId
       ? observedSessionStatus(state.localSessions, linked || { status: 'unknown' }, connected) : undefined;
-    actors.push({ ...agent, source: 'agent', sessionStatus, status: connected ? agent.status : 'disconnected', sceneActivity: activity });
+    actors.push({ ...agent, source: 'agent', sessionStatus, sessionLifecycle: live ? linked?.lifecycle : 'unknown', status: connected ? agent.status : 'disconnected', sceneActivity: activity });
   }
   return actors;
 }
@@ -52,7 +51,7 @@ export function activityRoomMarkup(room, actors, selectedId) {
   return `<div class="room-section-label">${label} <span>${participants.length}</span></div>`
     + participants.map((actor) => {
       const id = actor.source === 'session' ? actor.id : actor.connection?.sessionId;
-      return `<button class="room-entry activity-entry" type="button" data-workspace-session="${esc(id)}" aria-pressed="${selectedId === id}"><span class="entry-symbol" aria-hidden="true">${room === 'meeting' ? '↔' : '↗'}</span><span><strong>${esc(actor.name)}</strong><small>${esc(actor.sceneActivity.label)}</small></span></button>`;
+      return `<button class="room-entry activity-entry" type="button" data-workspace-session="${esc(id)}" aria-pressed="${selectedId === id}"><span class="entry-symbol" aria-hidden="true">${room === 'meeting' ? '↔' : '↗'}</span><span><strong>${esc(actor.name)}</strong>${staffIdentity(actor)}<small>${esc(actor.sceneActivity.label)}</small></span></button>`;
     }).join('')
     + `<p class="activity-note">${room === 'meeting' ? '확인된 메시지 전달을 최대 60초 표시합니다. 세션을 선택해 공개 대화를 확인하세요.' : '대화를 확인하고 원래 Codex 창에서 질문에 답하거나 실행을 승인하세요.'}</p>`;
 }

@@ -4,6 +4,7 @@ import { escapeHtml as esc, sessionStatusLabel, displayTime } from './model.mjs'
 import './staff-connections.mjs';
 import { mountBridgeSettings } from './bridge-settings.mjs';
 import { connectionBadge, connectionTone } from './connection-status.mjs';
+import { identityMarkup, lifecycleLabel } from './session-identity.mjs';
 
 const GUIDE = 'https://github.com/parkhw328/wook-home/wiki/Detection';
 const ENABLED_KEY = 'stackqueue.web-detection.enabled';
@@ -12,7 +13,7 @@ const CLIENT_KEY = 'stackqueue.web-detection.client';
 export function entryDescription(entry) {
   if (entry.source === 'web') return `${entry.kind === 'conversation' ? '대화 탭' : '서비스·새 대화 화면'} · ${entry.tabCount}개 탭 · ${entry.scope}`;
   if (entry.kind === 'process') return `CLI 프로세스 · ${entry.scope || '이 PC'} · 대화 연결 확인 전`;
-  return `CLI 기록 · ${entry.scope || '선택한 프로젝트'} · 실행 중인 프로세스와 별도`;
+  return `CLI 기록 · ${entry.scope || '선택한 프로젝트'} · ${lifecycleLabel(entry)}`;
 }
 
 export function entryStatus(entry) {
@@ -32,7 +33,7 @@ export function checksMarkup(checks, online = true) {
 export function entriesMarkup(entries, online = true) {
   return entries.map((entry) => `<article class="discovery-card" data-tone="${connectionTone(online ? entry.status : 'disconnected')}">
     <div class="discovery-card-heading"><strong>${esc(entry.name)}</strong>${connectionBadge(online ? entryStatus(entry) : '서버 연결 끊김', online ? entry.status : 'disconnected')}</div>
-    <div class="discovery-card-body"><p>${esc(entryDescription(entry))}</p><small>${entry.kind === 'process' && entry.status === 'exited' ? '종료 시각' : entry.source === 'web' || entry.kind === 'process' ? '마지막 확인' : '마지막 활동'} ${esc(displayTime(entry.endedAt || entry.updatedAt || entry.lastActivityAt))}<br>${!online ? '마지막 수신 상태 · 현재 실행 여부 확인 불가' : entry.canControl ? '기존 CLI 목록에서 지시 가능' : '관찰 전용'}</small></div>
+    <div class="discovery-card-body">${identityMarkup(entry.sessionId || entry.id, entry.sessionId ? 'session-id' : '감지 ID · session-id 미확인')}<p>${esc(entryDescription(entry))}</p><small>${entry.kind === 'process' && entry.status === 'exited' ? '종료 시각' : entry.source === 'web' || entry.kind === 'process' ? '마지막 확인' : '마지막 활동'} ${esc(displayTime(entry.endedAt || entry.updatedAt || entry.lastActivityAt))}<br>${!online ? '마지막 수신 상태 · 현재 실행 여부 확인 불가' : entry.canControl ? '기존 CLI 목록에서 지시 가능' : '관찰 전용'}</small></div>
     <div class="discovery-card-actions">${entry.linkedAgentId ? `<button type="button" class="button button-small" data-agent="${esc(entry.linkedAgentId)}" ${!online ? 'disabled' : ''}>${esc(entry.linkedAgentName)} 보기</button>`
       : `<button type="button" class="button button-small" data-connect-entry="${esc(entry.id)}" ${!online || !entry.canRegister ? 'disabled' : ''}>직원 등록·연결</button>`}</div></article>`).join('');
 }
@@ -143,7 +144,9 @@ function initialize() {
     const focused = document.activeElement?.closest('#discovery-list button');
     const focusedEntry = focused?.dataset.connectEntry;
     const focusedAgent = focused?.dataset.agent;
-    find('#discovery-list').innerHTML = entries.length ? entriesMarkup(entries, serverConnected)
+    const unregistered = entries.filter((entry) => !entry.linkedAgentId);
+    const registered = entries.filter((entry) => entry.linkedAgentId);
+    find('#discovery-list').innerHTML = entries.length ? `<section class="discovery-group"><h3>미등록 감지 대상 · ${unregistered.length}</h3><p class="field-help">아래 대상은 직원 수에 포함되지 않습니다. 확인 후 등록하거나 기존 직원에 연결하세요.</p>${entriesMarkup(unregistered, serverConnected) || '<p>미등록 감지 대상이 없습니다.</p>'}</section><section class="discovery-group"><h3>직원으로 등록된 연결 · ${registered.length}</h3>${entriesMarkup(registered, serverConnected) || '<p>아직 등록한 연결이 없습니다.</p>'}</section>`
       : '<p class="discovery-empty">조건에 맞는 감지 항목이 없습니다. 연결 상태와 선택한 필터를 확인하세요.</p>';
     if (focusedEntry || focusedAgent) [...find('#discovery-list').querySelectorAll('button')]
       .find((button) => focusedEntry ? button.dataset.connectEntry === focusedEntry : button.dataset.agent === focusedAgent)?.focus({ preventScroll: true });
@@ -247,10 +250,6 @@ function initialize() {
   }
   find('#discovery-toggle').addEventListener('click', () => setEnabled(!enabled));
   find('#discovery-refresh').addEventListener('click', () => { void read(); void collect(); });
-  find('#discovery-list').addEventListener('click', (event) => {
-    const button = event.target.closest('[data-connect-entry]');
-    if (button && !button.disabled) document.dispatchEvent(new CustomEvent('office:connect-entry', { detail: { entryId: button.dataset.connectEntry } }));
-  });
   document.addEventListener('office:staff-changed', () => { void read(); });
   for (const id of ['#discovery-source', '#discovery-provider']) find(id).addEventListener('change', render);
   window.addEventListener('storage', (event) => { if (event.key === ENABLED_KEY) setEnabled(event.newValue === 'true'); });

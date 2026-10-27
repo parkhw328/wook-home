@@ -12,7 +12,7 @@ import { createCliLifecycle } from './lib/cli-lifecycle.mjs';
 import { collectCliTools } from './lib/cli-tools.mjs';
 import { createSearchHistoryCollector } from './lib/session-search-history.mjs';
 import { readBridgeSettings, resolveBridgeSettings } from '../server/bridge-settings.js';
-import { collectExecutionOptions, sendConfiguredCommand } from './lib/codex-control.mjs';
+import { collectExecutionOptions, collectLoadedSessions, sendConfiguredCommand } from './lib/codex-control.mjs';
 
 async function lockBridge(file) {
   try { await writeFile(file, String(process.pid), { flag: 'wx', mode: 0o600 }); }
@@ -82,7 +82,15 @@ async function main() {
     let lastModels = -Infinity;
     let pendingModels;
     const controlOptions = () => ({ cli, workspace, remote: values.remote, remoteAuthTokenEnv: values['remote-auth-token-env'] });
-    const collect = () => collectSessions({ sessionsDir, workspace, includeConversations: settings.options.conversations });
+    const collect = async (includeConversations = settings.options.conversations) => {
+      const [observed, loaded] = await Promise.all([collectSessions({ sessionsDir, workspace, includeConversations }),
+        cli ? collectLoadedSessions(controlOptions()) : { status: 'unavailable', ids: [] }]);
+      const loadedIds = new Set(loaded.ids);
+      observed.sessions.forEach((session) => { session.lifecycle = loaded.status !== 'ready' ? 'unknown' : loadedIds.has(session.id) ? 'live' : 'not_loaded'; });
+      const current = (loaded.sessions || []).map((session) => ({ ...observed.sessions.find((item) => item.id === session.id), ...session }));
+      observed.sessions = [...current, ...observed.sessions.filter((session) => !current.some((item) => item.id === session.id))].slice(0, 24);
+      return observed;
+    };
     const lifecycle = createCliLifecycle();
     let history = null;
     const conversationsDir = join(output, 'conversations');
@@ -122,7 +130,7 @@ async function main() {
           const activeSignature = signature;
           const maySend = () => !stopping && control.enabled && activeSignature === JSON.stringify(resolveBridgeSettings(readBridgeSettings(commandsDir), initial));
           pump = createCommandPump({ directory: commandsDir, bridgeId: control.bridgeId,
-            getSessions: async () => (await collectSessions({ sessionsDir, workspace })).sessions,
+            getSessions: async () => (await collect(false)).sessions,
             send: (id, content, selection, commandId) => maySend() ? selection
               ? sendConfiguredCommand({ ...controlOptions(), maySend }, id, content, selection, commandId)
               : sendToCodex(cli, id, content, workspace, values.remote, values['remote-auth-token-env'])
@@ -131,11 +139,11 @@ async function main() {
           });
           lastCollection = -Infinity;
         }
-        if (settings.options.commands && !values.once && !control.enabled && Date.now() - lastProbe >= 30000) {
+        if (Date.now() - lastProbe >= 30000) {
           lastProbe = Date.now();
           cli = await findCodex(values['codex-bin']);
-          control.enabled = Boolean(cli && await supportsQueue(cli));
-          control.reason = control.enabled ? 'ready' : 'cli_unavailable';
+          control.enabled = Boolean(settings.options.commands && !values.once && cli && await supportsQueue(cli));
+          control.reason = !settings.options.commands ? 'not_enabled' : control.enabled ? 'ready' : 'cli_unavailable';
         }
         if (Date.now() - lastCollection >= 5000) {
           const [observed, processes, cliTools] = await Promise.all([collect(), lifecycle.poll(), collectCliTools()]);

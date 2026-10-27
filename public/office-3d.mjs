@@ -41,7 +41,24 @@ export function arrangePersonLabels(items, width, height) {
       const dx = ring * (item.width + 8); const dy = ring * (item.height + 8);
       for (const [x, y] of [[0, -dy], [-dx, 0], [dx, 0], [-dx, -dy], [dx, -dy], [0, dy], [-dx, dy], [dx, dy]]) candidates.push({ ...home, x: home.x + x, y: home.y + y });
     }
-    placed.push(candidates.find(fits) || home);
+    let position = candidates.find(fits);
+    if (!position) {
+      // Wrapped UUID labels can be much taller than a one-line name. A ring
+      // around the anchor can skip all free gaps; also try exact neighbor edges.
+      const xs = [home.x, item.width / 2 + 8, width - item.width / 2 - 8];
+      const ys = [home.y, item.height / 2 + 8, height - item.height / 2 - 8];
+      for (const other of placed) {
+        xs.push(other.x - (other.width + item.width) / 2 - 6, other.x + (other.width + item.width) / 2 + 6);
+        ys.push(other.y - (other.height + item.height) / 2 - 6, other.y + (other.height + item.height) / 2 + 6);
+      }
+      let distance = Infinity;
+      for (const x of xs) for (const y of ys) {
+        const next = { ...home, x, y };
+        const offset = (x - home.x) ** 2 + (y - home.y) ** 2;
+        if (offset < distance && fits(next)) { position = next; distance = offset; }
+      }
+    }
+    placed.push(position || home);
   }
   return placed;
 }

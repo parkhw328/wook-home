@@ -150,7 +150,7 @@ export function createSessionSearch({ directory, bridgeFile, observer, clock = D
     return row.observation === 'open' && clock() - row.observed_at < 30000 ? 'current' : 'stored';
   }
   function session(row, current) {
-    return { id: row.id, source: row.source, provider: row.provider, name: `${{openai: row.source === 'cli' ? 'Codex' : 'ChatGPT', claude: 'Claude', gemini: 'Gemini', meta: 'Meta AI'}[row.provider]} · ${row.origin_id.slice(-8)}`,
+    return { id: row.id, source: row.source, provider: row.provider, name: `${{openai: row.source === 'cli' ? 'Codex' : 'ChatGPT', claude: 'Claude', gemini: 'Gemini', meta: 'Meta AI'}[row.provider]} · ${row.origin_id}`,
       workspace: row.workspace, updatedAt: row.updated_at, url: row.url, state: state(row, current),
       observation: row.source === 'web' ? (clock() - row.observed_at < 30000 ? row.observation : 'disconnected') : null, truncated: Boolean(row.truncated) };
   }

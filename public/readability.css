@@ -216,3 +216,17 @@ dt, .task-filters { font-size: var(--font-control); }
   .detail-facts > div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
   .detail-facts dd { font-size: var(--font-control); }
 }
+
+/* Session identity is readable in full even when aliases are identical. */
+.session-identity { display: block; min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; word-break: normal; text-overflow: clip; font-size: var(--font-caption); line-height: 1.75; }
+.session-identity > span { display: block; font-weight: 600; }
+.session-identity code { display: block; font: inherit; overflow-wrap: anywhere; white-space: normal; }
+.agent-info, .session-info, .room-entry > span, .discovery-card-heading > strong { min-width: 0; overflow-wrap: anywhere; }
+.unregistered-session { min-width: 0; display: grid; gap: .75rem; }
+.unregistered-session > .button { justify-self: start; }
+.discovery-group { min-width: 0; display: grid; gap: .75rem; grid-column: 1 / -1; }
+.discovery-group > h3 { font-size: var(--font-control); }
+#staff-source-help, #cli-dialog-state, #modal-title { overflow-wrap: anywhere; }
+.search-result-open, #search-detail-title { overflow-wrap: anywhere; }
+#office-workspace .office-person { max-width: min(16rem, calc(100% - 16px)); white-space: normal; overflow: visible; overflow-wrap: anywhere; flex-wrap: wrap; }
+.office-person .session-identity { flex-basis: 100%; text-align: left; }

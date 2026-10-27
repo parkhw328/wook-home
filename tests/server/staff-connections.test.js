@@ -4,6 +4,7 @@ import { createStore } from '../../server/store.js';
 import { createOffice } from '../../server/office.js';
 import { createDiscovery } from '../../server/discovery.js';
 import { createStaffConnections } from '../../server/staff-connections.js';
+import { createHash } from 'node:crypto';
 
 const sessionId = '00000000-0000-0000-0000-000000000001';
 const clientId = '00000000-0000-0000-0000-000000000002';
@@ -135,4 +136,127 @@ test('restart preserves employee identity but not observed IDs, browser details 
   assert.equal(after.connection.entryId, undefined);
   restarted.connect(agent.id, { entryId: web.id });
   assert.equal(restarted.snapshot().agents[0].connection.status, 'connected');
+});
+
+test('three live sessions with identical prefix and suffix auto-register once; aliases remain attached after restart', (t) => {
+  const f = fixture(t);
+  const ids = ['1111', '2222', '3333'].map((middle) => `00000000-${middle}-4000-8000-000000000001`);
+  f.local.sessions = ids.map((id) => ({ ...f.local.sessions[0], id, lifecycle: 'live' }));
+  const agents = f.staff.snapshot().agents;
+  assert.equal(agents.length, 3);
+  assert.deepEqual(agents.map((agent) => agent.connection.sessionId), ids);
+  for (const agent of agents) f.staff.edit(agent.id, { name: '동일 별칭', settingsRevision: agent.settingsRevision });
+  for (let i = 0; i < 3; i += 1) {
+    assert.equal(f.staff.snapshot().agents.length, 3);
+    assert.ok(f.staff.discoverySnapshot().entries.filter((entry) => entry.kind === 'session').every((entry) => !entry.canRegister));
+  }
+  assert.throws(() => f.staff.hire({ entryId: `cli:${ids[0]}`, name: '중복', role: '검증' }), { code: 'ENTRY_ALREADY_LINKED' });
+  const restarted = createStaffConnections({ office: createOffice(f.store), discovery: f.discovery });
+  assert.deepEqual(restarted.snapshot().agents.map((agent) => [agent.id, agent.name, agent.connection.sessionId]),
+    agents.map((agent, index) => [agent.id, '동일 별칭', ids[index]]));
+  const persisted = JSON.stringify(f.store.load());
+  const exported = JSON.stringify(f.office.handoff());
+  const snapshot = JSON.stringify(restarted.snapshot());
+  assert.doesNotMatch(exported, /sessionRegistry|connectionPreference/);
+  for (const id of ids) {
+    assert.ok(!persisted.includes(id) && !exported.includes(id));
+    const key = createHash('sha256').update(`openai:${id}`).digest('hex');
+    assert.ok(persisted.includes(key));
+    assert.ok(!exported.includes(key) && !snapshot.includes(key));
+  }
+});
+
+test('saved activity, process counts, stale bridge and missing liveness never auto-register employees', (t) => {
+  const f = fixture(t);
+  for (const lifecycle of [undefined, 'unknown', 'not_loaded']) {
+    f.local.sessions[0].lifecycle = lifecycle;
+    f.local.sessions[0].status = 'working';
+    assert.equal(f.staff.snapshot().agents.length, 0);
+  }
+  f.local.sessions[0].lifecycle = 'live';
+  f.local.status = 'disconnected';
+  assert.equal(f.staff.snapshot().agents.length, 0);
+  f.local.status = 'connected';
+  f.local.control.enabled = false;
+  const agent = f.staff.snapshot().agents[0];
+  assert.equal(agent.connection.canControl, false, 'registration grants no command permission');
+  f.local.sessions[0].lifecycle = 'not_loaded';
+  assert.equal(f.staff.snapshot().agents[0].id, agent.id, 'unloading retains the employee and alias');
+  f.local.sessions = [];
+  assert.equal(f.staff.snapshot().agents[0].connection.status, 'missing');
+  assert.equal(f.staff.snapshot().agents[0].connection.sessionId, sessionId, 'last known full identity remains visible');
+});
+
+test('release and disconnect stay opted out after restart until explicit registration or reconnection', (t) => {
+  for (const action of ['release', 'disconnect']) {
+    const f = fixture(t);
+    f.local.sessions[0].lifecycle = 'live';
+    const agent = f.staff.snapshot().agents[0];
+    f.staff[action](agent.id, { settingsRevision: agent.settingsRevision });
+    const office = createOffice(f.store);
+    const restarted = createStaffConnections({ office, discovery: f.discovery });
+    const entry = restarted.discoverySnapshot().entries.find((item) => item.kind === 'session');
+    assert.equal(entry.canRegister, true);
+    assert.equal(restarted.snapshot().agents.length, action === 'release' ? 0 : 1);
+    if (action === 'release') restarted.hire({ entryId: entry.id, name: '직접 등록', role: '검증' });
+    else restarted.connect(agent.id, { entryId: entry.id, settingsRevision: office.snapshot().agents[0].settingsRevision });
+    assert.equal(restarted.discoverySnapshot().entries.find((item) => item.id === entry.id).canRegister, false);
+  }
+});
+
+test('manual connection replacement suppresses the previous session and stale edits cannot erase that choice', (t) => {
+  const f = fixture(t);
+  f.local.sessions[0].lifecycle = 'live';
+  const agent = f.staff.snapshot().agents[0];
+  const other = { ...f.local.sessions[0], id: sessionId.replace(/1$/, '3'), lifecycle: 'unknown' };
+  f.local.sessions.push(other);
+  f.staff.connect(agent.id, { entryId: `cli:${other.id}`, settingsRevision: agent.settingsRevision });
+  assert.throws(() => f.staff.disconnect(agent.id, { settingsRevision: agent.settingsRevision }), { code: 'SETTINGS_CONFLICT' });
+  other.lifecycle = 'live';
+  const restarted = createStaffConnections({ office: createOffice(f.store), discovery: f.discovery });
+  const snapshot = restarted.snapshot();
+  assert.equal(snapshot.agents.length, 1);
+  assert.equal(snapshot.agents[0].connection.sessionId, other.id);
+  assert.equal(restarted.discoverySnapshot().entries.find((entry) => entry.sessionId === sessionId).canRegister, true);
+});
+
+test('full staff roster leaves live targets available for manual registration without breaking state reads', (t) => {
+  const f = fixture(t);
+  for (let i = 0; i < 100; i += 1) f.office.hire({ name: `체험 ${i}`, role: '검증', provider: 'demo' });
+  f.local.sessions[0].lifecycle = 'live';
+  assert.equal(f.staff.snapshot().agents.length, 100);
+  assert.equal(f.staff.discoverySnapshot().entries.find((entry) => entry.kind === 'session').canRegister, true);
+});
+
+test('restart without live evidence retains known identity for display but reserves the existing employee for explicit reconnect', (t) => {
+  const f = fixture(t);
+  const agent = f.hire(f.staff.discoverySnapshot().entries.find((entry) => entry.kind === 'session'));
+  const office = createOffice(f.store);
+  const restarted = createStaffConnections({ office, discovery: f.discovery });
+  const before = restarted.snapshot().agents[0];
+  assert.equal(before.id, agent.id);
+  assert.equal(before.connection.sessionId, sessionId);
+  assert.equal(before.connection.status, 'not_connected');
+  assert.equal(before.connection.canControl, false);
+  const entry = restarted.discoverySnapshot().entries.find((item) => item.kind === 'session');
+  assert.equal(entry.linkedAgentId, agent.id);
+  assert.equal(entry.canRegister, false);
+  assert.throws(() => restarted.hire({ entryId: entry.id, name: '중복', role: '검증' }), { code: 'ENTRY_ALREADY_LINKED' });
+  restarted.connect(agent.id, { entryId: entry.id, settingsRevision: before.settingsRevision });
+  assert.equal(restarted.snapshot().agents[0].connection.status, 'connected');
+});
+
+test('reconnecting a live archived employee preserves the alias, archive and command restriction', (t) => {
+  const f = fixture(t);
+  f.local.sessions[0].lifecycle = 'live';
+  const agent = f.staff.snapshot().agents[0];
+  f.staff.archive(agent.id, { stored: true, note: '다음 검토', settingsRevision: agent.settingsRevision });
+  const restarted = createStaffConnections({ office: createOffice(f.store), discovery: f.discovery });
+  const after = restarted.snapshot().agents[0];
+  assert.equal(after.id, agent.id);
+  assert.equal(after.name, agent.name);
+  assert.equal(after.workArchive.stored, true);
+  assert.equal(after.workArchive.note, '다음 검토');
+  assert.equal(after.connection.lifecycle, 'live');
+  assert.equal(after.connection.canControl, false);
 });

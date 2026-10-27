@@ -36,7 +36,8 @@ export function createSessionObserver({ file, clock = Date.now } = {}) {
           const status = !connected ? 'disconnected' : activityAge < -5000 || (session.status === 'working' && activityAge > 120000) ? 'unknown' : session.status;
           const activity = readSessionActivity(session, data.sessions, connected, clock());
           sessions.push({
-            id: session.id, name: `Codex · ${session.id.slice(-4)}`, provider: 'openai',
+            id: session.id, name: `Codex · ${session.id}`, provider: 'openai',
+            lifecycle: connected && ['live', 'not_loaded'].includes(session.lifecycle) ? session.lifecycle : 'unknown',
             status, lastActivityAt: new Date(session.lastActivityAt).toISOString(),
             ...(modelId(session.model) ? { model: session.model } : {}),
             ...(effortId(session.reasoningEffort) ? { reasoningEffort: session.reasoningEffort } : {}),

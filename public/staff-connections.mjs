@@ -3,6 +3,7 @@ import { DialogLayer } from './dialog-layer.mjs';
 import { apiRequest } from './api.mjs';
 import { escapeHtml as esc, providerLinks } from './model.mjs';
 import { connectionBadge } from './connection-status.mjs';
+import { identityMarkup, staffIdentity } from './session-identity.mjs';
 
 export function connectionType(connection) {
   if (!connection) return '연결 미지정';
@@ -33,7 +34,7 @@ export function connectionMarkup(agent, provider, connected = true) {
       : link.source === 'web' ? '웹 탭의 열림 상태를 관찰합니다. 로그인·응답 생성 여부는 확인하지 않으며, 대화 읽기와 지시 전송은 해당 서비스에서 진행하세요.'
         : link.kind === 'process' ? '실행 프로세스를 관찰합니다. 저장 대화와의 연결이 확인되지 않아 이 항목으로 지시를 보내지는 않습니다.'
           : '연결한 Codex 대화를 확인할 수 있습니다. 지시 전송은 호스트에서 명시적으로 허용한 경우에 사용할 수 있습니다.';
-  return `<section class="staff-connection-box" aria-label="직원 연결">${connectionBadge(!connected ? '서버 연결 끊김 · 마지막 수신 정보' : link ? `${connectionType(link)} · ${link.statusLabel}` : '연결 미지정', !connected ? 'disconnected' : link?.status === 'not_connected' ? 'unknown' : link?.status || 'not_connected')}<p>${esc(explanation)}</p>
+  return `<section class="staff-connection-box" aria-label="직원 연결">${staffIdentity(agent)}${connectionBadge(!connected ? '서버 연결 끊김 · 마지막 수신 정보' : link ? `${connectionType(link)} · ${link.statusLabel}` : '연결 미지정', !connected ? 'disconnected' : link?.status === 'not_connected' ? 'unknown' : link?.status || 'not_connected')}<p>${esc(explanation)}</p>
     ${link?.source === 'web' && link.tabCount ? `<p class="field-help">같은 감지 항목의 탭 ${esc(link.tabCount)}개</p>` : ''}
     <div class="detail-actions"><button type="button" class="button" data-connect-agent="${esc(agent.id)}" data-mutation>${link ? '연결 변경·다시 연결' : 'CLI·웹 연결'}</button>
     ${link ? `<button type="button" class="button button-caution" data-disconnect-agent="${esc(agent.id)}" data-revision="${agent.settingsRevision}" data-mutation>연결 해제</button>` : ''}
@@ -94,7 +95,7 @@ function initialize() {
     const employeeSelect = find('#staff-employee');
     const previous = preserveEmployee ? employeeSelect.value : '';
     const matching = agents.filter((agent) => agent.provider === entry?.provider);
-    employeeSelect.innerHTML = `${requestedAgent ? '' : '<option value="">새 직원 등록</option>'}${matching.filter((agent) => !requestedAgent || agent.id === requestedAgent.id).map((agent) => `<option value="${esc(agent.id)}">${esc(agent.name)} · 기존 직원${agent.connection ? ' (연결 변경)' : ''}</option>`).join('')}`;
+    employeeSelect.innerHTML = `${requestedAgent ? '' : '<option value="">새 직원 등록</option>'}${matching.filter((agent) => !requestedAgent || agent.id === requestedAgent.id).map((agent) => `<option value="${esc(agent.id)}">${esc(agent.name)} · ${esc(agent.connection?.sessionId || agent.connection?.entryId || '연결 미지정')} · 기존 직원${agent.connection ? ' (연결 변경)' : ''}</option>`).join('')}`;
     if (matching.some((agent) => agent.id === previous)) employeeSelect.value = previous;
     if (requestedAgent) employeeSelect.value = requestedAgent.id;
     const creating = !employeeSelect.value;
@@ -106,7 +107,9 @@ function initialize() {
       ? `${connectionType(entry)} · ${entry.scope} · ${entry.tabCount}개 탭. 관찰 전용이며 메시지는 원래 웹 서비스에서 작성하세요.`
       : entry?.kind === 'session' ? '선택한 CLI 대화 기록을 연결합니다. 지시 전송은 호스트의 허용 상태에 따릅니다.'
         : 'CLI 프로세스의 실행·종료를 관찰합니다. 대화 연결과 지시 전송은 별도로 지원되어야 합니다.');
+    find('#staff-source-identity').innerHTML = identityMarkup(entry?.sessionId || entry?.id, entry?.sessionId ? 'session-id' : '감지 ID · session-id 미확인');
     find('#staff-replace-help').hidden = !agents.find((agent) => agent.id === employeeSelect.value)?.connection;
+    find('#staff-employee-identity').innerHTML = staffIdentity(agents.find((agent) => agent.id === employeeSelect.value) || {});
   }
 
   async function open({ entryId, agentId, sessionOnly = false } = {}) {
@@ -133,10 +136,10 @@ function initialize() {
         return;
       }
       frame(`<form id="staff-connection-form" class="form-stack">
-        <div class="form-field"><label for="staff-entry">연결할 CLI·웹</label><select id="staff-entry" name="entryId">${entries.map((entry) => `<option value="${esc(entry.id)}">${esc(connectionType(entry))} · ${esc(entry.name)} · ${esc(entry.scope)}</option>`).join('')}</select><p id="staff-source-help" class="field-help"></p></div>
-        <div class="form-field"><label for="staff-employee">등록 방식</label><select id="staff-employee" name="agentId"></select><p id="staff-replace-help" class="field-help" hidden>이 직원의 기존 연결을 선택한 대상으로 변경합니다. 원래 CLI·웹은 종료하지 않습니다.</p></div>
-        <div id="staff-new-fields" class="field-row"><div class="form-field"><label for="staff-name">직원 이름</label><input id="staff-name" name="name" maxlength="40" autocomplete="off" placeholder="예: 리서치 담당" required></div><div class="form-field"><label for="staff-role">담당 역할</label><input id="staff-role" name="role" maxlength="120" autocomplete="off" placeholder="예: 자료 조사" required></div>${projectField({}, agents, null, 'register')}</div>
-        <p class="field-help">공급자는 선택한 대상에 맞춰 지정합니다. 직원 이름·역할은 저장되며 서버 재시작 후 감지 연결은 다시 선택합니다.</p>
+        <div class="form-field"><label for="staff-entry">연결할 CLI·웹</label><select id="staff-entry" name="entryId">${entries.map((entry) => `<option value="${esc(entry.id)}">${esc(connectionType(entry))} · ${esc(entry.sessionId || entry.id)} · ${esc(entry.scope)}</option>`).join('')}</select><div id="staff-source-identity"></div><p id="staff-source-help" class="field-help"></p></div>
+        <div class="form-field"><label for="staff-employee">등록 방식</label><select id="staff-employee" name="agentId"></select><div id="staff-employee-identity"></div><p id="staff-replace-help" class="field-help" hidden>이 직원의 기존 연결을 선택한 대상으로 변경합니다. 원래 CLI·웹은 종료하지 않습니다.</p></div>
+        <div id="staff-new-fields" class="field-row"><div class="form-field"><label for="staff-name">직원 별칭</label><input id="staff-name" name="name" maxlength="40" autocomplete="off" placeholder="예: 리서치 담당" required></div><div class="form-field"><label for="staff-role">담당 역할</label><input id="staff-role" name="role" maxlength="120" autocomplete="off" placeholder="예: 자료 조사" required></div>${projectField({}, agents, null, 'register')}</div>
+        <p class="field-help">공급자는 선택한 대상에 맞춰 지정합니다. 직원 별칭·역할은 저장됩니다. 현재 프로젝트의 살아 있는 Codex 세션은 재시작 후 같은 직원으로 연결하며, 웹·프로세스는 다시 선택합니다.</p>
         <div id="staff-error" class="form-error" role="alert" hidden></div><div class="form-actions"><button type="button" class="button" data-staff-refresh>목록 새로고침</button><button type="submit" id="staff-submit" class="button button-primary">직원 등록하고 연결</button></div></form>`);
       find('#staff-entry').value = entryId || entries.find((entry) => entry.linkedAgentId === agentId)?.id || entries[0].id;
       const draft = drafts.get(draftId);
@@ -199,6 +202,7 @@ function initialize() {
     const button = event.target.closest('button');
     if (!button || button.disabled) return;
     if (button.hasAttribute('data-open-staff-connection')) void open();
+    if (button.dataset.connectEntry) void open({ entryId: button.dataset.connectEntry });
     if (button.dataset.connectAgent) void open({ agentId: button.dataset.connectAgent });
     if (button.dataset.connectCommandAgent) void open({ agentId: button.dataset.connectCommandAgent, sessionOnly: true });
     if (button.dataset.disconnectAgent) void disconnect(button.dataset.disconnectAgent, Number(button.dataset.revision));
