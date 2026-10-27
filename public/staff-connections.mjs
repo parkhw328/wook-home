@@ -3,7 +3,7 @@ import { DialogLayer } from './dialog-layer.mjs';
 import { apiRequest } from './api.mjs';
 import { escapeHtml as esc, providerLinks } from './model.mjs';
 import { connectionBadge } from './connection-status.mjs';
-import { identityMarkup, staffIdentity } from './session-identity.mjs';
+import { identityMarkup, staffIdentity, discoveryName } from './session-identity.mjs';
 
 export function connectionType(connection) {
   if (!connection) return '연결 미지정';
@@ -95,7 +95,7 @@ function initialize() {
     const employeeSelect = find('#staff-employee');
     const previous = preserveEmployee ? employeeSelect.value : '';
     const matching = agents.filter((agent) => agent.provider === entry?.provider);
-    employeeSelect.innerHTML = `${requestedAgent ? '' : '<option value="">새 직원 등록</option>'}${matching.filter((agent) => !requestedAgent || agent.id === requestedAgent.id).map((agent) => `<option value="${esc(agent.id)}">${esc(agent.name)} · ${esc(agent.connection?.sessionId || agent.connection?.entryId || '연결 미지정')} · 기존 직원${agent.connection ? ' (연결 변경)' : ''}</option>`).join('')}`;
+    employeeSelect.innerHTML = `${requestedAgent ? '' : '<option value="">새 직원 등록</option>'}${matching.filter((agent) => !requestedAgent || agent.id === requestedAgent.id).map((agent, index) => `<option value="${esc(agent.id)}">${index + 1}. ${esc(agent.name)} · 기존 직원${agent.connection ? ' (연결 변경)' : ''}</option>`).join('')}`;
     if (matching.some((agent) => agent.id === previous)) employeeSelect.value = previous;
     if (requestedAgent) employeeSelect.value = requestedAgent.id;
     const creating = !employeeSelect.value;
@@ -103,7 +103,7 @@ function initialize() {
     find('#staff-name').required = creating;
     find('#staff-role').required = creating;
     find('#staff-submit').textContent = creating ? '직원 등록하고 연결' : '이 직원에게 연결';
-    find('#staff-source-help').textContent = `${entry?.name || ''} · ` + (entry?.source === 'web'
+    find('#staff-source-help').textContent = `${entry ? discoveryName(entry) : ''} · ` + (entry?.source === 'web'
       ? `${connectionType(entry)} · ${entry.scope} · ${entry.tabCount}개 탭. 관찰 전용이며 메시지는 원래 웹 서비스에서 작성하세요.`
       : entry?.kind === 'session' ? '선택한 CLI 대화 기록을 연결합니다. 지시 전송은 호스트의 허용 상태에 따릅니다.'
         : 'CLI 프로세스의 실행·종료를 관찰합니다. 대화 연결과 지시 전송은 별도로 지원되어야 합니다.');
@@ -136,7 +136,7 @@ function initialize() {
         return;
       }
       frame(`<form id="staff-connection-form" class="form-stack">
-        <div class="form-field"><label for="staff-entry">연결할 CLI·웹</label><select id="staff-entry" name="entryId">${entries.map((entry) => `<option value="${esc(entry.id)}">${esc(connectionType(entry))} · ${esc(entry.sessionId || entry.id)} · ${esc(entry.scope)}</option>`).join('')}</select><div id="staff-source-identity"></div><p id="staff-source-help" class="field-help"></p></div>
+        <div class="form-field"><label for="staff-entry">연결할 CLI·웹</label><select id="staff-entry" name="entryId">${entries.map((entry, index) => `<option value="${esc(entry.id)}">${index + 1}. ${esc(discoveryName(entry))} · ${esc(connectionType(entry))} · ${esc(entry.scope)}</option>`).join('')}</select><div id="staff-source-identity"></div><p id="staff-source-help" class="field-help"></p></div>
         <div class="form-field"><label for="staff-employee">등록 방식</label><select id="staff-employee" name="agentId"></select><div id="staff-employee-identity"></div><p id="staff-replace-help" class="field-help" hidden>이 직원의 기존 연결을 선택한 대상으로 변경합니다. 원래 CLI·웹은 종료하지 않습니다.</p></div>
         <div id="staff-new-fields" class="field-row"><div class="form-field"><label for="staff-name">직원 별칭</label><input id="staff-name" name="name" maxlength="40" autocomplete="off" placeholder="예: 리서치 담당" required></div><div class="form-field"><label for="staff-role">담당 역할</label><input id="staff-role" name="role" maxlength="120" autocomplete="off" placeholder="예: 자료 조사" required></div>${projectField({}, agents, null, 'register')}</div>
         <p class="field-help">공급자는 선택한 대상에 맞춰 지정합니다. 직원 별칭·역할은 저장됩니다. 현재 프로젝트의 살아 있는 Codex 세션은 재시작 후 같은 직원으로 연결하며, 웹·프로세스는 다시 선택합니다.</p>

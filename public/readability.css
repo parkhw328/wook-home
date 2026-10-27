@@ -217,10 +217,14 @@ dt, .task-filters { font-size: var(--font-control); }
   .detail-facts dd { font-size: var(--font-control); }
 }
 
-/* Session identity is readable in full even when aliases are identical. */
-.session-identity { display: block; min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; word-break: normal; text-overflow: clip; font-size: var(--font-caption); line-height: 1.75; }
-.session-identity > span { display: block; font-weight: 600; }
-.session-identity code { display: block; font: inherit; overflow-wrap: anywhere; white-space: normal; }
+/* Keep aliases compact; full identities appear only on hover/focus/tap. */
+.session-identity { display: inline-flex; align-items: center; justify-content: center; flex: none; margin-inline: .5rem; padding: 0 .25rem; border: 1px solid var(--line-strong); border-radius: 5px; color: var(--ink); background: var(--surface-alt); font-size: var(--font-caption); font-weight: 600; line-height: 1.6; vertical-align: middle; white-space: nowrap; }
+button.session-identity { min-width: 44px; min-height: 44px; font-size: var(--font-control); }
+.agent-info strong:has(+ .session-identity), .session-info strong:has(+ .session-identity), .room-entry strong:has(+ .session-identity) { display: inline; }
+.identity-tooltip { position: fixed; inset: auto; margin: 0; width: max-content; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow: auto; padding: .75rem; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); color: var(--ink); box-shadow: none; font-size: var(--font-control); line-height: 1.75; z-index: 1000; }
+.identity-tooltip > span { display: block; font-size: var(--font-caption); font-weight: 600; }
+.identity-tooltip code { display: block; font: inherit; overflow-wrap: anywhere; white-space: normal; user-select: text; }
+.identity-tooltip[hidden] { display: none; }
 .agent-info, .session-info, .room-entry > span, .discovery-card-heading > strong { min-width: 0; overflow-wrap: anywhere; }
 .unregistered-session { min-width: 0; display: grid; gap: .75rem; }
 .unregistered-session > .button { justify-self: start; }
@@ -229,4 +233,4 @@ dt, .task-filters { font-size: var(--font-control); }
 #staff-source-help, #cli-dialog-state, #modal-title { overflow-wrap: anywhere; }
 .search-result-open, #search-detail-title { overflow-wrap: anywhere; }
 #office-workspace .office-person { max-width: min(16rem, calc(100% - 16px)); white-space: normal; overflow: visible; overflow-wrap: anywhere; flex-wrap: wrap; }
-.office-person .session-identity { flex-basis: 100%; text-align: left; }
+.office-person .session-identity { margin-inline: .125rem; }

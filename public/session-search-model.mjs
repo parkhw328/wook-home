@@ -1,3 +1,5 @@
+import { identityMarkup, savedSessionIdentity } from './session-identity.mjs';
+
 export const escapeSearchText = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const graphemes = new Intl.Segmenter('und', { granularity: 'grapheme' });
 
@@ -35,8 +37,9 @@ export function highlightedText(content, query) {
 
 export function resultMarkup(item, query) {
   const { session } = item;
+  const identity = savedSessionIdentity(session);
   const provider = { openai: 'OpenAI', claude: 'Claude', gemini: 'Gemini', meta: 'Meta AI' }[session.provider] || session.provider;
-  return `<article class="search-result"><div class="search-result-meta"><span>${escapeSearchText(provider)} · ${session.source === 'cli' ? 'CLI' : 'WEB'}</span><span>${session.state === 'current' ? '현재 확인' : '보관 기록'}</span><span>${item.role === 'user' ? '사용자' : '에이전트'}</span></div><button type="button" class="search-result-open" data-search-session="${escapeSearchText(session.id)}" data-search-message="${escapeSearchText(item.key)}">${escapeSearchText(session.name)} <span aria-hidden="true">↗</span></button><p class="search-snippet">${highlightedText(item.snippet, query)}</p><p class="search-result-date">${escapeSearchText(item.timestamp ? new Date(item.timestamp).toLocaleString('ko-KR') : '메시지 시각 정보 없음')}${session.workspace ? ` · ${escapeSearchText(session.workspace)}` : ''}${session.truncated ? ' · 일부 기록' : ''}</p></article>`;
+  return `<article class="search-result"><div class="search-result-meta"><span>${escapeSearchText(provider)} · ${session.source === 'cli' ? 'CLI' : 'WEB'}</span><span>${session.state === 'current' ? '현재 확인' : '보관 기록'}</span><span>${item.role === 'user' ? '사용자' : '에이전트'}</span></div><button type="button" class="search-result-open" data-search-session="${escapeSearchText(session.id)}" data-search-message="${escapeSearchText(item.key)}">${escapeSearchText(identity.name)} ${identityMarkup(identity.id, 'session-id', true)} <span aria-hidden="true">↗</span></button><p class="search-snippet">${highlightedText(item.snippet, query)}</p><p class="search-result-date">${escapeSearchText(item.timestamp ? new Date(item.timestamp).toLocaleString('ko-KR') : '메시지 시각 정보 없음')}${session.workspace ? ` · ${escapeSearchText(session.workspace)}` : ''}${session.truncated ? ' · 일부 기록' : ''}</p></article>`;
 }
 
 // Late responses must never overwrite a newer query or a selected conversation.

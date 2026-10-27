@@ -4,6 +4,7 @@ import { executionFields, updateExecutionFields, executionSelectionReason, effor
 import { projectSummary, projectField, observedProject, preferenceSummary, commandSelection } from './staff-settings.mjs';
 import { connectionLocation, connectionSummary, connectionMarkup } from './staff-connections.mjs';
 import { identityMarkup, staffIdentity, lifecycleLabel, sessionAlias } from './session-identity.mjs';
+import { initializeIdentityTooltip } from './identity-tooltip.mjs';
 import { officeOccupants as observedOccupants } from './office-activity.mjs';
 import { OfficeWorkspace } from './workspace.mjs';
 import { DialogLayer } from './dialog-layer.mjs';
@@ -20,6 +21,7 @@ import {
 } from './model.mjs';
 
 const $ = (selector, root = document) => root.querySelector(selector);
+initializeIdentityTooltip(document);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const ICONS = {
   office: '<path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 9h1m4 0h1m-6 3h1m4 0h1"/>',
@@ -171,7 +173,7 @@ function renderCharacters() {
     used[room] = (used[room] || 0) + 1;
     return used[room] <= (room === 'office' ? 8 : ['meeting', 'executive'].includes(room) ? 4 : 2);
   }).slice(0, 16);
-  const signature = JSON.stringify([displayed.map(({ id, source, status, name, sessionStatus, sceneActivity, workArchive, connection }) => ({ id, source, status, name, sessionStatus, sceneActivity, workArchive, connection })), connected, state.office.paused]);
+  const signature = JSON.stringify([displayed.map(({ id, source, status, name, sessionStatus, sceneActivity, workArchive, connection }) => ({ id, source, status, name, sessionStatus, sceneActivity, workArchive, sessionId: connection?.sessionId, entryId: connection?.entryId })), connected, state.office.paused]);
   $('#office-scene').classList.toggle('motion-disabled', !motionEnabled);
   $('#scene-empty').hidden = occupants.length > 0;
   $('#office-meta').textContent = `${state.localSessions?.sessions?.length || 0} CLI · ${state.agents.length} 직원${occupants.length > displayed.length ? ` · 화면 ${displayed.length}명 표시` : ''}`;
@@ -184,7 +186,7 @@ function renderCharacters() {
     const isSession = occupant.source === 'session';
     const label = occupant.sceneActivity?.label || (isSession || occupant.sessionStatus ? sessionStatusLabel(occupant.sessionStatus || occupant.status) : statusLabel(occupant.status));
     const compactName = isSession ? occupant.name.replace(/^Codex\s*·\s*/, '') : occupant.name;
-    return `<button type="button" class="office-person ${statusClass(occupant.status)}" data-person-id="${esc(occupant.id)}" data-${occupant.source}="${esc(occupant.id)}" data-activity="${esc(occupant.sceneActivity?.kind || '')}" title="${esc(label)}" aria-label="${esc(occupant.name)} · ${esc(occupant.connection?.sessionId || occupant.connection?.entryId || '')} · ${label} 상세 보기"><i aria-hidden="true"></i>${esc(compactName)}${staffIdentity(occupant)}${occupant.sceneActivity ? `<span class="person-activity" aria-hidden="true">${occupant.sceneActivity.kind === 'collaborating' ? '협업' : '발표'}</span>` : ''}</button>`;
+    return `<button type="button" class="office-person ${statusClass(occupant.status)}" data-person-id="${esc(occupant.id)}" data-${occupant.source}="${esc(occupant.id)}" data-activity="${esc(occupant.sceneActivity?.kind || '')}" aria-label="${esc(occupant.name)} · ${esc(occupant.connection?.sessionId || occupant.connection?.entryId || '')} · ${label} 상세 보기"><i aria-hidden="true"></i>${esc(compactName)}${staffIdentity(occupant, true)}${occupant.sceneActivity ? `<span class="person-activity" aria-hidden="true">${occupant.sceneActivity.kind === 'collaborating' ? '협업' : '발표'}</span>` : ''}</button>`;
   }).join('');
   workspace.scene.syncPeople(displayed);
   if (previousId) $$(`[data-${previousSource}]`, $('#desk-grid')).find((node) => node.dataset[previousSource] === previousId)?.focus({ preventScroll: true });
@@ -192,8 +194,10 @@ function renderCharacters() {
 
 function renderAgents() {
   renderCharacters();
-  $('#agent-list').innerHTML = state.agents.length ? state.agents.map((agent) => `<div class="staff-card-group"><button type="button" class="agent-card" data-agent="${esc(agent.id)}">${avatar(agent)}<span class="agent-info"><strong>${esc(agent.name)}</strong>${staffIdentity(agent)}<small>${esc(agent.role)}</small><small class="staff-project">${esc(projectSummary(agent, state.localSessions))}</small>${agent.executionPreference ? `<small>${esc(preferenceSummary(agent))}</small>` : ''}</span>${badge(agent.status)}</button><button type="button" class="button button-small" data-edit-agent="${esc(agent.id)}" aria-label="${esc(agent.name)} 별칭과 직원 설정">별칭 · 직원 설정</button></div>`).join('')
+  const list = $('#agent-list');
+  const markup = state.agents.length ? state.agents.map((agent) => `<div class="staff-card-group"><button type="button" class="agent-card" data-agent="${esc(agent.id)}">${avatar(agent)}<span class="agent-info"><strong>${esc(agent.name)}</strong>${staffIdentity(agent, true)}<small>${esc(agent.role)}</small><small class="staff-project">${esc(projectSummary(agent, state.localSessions))}</small>${agent.executionPreference ? `<small>${esc(preferenceSummary(agent))}</small>` : ''}</span>${badge(agent.status)}</button><button type="button" class="button button-small" data-edit-agent="${esc(agent.id)}" aria-label="${esc(agent.name)} 별칭과 직원 설정">별칭 · 직원 설정</button></div>`).join('')
     : emptyState('첫 동료를 기다리고 있어요', '감지한 CLI·웹을 연결하거나 체험 직원을 채용해 보세요.', 'people');
+  if (list.dataset.signature !== markup) { list.innerHTML = markup; list.dataset.signature = markup; }
   const signature = JSON.stringify(state.providers);
   if (signature === providersSignature) return;
   providersSignature = signature;
@@ -219,7 +223,7 @@ function renderSessions() {
     sessionsSignature = signature;
     $('#session-list').innerHTML = sessions.length ? sessions.map((session) => {
     const status = observedSessionStatus(local, session, connected);
-    return `<article class="unregistered-session"><button type="button" class="session-card" aria-haspopup="dialog" data-session="${esc(session.id)}"><span class="session-symbol" aria-hidden="true">&gt;_</span><span class="session-info"><strong>미등록 Codex</strong>${identityMarkup(session.id)}<small>${esc(lifecycleLabel(session, observing))}</small></span><span class="status ${statusClass(status)}">${sessionStatusLabel(status)}</span></button><button type="button" class="button button-primary" data-connect-entry="cli:${esc(session.id)}" ${!observing ? 'disabled' : ''}>직원 등록 · 별칭 지정</button></article>`;
+    return `<article class="unregistered-session"><button type="button" class="session-card" aria-haspopup="dialog" data-session="${esc(session.id)}"><span class="session-symbol" aria-hidden="true">&gt;_</span><span class="session-info"><strong>미등록 Codex</strong>${identityMarkup(session.id, 'session-id', true)}<small>${esc(lifecycleLabel(session, observing))}</small></span><span class="status ${statusClass(status)}">${sessionStatusLabel(status)}</span></button><button type="button" class="button button-primary" data-connect-entry="cli:${esc(session.id)}" ${!observing ? 'disabled' : ''}>직원 등록 · 별칭 지정</button></article>`;
     }).join('') : observing
       ? emptyState('등록을 기다리는 세션이 없습니다', '생존이 확인된 현재 프로젝트 세션은 직원 목록에 자동 등록됩니다.', 'activity')
       : emptyState('로컬 CLI의 상태를 연결하세요', '선택한 작업 공간의 Codex 세션을 연결하세요. 왼쪽 연결 설정에서 공개 대화 읽기를 켜고 저장하세요.', 'activity');
@@ -517,7 +521,7 @@ function requestReleaseAgent(id) {
 }
 
 function openWorkConnections() {
-  openModal('업무와 연결 선택', '대화 · 지시 · 보관', `<p class="field-help">공개 대화와 후속 지시는 CLI 대화를 선택하세요. 직원 상세에서 보관·복귀·재연결할 수 있습니다. CLI의 질문 답변·실행 승인은 원래 CLI에서 처리합니다.</p>${state.agents.map((agent) => `<button type="button" class="room-entry" data-stat-agent="${esc(agent.id)}"><strong>${esc(agent.name)}</strong>${staffIdentity(agent)}<span>${agent.workArchive?.stored ? '창고 보관' : esc(connectionSummary(agent, state.providers.find((p) => p.id === agent.provider), connected))}</span></button>`).join('')}${orderedLocalSessions(state.localSessions).map((session) => `<div class="room-news"><strong>${esc(sessionAlias(state, session))}</strong>${identityMarkup(session.id)}<div class="detail-actions"><button type="button" class="button" data-session="${esc(session.id)}">대화 보기</button><button type="button" class="button" data-session-command="${esc(session.id)}">지시 · 접수 확인</button><button type="button" class="button" data-archive-session="${esc(session.id)}">업무 보관</button></div></div>`).join('') || '<p>관찰 중인 CLI 대화가 없습니다. 연결 설정 또는 이전 대화 검색을 확인해 주세요.</p>'}<div class="detail-actions"><button type="button" class="button" data-released-agents>직원 등록 해제 기록</button><button type="button" class="button" data-open-staff-connection>직원 다시 연결</button><a class="button" href="#connection-settings" data-open-connection-settings>연결 설정</a><a class="button" href="#search">이전 대화 검색</a></div>`, { type: 'work-connections' });
+  openModal('업무와 연결 선택', '대화 · 지시 · 보관', `<p class="field-help">공개 대화와 후속 지시는 CLI 대화를 선택하세요. 직원 상세에서 보관·복귀·재연결할 수 있습니다. CLI의 질문 답변·실행 승인은 원래 CLI에서 처리합니다.</p>${state.agents.map((agent) => `<button type="button" class="room-entry" data-stat-agent="${esc(agent.id)}"><strong>${esc(agent.name)}</strong>${staffIdentity(agent, true)}<span>${agent.workArchive?.stored ? '창고 보관' : esc(connectionSummary(agent, state.providers.find((p) => p.id === agent.provider), connected))}</span></button>`).join('')}${orderedLocalSessions(state.localSessions).map((session) => `<div class="room-news"><strong>${esc(sessionAlias(state, session))}</strong>${identityMarkup(session.id)}<div class="detail-actions"><button type="button" class="button" data-session="${esc(session.id)}">대화 보기</button><button type="button" class="button" data-session-command="${esc(session.id)}">지시 · 접수 확인</button><button type="button" class="button" data-archive-session="${esc(session.id)}">업무 보관</button></div></div>`).join('') || '<p>관찰 중인 CLI 대화가 없습니다. 연결 설정 또는 이전 대화 검색을 확인해 주세요.</p>'}<div class="detail-actions"><button type="button" class="button" data-released-agents>직원 등록 해제 기록</button><button type="button" class="button" data-open-staff-connection>직원 다시 연결</button><a class="button" href="#connection-settings" data-open-connection-settings>연결 설정</a><a class="button" href="#search">이전 대화 검색</a></div>`, { type: 'work-connections' });
 }
 
 function openArchive(id, session = false) {
@@ -525,7 +529,7 @@ function openArchive(id, session = false) {
   if (owner) return openArchive(owner.id);
   const item = session ? state.localSessions?.sessions?.find((item) => item.id === id) : state.agents.find((item) => item.id === id);
   if (!item || item.provider === 'demo') return;
-  openModal(`${item.name} · 업무 보관`, '창고 · 다음 행동', `${session ? identityMarkup(item.id) : staffIdentity(item)}<p class="field-help">${session ? '이 CLI 기록을 직원 업무로 등록해 보관합니다. ' : ''}보관 메모는 이 PC에만 저장하며 인계 내보내기에 포함하지 않습니다. 실제 CLI를 종료하거나 복원하지 않으며 복귀·재연결 후에도 지시는 직접 작성해야 합니다.</p><form id="archive-form" class="form-stack" data-id="${esc(id)}" data-session="${session}"><input type="hidden" name="settingsRevision" value="${item.settingsRevision || 0}"><label for="archive-note">완료한 일 · 남은 일 · 다음 행동</label><textarea id="archive-note" name="note" rows="6" maxlength="4000" placeholder="다음 세션에서 이어갈 업무를 적어 주세요.">${esc(item.workArchive?.note || '')}</textarea>${errorSlot()}${!session ? `<button type="button" class="button" data-refresh-archive="${esc(id)}">충돌 시 최신 버전 확인 · 메모 유지</button>` : ''}<div class="form-actions"><button type="button" class="button" data-close>닫기</button>${item.workArchive?.stored ? '<button type="submit" class="button" value="restore" data-mutation>메모 저장 · 사무실로 복귀</button>' : ''}<button type="submit" class="button button-primary" value="store" data-mutation>창고에 보관 · 메모 저장</button></div></form>`, { type: 'archive', id });
+  openModal(`${session ? sessionAlias(state, item) : item.name} · 업무 보관`, '창고 · 다음 행동', `${session ? identityMarkup(item.id) : staffIdentity(item)}<p class="field-help">${session ? '이 CLI 기록을 직원 업무로 등록해 보관합니다. ' : ''}보관 메모는 이 PC에만 저장하며 인계 내보내기에 포함하지 않습니다. 실제 CLI를 종료하거나 복원하지 않으며 복귀·재연결 후에도 지시는 직접 작성해야 합니다.</p><form id="archive-form" class="form-stack" data-id="${esc(id)}" data-session="${session}"><input type="hidden" name="settingsRevision" value="${item.settingsRevision || 0}"><label for="archive-note">완료한 일 · 남은 일 · 다음 행동</label><textarea id="archive-note" name="note" rows="6" maxlength="4000" placeholder="다음 세션에서 이어갈 업무를 적어 주세요.">${esc(item.workArchive?.note || '')}</textarea>${errorSlot()}${!session ? `<button type="button" class="button" data-refresh-archive="${esc(id)}">충돌 시 최신 버전 확인 · 메모 유지</button>` : ''}<div class="form-actions"><button type="button" class="button" data-close>닫기</button>${item.workArchive?.stored ? '<button type="submit" class="button" value="restore" data-mutation>메모 저장 · 사무실로 복귀</button>' : ''}<button type="submit" class="button button-primary" value="store" data-mutation>창고에 보관 · 메모 저장</button></div></form>`, { type: 'archive', id });
 }
 
 function openAgent(id) {
@@ -548,7 +552,7 @@ function openSession(id) {
   const session = state.localSessions?.sessions?.find((item) => item.id === id);
   if (!session) return;
   const status = observedSessionStatus(state.localSessions, session, connected);
-  openModal(session.name, 'LOCAL CLI · SESSION', `<div class="info-box">${icon('activity')}<span>연결 설정에서 지시 전송을 켜면 기존 Codex 세션에 지시할 수 있습니다. 세션을 클릭하면 대화기록 모달에서 공개 응답을 확인할 수 있습니다. 승인·중단은 원래 CLI에서 처리하세요.</span></div><button type="button" class="button button-small" data-session="${esc(id)}">대화기록 보기 ↗</button>
+  openModal(sessionAlias(state, session), 'LOCAL CLI · SESSION', `<div class="info-box">${icon('activity')}<span>연결 설정에서 지시 전송을 켜면 기존 Codex 세션에 지시할 수 있습니다. 세션을 클릭하면 대화기록 모달에서 공개 응답을 확인할 수 있습니다. 승인·중단은 원래 CLI에서 처리하세요.</span></div><button type="button" class="button button-small" data-session="${esc(id)}">대화기록 보기 ↗</button>
     ${identityMarkup(session.id)}<dl class="detail-facts session-facts"><div><dt>관찰된 상태</dt><dd id="observed-status">${sessionStatusLabel(status)}</dd></div><div><dt>마지막 활동</dt><dd id="observed-last-event">${displayTime(session.lastActivityAt)}</dd></div><div><dt>연결 상태</dt><dd id="observed-connection">${state.localSessions.status === 'connected' && connected ? '관찰 연결됨' : '관찰 연결 끊김'}</dd></div><div><dt>작업 공간</dt><dd>${esc(state.localSessions.workspace || '현재 작업 공간')}</dd></div></dl>
     <p class="field-help">사무실 중지는 외부 CLI를 멈추지 않습니다. <a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/CLI" target="_blank" rel="noopener noreferrer">상태·연결 도움말 ↗</a></p>
     ${commandPanel(id)}`, { type: 'session', id });
@@ -694,7 +698,7 @@ function renderStatDetails() {
   $('#stat-detail-connection', body).hidden = connected;
   const list = $('#stat-detail-list', body);
   const content = items.length ? items.map((item) => key === 'agents'
-    ? `<button type="button" class="agent-card stat-detail-entry" data-stat-agent="${esc(item.id)}">${avatar(item)}<span class="agent-info"><strong>${esc(item.name)}</strong>${staffIdentity(item)}<small>${esc(item.role)}</small><small class="staff-project">${esc(projectSummary(item, state.localSessions))}</small></span>${badge(item.status)}<span class="stat-entry-link">직원 상세 ↗</span></button>`
+    ? `<button type="button" class="agent-card stat-detail-entry" data-stat-agent="${esc(item.id)}">${avatar(item)}<span class="agent-info"><strong>${esc(item.name)}</strong>${staffIdentity(item, true)}<small>${esc(item.role)}</small><small class="staff-project">${esc(projectSummary(item, state.localSessions))}</small></span>${badge(item.status)}<span class="stat-entry-link">직원 상세 ↗</span></button>`
     : taskRow(item)).join('') : emptyState(detail.empty, '현황이 바뀌면 이 목록에도 자동으로 반영됩니다.', key === 'agents' ? 'people' : 'task');
   if (list.dataset.signature === content) return;
   const focus = document.activeElement;

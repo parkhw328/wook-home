@@ -55,3 +55,5 @@ Codex는 `CODEX_HOME` 또는 기본 `.codex`, Claude Code는 `CLAUDE_CONFIG_DIR`
 검색 사본은 Docker의 `office-data` 볼륨에 있는 `session-search.sqlite`에 저장합니다. CLI 연결기 사본은 호스트의 `data/bridge/search-history`에 있습니다. 검색어·본문을 로그, 일반 상태 API, 업무 인계, Git, Docker 이미지, 공개 Wiki에 넣지 않습니다. PC 간 자동 동기화·외부 전송도 하지 않습니다.
 
 [CLI 연결](CLI.md) · [웹 감지](Detection.md) · [사무실 사용법](UI.md)
+
+검색 결과에는 서비스 이름과 작은 **ID** 표시를 사용합니다. 결과에 마우스를 올리거나 키보드 초점을 맞추면 전체 세션 ID가 보입니다. 터치에서는 보관 대화를 연 뒤 **ID** 버튼을 누르세요.

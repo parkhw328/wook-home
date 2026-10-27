@@ -51,7 +51,7 @@ export function activityRoomMarkup(room, actors, selectedId) {
   return `<div class="room-section-label">${label} <span>${participants.length}</span></div>`
     + participants.map((actor) => {
       const id = actor.source === 'session' ? actor.id : actor.connection?.sessionId;
-      return `<button class="room-entry activity-entry" type="button" data-workspace-session="${esc(id)}" aria-pressed="${selectedId === id}"><span class="entry-symbol" aria-hidden="true">${room === 'meeting' ? '↔' : '↗'}</span><span><strong>${esc(actor.name)}</strong>${staffIdentity(actor)}<small>${esc(actor.sceneActivity.label)}</small></span></button>`;
+      return `<button class="room-entry activity-entry" type="button" data-workspace-session="${esc(id)}" aria-pressed="${selectedId === id}"><span class="entry-symbol" aria-hidden="true">${room === 'meeting' ? '↔' : '↗'}</span><span><strong>${esc(actor.name)}</strong>${staffIdentity(actor, true)}<small>${esc(actor.sceneActivity.label)}</small></span></button>`;
     }).join('')
     + `<p class="activity-note">${room === 'meeting' ? '확인된 메시지 전달을 최대 60초 표시합니다. 세션을 선택해 공개 대화를 확인하세요.' : '대화를 확인하고 원래 Codex 창에서 질문에 답하거나 실행을 승인하세요.'}</p>`;
 }

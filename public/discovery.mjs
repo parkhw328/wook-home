@@ -4,7 +4,7 @@ import { escapeHtml as esc, sessionStatusLabel, displayTime } from './model.mjs'
 import './staff-connections.mjs';
 import { mountBridgeSettings } from './bridge-settings.mjs';
 import { connectionBadge, connectionTone } from './connection-status.mjs';
-import { identityMarkup, lifecycleLabel } from './session-identity.mjs';
+import { identityMarkup, lifecycleLabel, discoveryName } from './session-identity.mjs';
 
 const GUIDE = 'https://github.com/parkhw328/wook-home/wiki/Detection';
 const ENABLED_KEY = 'stackqueue.web-detection.enabled';
@@ -32,7 +32,7 @@ export function checksMarkup(checks, online = true) {
 
 export function entriesMarkup(entries, online = true) {
   return entries.map((entry) => `<article class="discovery-card" data-tone="${connectionTone(online ? entry.status : 'disconnected')}">
-    <div class="discovery-card-heading"><strong>${esc(entry.name)}</strong>${connectionBadge(online ? entryStatus(entry) : '서버 연결 끊김', online ? entry.status : 'disconnected')}</div>
+    <div class="discovery-card-heading"><strong>${esc(discoveryName(entry))}</strong>${connectionBadge(online ? entryStatus(entry) : '서버 연결 끊김', online ? entry.status : 'disconnected')}</div>
     <div class="discovery-card-body">${identityMarkup(entry.sessionId || entry.id, entry.sessionId ? 'session-id' : '감지 ID · session-id 미확인')}<p>${esc(entryDescription(entry))}</p><small>${entry.kind === 'process' && entry.status === 'exited' ? '종료 시각' : entry.source === 'web' || entry.kind === 'process' ? '마지막 확인' : '마지막 활동'} ${esc(displayTime(entry.endedAt || entry.updatedAt || entry.lastActivityAt))}<br>${!online ? '마지막 수신 상태 · 현재 실행 여부 확인 불가' : entry.canControl ? '기존 CLI 목록에서 지시 가능' : '관찰 전용'}</small></div>
     <div class="discovery-card-actions">${entry.linkedAgentId ? `<button type="button" class="button button-small" data-agent="${esc(entry.linkedAgentId)}" ${!online ? 'disabled' : ''}>${esc(entry.linkedAgentName)} 보기</button>`
       : `<button type="button" class="button button-small" data-connect-entry="${esc(entry.id)}" ${!online || !entry.canRegister ? 'disabled' : ''}>직원 등록·연결</button>`}</div></article>`).join('');

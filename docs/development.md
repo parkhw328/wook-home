@@ -143,6 +143,9 @@ CLI 전용 검증은 같은 합성 서버에서 실행하며 결과와 화면을
 node tests/browser/session-registration-preview.mjs
 # 다른 터미널에서, 합성 서버에만 실행
 python tests/browser/session-registration.py
+python tests/browser/session-identity.py
 ```
 
-자동 테스트는 `npm test`에 포함된다. 브라우저 검증은 같은 앞·뒤 글자의 세 세션, 자동 등록·별칭·수동 등록·해제·초안, 두 테마·5개 화면 폭·실제 200% 확대를 검사하며 결과는 Git 제외 `artifacts/session-registration/`에 저장한다. [검증 범위](session-registration-validation.md).
+자동 테스트는 `npm test`에 포함된다. 브라우저 검증은 같은 앞·뒤 글자의 세 세션, 자동 등록·별칭·수동 등록·해제·초안, 기본 ID 숨김과 마우스 올림·키보드 초점·터치 확인, 두 테마·5개 화면 폭·실제 200% 확대를 검사하며 결과는 Git 제외 `artifacts/session-registration/`에 저장한다. [검증 범위](session-registration-validation.md).
+
+ID 전용 브라우저 검증은 터치와 자동 갱신, 전체화면·감지·현황·검색에서 전체 ID 확인과 닫기를 검사한다. 검색 응답은 합성 자료로 대체하며 실제 보관함이나 사용자 자료에 접근하지 않는다.

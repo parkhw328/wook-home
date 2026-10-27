@@ -1,3 +1,4 @@
+import { identityMarkup, savedSessionIdentity } from './session-identity.mjs';
 import { DialogLayer } from './dialog-layer.mjs';
 import { browserId, searchImportClient, localExtensionAvailable } from './browser-id.mjs';
 import { apiRequest } from './api.mjs';
@@ -127,8 +128,10 @@ $('#search-results').addEventListener('click', async (event) => {
     const result = await detailRequest.run((signal) => apiRequest(`/search/sessions/${button.dataset.searchSession}`, { signal }));
     if (!result || !$('#search-dialog').open) return;
     const { session, messages } = result.value;
-    $('#search-dialog-title').textContent = session.name;
+    const identity = savedSessionIdentity(session);
+    $('#search-dialog-title').textContent = identity.name;
     $('#search-dialog-info').textContent = `${session.source === 'cli' ? 'CLI' : '웹'} · ${messages.length}개 메시지${session.truncated ? ' · 일부 기록만 보관됨' : ''} · 읽기 전용 검색 사본`;
+    $('#search-dialog-info').insertAdjacentHTML('afterbegin', identityMarkup(identity.id));
     const link = $('#search-original-link');
     if (session.url) { link.href = session.url; link.hidden = false; }
     $('#search-dialog-messages').innerHTML = messages.map((message) => `<article class="search-message${message.key === button.dataset.searchMessage ? ' selected' : ''}" data-message-key="${esc(message.key)}"><header><strong>${message.role === 'user' ? '사용자' : '에이전트'}</strong><span>${esc(message.timestamp ? new Date(message.timestamp).toLocaleString('ko-KR') : '시각 정보 없음')}</span></header><p>${highlightedText(message.content, activeQuery)}</p>${message.truncated ? '<small>긴 메시지 일부 생략</small>' : ''}</article>`).join('');

@@ -9,7 +9,11 @@ test('same alias and identical UUID suffixes remain distinct in full identity ma
   const state = { agents: sessions.map((session, i) => ({ id: `employee-${i}`, name: '동료', connection: { sessionId: session.id } })) };
   for (const [i, session] of sessions.entries()) {
     assert.equal(sessionAlias(state, session), '동료');
-    assert.ok(staffIdentity(state.agents[i]).includes(`<code>${session.id}</code>`));
+    const markup = staffIdentity(state.agents[i]);
+    assert.ok(markup.includes(`data-session-identity="${session.id}"`));
+    assert.doesNotMatch(markup.replace(/<[^>]+>/g, ''), /00000000/);
+    assert.match(markup, /^<button type="button"/);
+    assert.doesNotMatch(staffIdentity(state.agents[i], true), /<button|tabindex/);
   }
   assert.doesNotMatch(identityMarkup('<script>&'), /<script>/);
   assert.match(staffIdentity({ connection: { entryId: 'process:opaque-identity' } }), /session-id 미확인/);

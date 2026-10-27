@@ -67,10 +67,12 @@ export class CliConversationDialog {
     const session = sessions.find((item) => item.id === this.id);
     const options = sessions.some((item) => item.id === this.id) ? sessions : [...sessions, { id: this.id }];
     const select = this.find('#cli-dialog-session');
-    const markup = options.map((item) => `<option value="${esc(item.id)}">${esc(sessionAlias(state, item))} · ${esc(item.id)}</option>`).join('');
+    const markup = options.map((item, index) => `<option value="${esc(item.id)}">${index + 1}. ${esc(sessionAlias(state, item))}</option>`).join('');
     if (select.dataset.signature !== markup) { select.innerHTML = markup; select.dataset.signature = markup; }
     select.value = this.id;
-    this.find('#cli-dialog-state').innerHTML = `${esc(sessionAlias(state, { id: this.id }))}${identityMarkup(this.id)}${esc(state.localSessions?.workspace || '선택한 프로젝트')} · ${session ? esc(lifecycleLabel(session, connected && state.localSessions?.status === 'connected')) + ' · ' + sessionStatusLabel(observedSessionStatus(state.localSessions, session, connected)) : '현재 관찰 목록에서 벗어남'}`;
+    const summary = `${esc(sessionAlias(state, { id: this.id }))}${identityMarkup(this.id)}${esc(state.localSessions?.workspace || '선택한 프로젝트')} · ${session ? esc(lifecycleLabel(session, connected && state.localSessions?.status === 'connected')) + ' · ' + sessionStatusLabel(observedSessionStatus(state.localSessions, session, connected)) : '현재 관찰 목록에서 벗어남'}`;
+    const summaryNode = this.find('#cli-dialog-state');
+    if (summaryNode.dataset.signature !== summary) { summaryNode.innerHTML = summary; summaryNode.dataset.signature = summary; }
     this.agentId = state.agents.find((agent) => agent.connection?.sessionId === this.id)?.id;
     this.find('[data-cli-agent]').hidden = !this.agentId;
     this.find('[data-archive-session]').dataset.archiveSession = this.id;
