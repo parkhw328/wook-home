@@ -71,7 +71,7 @@ export function createLocalCommands({ directory, observer, office, isArchivedSes
         if (existing.fingerprint !== fingerprint) throw new ApiError(409, 'COMMAND_ID_CONFLICT', '이미 다른 지시에 사용된 ID입니다.');
         return receipt(existing);
       }
-      if (isArchivedSession(sessionId)) throw new ApiError(409, 'WORK_ARCHIVED', '창고에서 업무를 복귀한 후 새 지시를 작성해 주세요.');
+      if (isArchivedSession(sessionId)) throw new ApiError(409, 'WORK_ARCHIVED', '대기실에서 업무를 복귀한 후 새 지시를 작성해 주세요.');
       if (office.snapshot().office.paused) throw new ApiError(409, 'OFFICE_PAUSED', '사무실을 재개한 뒤 지시해 주세요.');
       const state = observer.snapshot();
       const settings = readBridgeSettings(directory);

@@ -1,4 +1,5 @@
-export const VERSION = '0.1.0-dev';
+import metadata from '../package.json' with { type: 'json' };
+export const VERSION = metadata.version;
 
 const unavailableCapabilities = {
   createSession: false,

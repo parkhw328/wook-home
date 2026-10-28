@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { open, readdir, stat } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { collectConversation } from './codex-conversations.mjs';
@@ -99,5 +100,5 @@ export async function collectSessions({ sessionsDir, workspace, clock = Date.now
     if (session && !sessions.some((item) => item.id === session.id)) sessions.push(session);
     if (sessions.length === 24) break;
   }
-  return { schemaVersion: 1, generatedAt: new Date(current).toISOString(), workspace: basename(resolve(workspace)), activities: { enabled: true }, sessions: connectActivities(sessions) };
+  return { schemaVersion: 1, generatedAt: new Date(current).toISOString(), workspace: basename(resolve(workspace)), workspaceKey: createHash('sha256').update(pathKey(workspace)).digest('hex'), activities: { enabled: true }, sessions: connectActivities(sessions) };
 }

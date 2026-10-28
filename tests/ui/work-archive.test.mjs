@@ -21,7 +21,7 @@ test('archived linked staff remain one actor and never announce live activity or
   assert.equal(actors.length, 1);
   assert.equal(actors[0].sceneActivity, null);
   assert.equal(occupantRoom(actors[0]), 'warehouse');
-  assert.match(commandUnavailableReason(state, 's'), /창고/);
+  assert.match(commandUnavailableReason(state, 's'), /대기실/);
   state.agents[0].workArchive.stored = false;
   assert.equal(commandUnavailableReason(state, 's'), '');
   state.localSessions.sessions[0].canControl = false;

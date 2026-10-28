@@ -23,7 +23,7 @@ test('admin login gates APIs, changes bootstrap password, expires and invalidate
   const base = `http://127.0.0.1:${server.address().port}`;
   let cookie = '';
   const call = (path, body, headers = {}) => fetch(`${base}${path}`, { redirect: 'manual', method: body ? 'POST' : 'GET', headers: { Cookie: cookie, 'Content-Type': 'application/json', ...headers }, ...(body ? { body: JSON.stringify(body) } : {}) });
-  for (const path of ['/api/state', '/api/handoff', '/api/search/status', '/api/discovery', '/api/bridge/settings']) assert.equal((await call(path)).status, 401);
+  for (const path of ['/api/state', '/api/handoff', '/api/search/status', '/api/discovery', '/api/bridge/settings', '/api/history/query']) assert.equal((await call(path)).status, 401);
   assert.equal((await call('/')).headers.get('location'), '/login.html');
   assert.equal((await call('/api/auth/login', { username: 'admin', password: initial }, { Origin: 'https://wrong.invalid' })).status, 403);
   assert.equal((await call('/api/auth/login', { username: 'admin', password: 'incorrect' })).status, 401);

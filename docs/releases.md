@@ -1,6 +1,6 @@
 # 버전 및 릴리스 관리
 
-현재는 미출시 상태다. 첫 실행 가능한 검증 버전부터 0.x.y를 사용하고, 안정화 시 1.0.0으로 전환한다.
+현재 개발 버전은 0.2.0이다. 로그인·프로젝트 층·히스토리 기능을 중(MINOR) 버전으로 기록했다. 안정화 시 1.0.0으로 전환한다.
 
 ## 버전 선택
 
@@ -17,7 +17,7 @@
 1. 출시 범위를 정하고 관련 테스트·빌드·실행 검증을 수행한다.
 2. 사용설명서와 README를 실제 제공 기능에 맞게 갱신한다.
 3. CHANGELOG.md의 해당 Unreleased 내용을 버전과 날짜(YYYY-MM-DD) 아래로 옮긴다.
-4. 프로젝트에 버전 필드가 도입되면 코드·패키지·배포물 버전을 일치시킨다.
+4. `npm version minor --no-git-tag-version` 또는 `npm version patch --no-git-tag-version`으로 package.json과 lockfile을 갱신한다. 서버·화면은 package.json의 버전을 그대로 사용한다. 문서와 CHANGELOG의 날짜·버전도 갱신한다.
 5. 변경을 커밋·푸시하고 검증한 커밋에 vMAJOR.MINOR.PATCH 태그를 생성·푸시한다.
 6. 해당 태그의 GitHub Release에 아래 내용을 작성하고 검증된 배포물만 첨부한다. 시험 배포는 prerelease로 표시한다.
 7. 게시 결과, 태그와 다운로드 링크를 확인하고 새 Unreleased 항목을 유지한다.

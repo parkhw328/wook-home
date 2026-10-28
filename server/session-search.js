@@ -233,9 +233,17 @@ export function createSessionSearch({ directory, bridgeFile, observer, clock = D
       return { query, total, offset, limit: 30, results: rows.map((row) => ({ session: session(row, current), key: row.key, role: row.role,
         timestamp: row.timestamp, snippet: excerpt(row.content, query) })) };
     },
-    async detail(id) {
+    async history() {
       await sync();
-      const scope = scopeClause();
+      const rows = db.prepare("SELECT s.*,COUNT(m.key) AS messages,MAX(CASE WHEN m.position=0 THEN m.content END) AS preview FROM search_sessions s LEFT JOIN search_messages m ON m.session_id=s.id WHERE s.source='cli' GROUP BY s.id ORDER BY s.updated_at DESC LIMIT 1000").all();
+      return { collection, limited: Boolean(manifest?.limited || rows.length >= 1000), skipped: manifest?.skipped || 0,
+        records: rows.map((row) => ({ id: row.id, kind: 'cli', projectId: row.workspace_key, projectName: row.workspace,
+          title: excerpt(row.preview || '공개 대화 기록', '').slice(0, 160), provider: row.provider,
+          updatedAt: row.updated_at, messageCount: row.messages, truncated: Boolean(row.truncated) })) };
+    },
+    async detail(id, { history = false } = {}) {
+      await sync();
+      const scope = history ? { clause: "s.source='cli' AND ?=1", value: 1 } : scopeClause();
       const row = keyPattern.test(id) && db.prepare(`SELECT s.* FROM search_sessions s WHERE s.id=? AND ${scope.clause}`).get(id, scope.value);
       if (!row) throw new ApiError(404, 'SEARCH_SESSION_NOT_FOUND', '보관된 대화를 찾을 수 없습니다.');
       return { session: session(row, states()), messages: db.prepare('SELECT key,role,content,timestamp,truncated FROM search_messages WHERE session_id=? ORDER BY position').all(id) };

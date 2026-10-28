@@ -1,3 +1,4 @@
+import { assignedProject, ensureProject } from './projects.js';
 import { randomUUID } from 'node:crypto';
 import { VERSION, programs, providers } from './catalog.js';
 import { modelId, effortId, supportsExecutionOptions } from './execution-options.js';
@@ -90,12 +91,20 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
   }
   state.releasedAgents ??= [];
   state.sessionRegistry ??= {};
+  state.projects ??= [];
   state.office.version = VERSION;
   state.office.name = officeName;
-  for (const agent of state.agents) {
+  for (const agent of [...state.agents, ...state.releasedAgents]) {
     agent.projectName ??= '';
+    agent.assignedProjectId = assignedProject(state, agent.projectName);
     agent.executionPreference ??= null;
     agent.settingsRevision ??= 0;
+  }
+  for (const task of state.tasks) {
+    if (!Object.hasOwn(task, 'projectId')) {
+      const agent = [...state.agents, ...state.releasedAgents].find((item) => item.id === task.agentId);
+      task.projectId = agent?.observedProjectId || agent?.assignedProjectId || null;
+    }
   }
   store.save(state);
 
@@ -128,12 +137,21 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
   }
 
   return {
+    observeProject(id, workspace) {
+      const key = workspace?.workspaceKey && workspace.workspace ? workspace.workspaceKey : null;
+      const agent = state.agents.find((item) => item.id === id);
+      if (!agent || (agent.observedProjectId || null) === key) return;
+      update((next) => {
+        const target = next.agents.find((item) => item.id === id);
+        target.observedProjectId = key ? ensureProject(next, key, workspace.workspace, 'folder').id : null;
+      });
+    },
     sessionRegistration(key) { return state.sessionRegistry[key]; },
     hasSessionRegistration(id) { return Object.values(state.sessionRegistry).includes(id); },
     snapshot() {
       const output = structuredClone(state);
       output.tasks.forEach((task) => delete task.previousStatus);
-      return { office: output.office, providers: structuredClone(providers), agents: output.agents, releasedAgents: output.releasedAgents, tasks: output.tasks, events: output.events, programs: structuredClone(programs) };
+      return { office: output.office, projects: output.projects, providers: structuredClone(providers), agents: output.agents, releasedAgents: output.releasedAgents, tasks: output.tasks, events: output.events, programs: structuredClone(programs) };
     },
     hire(body, preference = null, archiveNote = null, registrationKey = null) {
       fields(body, ['name', 'role', 'provider', 'model', 'reasoningEffort', 'projectName']);
@@ -153,6 +171,7 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
           projectName: projectName(body.projectName), executionPreference: null, settingsRevision: 0,
           createdAt: now(), updatedAt: now(),
         };
+        agent.assignedProjectId = assignedProject(next, agent.projectName);
         if (connection) agent.connectionPreference = connection;
         if (archiveNote !== null) agent.workArchive = { stored: true, note: text(archiveNote, '보관 메모', 4000, false), updatedAt: now() };
         registerSession(next, agent.id, registrationKey);
@@ -199,17 +218,18 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
       });
     },
     archiveAgent(id, body) {
-      fields(body, ['stored', 'note', 'settingsRevision']);
+      fields(body, ['stored', 'note', 'settingsRevision', 'projectName']);
       if (typeof body.stored !== 'boolean' || !Number.isSafeInteger(body.settingsRevision)) fail(400, 'VALIDATION_ERROR', '보관 여부와 최신 직원 설정 버전이 필요합니다.');
       return update((next) => {
         const agent = next.agents.find((item) => item.id === id);
         if (!agent) fail(404, 'NOT_FOUND', '직원을 찾을 수 없습니다.');
         if (agent.settingsRevision !== body.settingsRevision) fail(409, 'SETTINGS_CONFLICT', '다른 화면에서 직원 정보를 변경했습니다. 메모를 보존하고 최신 정보를 다시 확인해 주세요.');
         if (agent.provider === 'demo') fail(409, 'PROVIDER_MISMATCH', '체험 업무는 업무보고에서 관리해 주세요.');
+        if (body.projectName !== undefined) { agent.projectName = projectName(body.projectName); agent.assignedProjectId = assignedProject(next, agent.projectName); }
         agent.workArchive = { stored: body.stored, note: text(body.note, '보관 메모', 4000, false), updatedAt: now() };
         agent.settingsRevision += 1;
         agent.updatedAt = now();
-        event(next, 'agent.archive.updated', body.stored ? '직원 업무를 창고에 보관했습니다.' : '보관 업무를 사무실로 복귀했습니다. 실제 실행은 별도로 확인해 주세요.');
+        event(next, 'agent.archive.updated', body.stored ? '직원 업무를 대기실에 보관했습니다.' : '보관 업무를 사무실로 복귀했습니다. 실제 실행은 별도로 확인해 주세요.');
         return agent;
       });
     },
@@ -240,7 +260,7 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
         const provider = providers.find((item) => item.id === agent.provider);
         if (body.name !== undefined) agent.name = text(body.name, '이름', 40);
         if (body.role !== undefined) agent.role = text(body.role, '역할', 120);
-        if (body.projectName !== undefined) agent.projectName = projectName(body.projectName);
+        if (body.projectName !== undefined) { agent.projectName = projectName(body.projectName); agent.assignedProjectId = assignedProject(next, agent.projectName); }
         if (body.executionPreference !== undefined) {
           const selection = body.executionPreference;
           if (selection !== null) {
@@ -274,7 +294,7 @@ export function createOffice(store, { name = 'StackQueue Office' } = {}) {
         if (next.tasks.some((task) => task.agentId === agent.id && !finished.has(task.status))) fail(409, 'AGENT_BUSY', '이 직원의 기존 업무를 완료하거나 취소해 주세요.');
         if (next.tasks.length >= 1000) fail(409, 'LIMIT_REACHED', '초기 버전의 업무 저장 한도에 도달했습니다.');
         const task = {
-          id: randomUUID(), agentId: agent.id, title: text(body.title, '업무 제목', 120),
+          id: randomUUID(), agentId: agent.id, projectId: agent.observedProjectId || agent.assignedProjectId || null, title: text(body.title, '업무 제목', 120),
           description: text(body.description, '업무 설명', 4000, false), status: 'waiting_input', result: '',
           messages: [message('assistant', '[체험 안내] 실제 AI를 호출하지 않는 업무 흐름입니다. 이 업무에서 가장 중요하게 확인할 점을 알려주세요.')],
           createdAt: now(), updatedAt: now(),

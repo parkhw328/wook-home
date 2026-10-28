@@ -1,3 +1,4 @@
+import { officeHistory } from './history.js';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
@@ -84,6 +85,9 @@ export function createHttpServer(office, { publicDir = resolve('public'), bridge
       }
       if (method === 'GET' && path === '/api/bridge/settings') return json(response, 200, settings.snapshot());
       if (method === 'PUT' && path === '/api/bridge/settings') return json(response, 200, settings.configure(await bodyOf(request, 4096)));
+      if (method === 'POST' && path === '/api/history/query') return json(response, 200, await officeHistory(office, search, await bodyOf(request, 4096)));
+      const historySession = /^\/api\/history\/sessions\/([a-f0-9]{64})$/.exec(path);
+      if (method === 'GET' && historySession) return json(response, 200, await search.detail(historySession[1], { history: true }));
       if (method === 'GET' && path === '/api/search/status') return json(response, 200, await search.status());
       if (method === 'POST' && path === '/api/search/query') return json(response, 200, await search.query(await bodyOf(request)));
       if (method === 'PUT' && path === '/api/search/settings') return json(response, 200, search.configure(await bodyOf(request)));

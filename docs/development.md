@@ -49,7 +49,7 @@ docker compose ps
 docker compose stop
 ```
 
-컨테이너는 비루트 사용자로 실행하며 정적 파일과 서버 코드만 이미지에 복사한다. 데이터 볼륨·지시 폴더·임시 디렉터리만 쓰기를 허용한다. 호스트의 `data/bridge`는 `/app/bridge`에 읽기 전용으로, `data/bridge/commands`는 `/app/commands`에 읽기·쓰기로 마운트한다. 두 바인드 마운트의 `z` 옵션은 Linux SELinux의 공유 레이블을 지정한다. 지시 본문은 CLI 호출 전에 제거한다. Compose는 기본 127.0.0.1에 바인딩한다. `WOOK_BIND_ADDRESS=0.0.0.0`으로 네트워크 접속을 켤 때 `OFFICE_ALLOWED_HOSTS`에 사용할 서버 주소와 포트를 쉼표로 지정한다. 실제 IP 설정은 Git 제외 `.env`에 두고 예시는 `.env.example`을 따른다. 같은 출처 검사는 유지하며 외부 접속용 인증 기능은 없다.
+컨테이너는 비루트 사용자로 실행하며 정적 파일과 서버 코드만 이미지에 복사한다. 데이터 볼륨·지시 폴더·임시 디렉터리만 쓰기를 허용한다. 호스트의 `data/bridge`는 `/app/bridge`에 읽기 전용으로, `data/bridge/commands`는 `/app/commands`에 읽기·쓰기로 마운트한다. 두 바인드 마운트의 `z` 옵션은 Linux SELinux의 공유 레이블을 지정한다. 지시 본문은 CLI 호출 전에 제거한다. Compose는 기본 127.0.0.1에 바인딩한다. `WOOK_BIND_ADDRESS=0.0.0.0`으로 네트워크 접속을 켤 때 `OFFICE_ALLOWED_HOSTS`에 사용할 서버 주소와 포트를 쉼표로 지정한다. 실제 IP 설정은 Git 제외 `.env`에 두고 예시는 `.env.example`을 따른다. 같은 출처 검사와 admin 로그인을 함께 적용한다.
 
 Linux 프로세스 감지기는 `scripts/lib/linux-processes.mjs`다. `/proc/<pid>/status`의 유효 UID로 범위를 제한하고 `stat`의 시작 tick과 부팅 시각, `getconf CLK_TCK`로 실행 시각을 계산한다. NUL 구분 인수와 공식 npm 심볼릭 링크는 분류 중 메모리에서만 확인한다. 인수·경로·사용자 이름은 상태 파일/API에 넣지 않는다. 최대 32,768 PID·512 후보·64 CLI, 파일별 읽기 한도와 조회 시간 한도를 두며 불완전한 조회는 종료로 처리하지 않는다. 자동 검증은 `tests/server/linux-processes.test.js`와 기존 lifecycle·bridge·discovery 테스트에 포함한다.
 
@@ -123,7 +123,7 @@ python tests/browser/cli-late-navigation.py
 
 CLI 전용 검증은 같은 합성 서버에서 실행하며 결과와 화면을 `artifacts/cli-modal/`에 저장합니다. 방 진입 시 불필요한 대화 조회가 없는지, 닫은 뒤 조회 중단, 검색창 Esc 닫기, 현재 방·필터·읽던 위치·업무 답변 유지도 확인합니다.
 
-## 업무 창고 검증
+## 업무 대기실 검증
 
 합성 서버 `node tests/browser/layer-preview.mjs`를 실행한 뒤 `python tests/browser/work-archive.py`로 보관·메모·복귀·재연결과 보고 답변·승인·취소를 검증합니다. 실제 업무 데이터나 AI에는 실행하지 않습니다. 결과 화면은 Git 제외 `artifacts/work-archive/`에 남습니다. `tests/server/work-archive.test.js`와 `tests/server/commands.test.js`는 재시작·메모 보존·인계 제외·충돌·중복 접수와 보관 중 새 지시 차단을 검사합니다.
 
@@ -155,3 +155,7 @@ ID 전용 브라우저 검증은 터치와 자동 갱신, 전체화면·감지·
 실행 진입점은 `server/auth.js`의 인증 저장소를 생성해 HTTP 서버에 주입합니다. `DATA_DIR/admin-auth.json`에는 scrypt(N=32768, r=8, p=1)의 솔트와 해시만 저장하고 초기 비밀번호 파일은 최초 변경 시 제거합니다. 두 파일은 0600 권한이며 Git·이미지에서 제외됩니다. HttpOnly·SameSite=Strict 쿠키, 8시간 세션과 동일 출처 검사를 사용합니다. 메모리 세션은 재시작·로그아웃·비밀번호 변경으로 폐기합니다. HTTP 서버 팩토리의 인증 미주입은 기존 격리 테스트 전용이며 운영 진입점에는 해제 옵션이 없습니다.
 
 `node --test tests/server/auth.test.js`는 초기 발급·API 차단·최초 변경 강제·만료·재시작·로그아웃·이전 세션 폐기·반복 실패 제한을 검증합니다. [로그인 사용 안내](wiki/Login.md).
+
+## 0.2.0 통합 검증
+
+로그인·프로젝트 층·대기실·히스토리는 [검증 기록](office-update-validation.md)의 합성 서버와 브라우저 절차로 확인합니다. `node tests/browser/office-update-preview.mjs` 실행 후 `python tests/browser/office-update.py`로 두 테마·5개 화면 폭·실제 200% 확대를 검사합니다.

@@ -3,6 +3,8 @@
 - [설치·설정·문제 해결](Home.md)
 - [Linux 실행·CLI·웹 감지](Linux.md)
 - [빠른 사무실 사용 안내](OfficeGuide.md)
+- [관리자 로그인·비밀번호](Login.md)
+- [프로젝트 층·작업 히스토리](Projects.md)
 - [화면 사용법](UI.md)
 - [기존 Codex 연결](CLI.md)
 - [직원 모델·추론 강도·작업 지시](Models.md)

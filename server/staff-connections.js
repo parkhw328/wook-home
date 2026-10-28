@@ -54,6 +54,7 @@ export function createStaffConnections({ office, discovery, observer }) {
   }
 
   function remember(agentId, entry) {
+    office.observeProject(agentId, entry.source === 'cli' && entry.kind === 'session' ? observer?.snapshot() : null);
     links.set(agentId, { id: entry.id, source: entry.source, kind: entry.kind, ...(entry.sessionId ? { sessionId: entry.sessionId } : {}) });
   }
 

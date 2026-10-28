@@ -7,12 +7,12 @@
 - 성공: 조회는 아래 객체, 생성은 HTTP 201과 생성된 객체, 변경은 HTTP 200과 변경된 객체.
 - 오류: `{ "error": { "code": "VALIDATION_ERROR", "message": "사용자 안내" } }`.
 - 요청 본문은 application/json. API 키·토큰을 보내거나 저장하는 기능은 없다.
-- `GET /api/health`: `{ "status": "ok", "version": "0.1.0-dev" }`.
+- `GET /api/health`: `{ "status": "ok", "version": "0.2.0" }`.
 - `GET /api/state`: 아래 전체 상태. GUI는 2~3초마다 재조회하며 연결 실패는 별도 표시한다.
 
 ```json
 {
-  "office": { "name": "StackQueue Office", "paused": false, "mode": "local", "version": "0.1.0-dev" },
+  "office": { "name": "StackQueue Office", "paused": false, "mode": "local", "version": "0.2.0" },
   "providers": [],
   "agents": [],
   "releasedAgents": [],
@@ -125,3 +125,16 @@
 ## 직원 등록 해제
 
 `POST /api/agents/:id/release`와 `/restore`는 `{ "settingsRevision": 0 }`을 받습니다. 해제는 `{ "id": "…", "released": true }`, 재등록은 직원 정보를 반환합니다. 진행 중 체험 업무와 버전 충돌은 409입니다. `/api/state`의 `agents`는 등록 직원만, `releasedAgents`는 업무·보관 메모를 보존한 해제 기록입니다. 해제 시 연결 매핑을 제거하고 재등록으로 자동 연결하지 않습니다. 인계에는 보고 담당자를 유지하기 위한 해제 직원 정보도 포함하지만 보관 메모는 제외합니다.
+
+## 0.2.0 인증·프로젝트·히스토리
+
+운영 서버는 `/api/health`와 `/api/auth/*` 외의 모든 API에 로그인을 요구합니다. 인증 없는 호출은 401 `LOGIN_REQUIRED`, 초기 비밀번호 미변경은 403 `PASSWORD_CHANGE_REQUIRED`입니다. 기존 Host·Origin 검사를 유지합니다.
+
+- `GET /api/auth/session`: `{ user: null | { username, mustChangePassword, expiresAt } }`.
+- `POST /api/auth/login`: `{ username, password }`. HttpOnly·SameSite=Strict 쿠키를 발급하며 8시간 후 만료됩니다.
+- `POST /api/auth/password`: `{ currentPassword, newPassword }`. 12~256자, 기존과 다른 비밀번호. 모든 세션을 폐기하고 현재 화면에 새 쿠키를 발급합니다.
+- `POST /api/auth/logout`: 현재 쿠키 세션 폐기. 계정 데이터·세션 토큰·비밀번호는 업무 상태나 인계에 포함하지 않습니다.
+- `GET /api/state`: `projects: [{ id, name, source: "folder" | "manual", floor }]`를 추가합니다. 직원의 `observedProjectId`를 우선하고 `assignedProjectId`는 수동 배정입니다. 새 업무는 배정 당시 `projectId`를 보존합니다. 원문 폴더 경로는 저장·노출하지 않습니다.
+- `PUT /api/agents/:id/archive`: 기존 입력에 선택적 `projectName`을 추가합니다. 대기 메모와 배정을 같은 버전 검사·트랜잭션에서 저장합니다. 기존 archive/workArchive 키는 호환성을 위해 유지합니다.
+- `POST /api/history/query`: `{ query?, kind?: "" | "task" | "cli" | "event", projectId?, offset? }`. `total, offset, limit: 20, projects, collection, limited, skipped, records`를 반환합니다. 이미 보관한 모든 로컬 프로젝트 기록을 명시적으로 조회하며 수집을 켜지 않습니다. 업무 상태는 완료·실패·취소·중단을 그대로 유지합니다.
+- `GET /api/history/sessions/:hash`: 해당 로컬 CLI 보관 대화의 읽기 전용 상세. 기존 자료 검색의 현재 프로젝트 제한은 그대로 유지하며 이 히스토리 경로만 이전 프로젝트의 CLI 사본도 제공합니다. 웹 기록은 기존 자료 검색에서 조회합니다.

@@ -23,7 +23,7 @@ export function commandUnavailableReason(state, sessionId, connected = true) {
   if (state.office?.paused) return '사무실 업무를 재개한 뒤 지시할 수 있습니다.';
   if (state.localSessions?.status !== 'connected') return '호스트 연결 프로그램과의 연결을 확인해 주세요.';
   if (!state.localSessions.sessions?.some((session) => session.id === sessionId)) return '현재 관찰 중인 세션을 선택해 주세요.';
-  if (state.agents?.some((agent) => agent.connection?.sessionId === sessionId && agent.workArchive?.stored)) return '창고에 보관한 업무입니다. 직원 상세에서 사무실로 복귀한 뒤 지시해 주세요.';
+  if (state.agents?.some((agent) => agent.connection?.sessionId === sessionId && agent.workArchive?.stored)) return '대기실에 보관한 업무입니다. 직원 상세에서 사무실로 복귀한 뒤 지시해 주세요.';
   if (state.localSessions.sessions.find((session) => session.id === sessionId)?.canControl === false) return '이 세션은 지시 전송을 지원하지 않습니다. 원래 CLI에서 확인해 주세요.';
   const control = state.localSessions.control;
   if (!control?.enabled) {

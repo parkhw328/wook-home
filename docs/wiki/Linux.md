@@ -33,7 +33,7 @@ OFFICE_ALLOWED_HOSTS=192.0.2.10:8080
 
 `docker compose up --build -d`로 적용한 뒤 다른 PC에서 `http://서버-IP:8080`을 엽니다. `0.0.0.0`은 모든 네트워크 인터페이스에서 요청을 받는 설정입니다. 여러 IP·도메인을 쓰면 `OFFICE_ALLOWED_HOSTS`에 쉼표로 구분하고 포트까지 정확히 적습니다. 이 목록은 접속할 서버 주소이며 접속자 IP 목록은 아닙니다. 기존 localhost 접속과 같은 출처 API 검사는 유지합니다.
 
-현재 사용자 인증은 제공하지 않으므로 이 모드는 접근을 허용한 네트워크에서 확인하는 용도입니다. 호스트 CLI 감지 상태는 볼 수 있으며 웹 탭 감지 확장은 계속 localhost·127.0.0.1 사무실에만 연결합니다. 네트워크 주소에서 확장을 켜는 기능은 포함하지 않습니다. 로컬 전용으로 되돌리려면 `WOOK_BIND_ADDRESS=127.0.0.1`, `OFFICE_ALLOWED_HOSTS=`로 바꾸고 `docker compose up -d`를 실행합니다.
+0.2.0부터 admin 로그인이 필요합니다. 네트워크 HTTP 접속은 암호화되지 않으며 공개 클라우드 운영은 별도 구성 범위입니다. 호스트 CLI 감지 상태는 볼 수 있으며 웹 탭 감지 확장은 계속 localhost·127.0.0.1 사무실에만 연결합니다. 네트워크 주소에서 확장을 켜는 기능은 포함하지 않습니다. 로컬 전용으로 되돌리려면 `WOOK_BIND_ADDRESS=127.0.0.1`, `OFFICE_ALLOWED_HOSTS=`로 바꾸고 `docker compose up -d`를 실행합니다.
 
 ## CLI 감지 범위
 

@@ -52,7 +52,7 @@ export function createSessionObserver({ file, clock = Date.now } = {}) {
           ...(enabled ? { bridgeId: data.control.bridgeId } : {}),
         };
         const execution = readExecutionOptions(data.execution, Boolean(enabled), clock());
-        return { status: connected ? 'connected' : 'disconnected', updatedAt: new Date(data.generatedAt).toISOString(), workspace, sessions, control, execution, settings: readSettingsAck(data.settings), searchHistory: { enabled: data.searchHistory?.enabled === true }, activities: { enabled: data.activities?.enabled === true }, conversations: { enabled: data.conversations?.enabled === true }, processes: readCliProcesses(data.processes, connected, clock()), cliTools: readCliTools(data.cliTools, connected) };
+        return { status: connected ? 'connected' : 'disconnected', updatedAt: new Date(data.generatedAt).toISOString(), workspace, ...(typeof data.workspaceKey === 'string' && /^[a-f0-9]{64}$/.test(data.workspaceKey) ? { workspaceKey: data.workspaceKey } : {}), sessions, control, execution, settings: readSettingsAck(data.settings), searchHistory: { enabled: data.searchHistory?.enabled === true }, activities: { enabled: data.activities?.enabled === true }, conversations: { enabled: data.conversations?.enabled === true }, processes: readCliProcesses(data.processes, connected, clock()), cliTools: readCliTools(data.cliTools, connected) };
       } catch (error) {
         return empty(error.code === 'ENOENT' ? 'not_connected' : 'disconnected');
       } finally {

@@ -1,6 +1,6 @@
 {
   "name": "wook-home",
-  "version": "0.1.0-dev",
+  "version": "0.2.0",
   "private": true,
   "description": "Local AI office and Commander workspace",
   "type": "module",

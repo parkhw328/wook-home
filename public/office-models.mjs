@@ -1,5 +1,5 @@
 import * as T from './vendor/three/three.module.js';
-import { BUILDING, ROOMS, DESKS, DESK_Z, FLOOR_HEIGHT, CORRIDOR_Z, LIFT_X } from './rooms.mjs';
+import { BUILDING, ROOMS, roomKind, DESKS, DESK_Z, FLOOR_HEIGHT, CORRIDOR_Z, LIFT_X } from './rooms.mjs';
 
 const colors = { plaster: 0x253347, trim: 0x526178, oak: 0xa37246, walnut: 0x523c2d, cream: 0xe4d6bc, red: 0xc96464, charcoal: 0x1a2433, green: 0x6c9379, brass: 0xc2a16c };
 const boxGeometry = new T.BoxGeometry(1, 1, 1);
@@ -238,12 +238,12 @@ function architecture(scene, floor) {
   guide(guides, { x: LIFT_X, z: CORRIDOR_Z }, { x: right - .8, z: CORRIDOR_Z });
   for (const room of ROOMS.filter((r) => r.floor === floor)) {
     // Low glazing leaves workstations visible; enclosed rooms have full-height glass.
-    glassLine(node, room.left, room.right, room.doorZ, false, room.x, room.id === 'office' || room.id === 'lounge' ? 1.35 : 2.9);
+    glassLine(node, room.left, room.right, room.doorZ, false, room.x, roomKind(room.id) === 'office' || room.id === 'lounge' ? 1.35 : 2.9);
     guide(guides, { x: room.x, z: CORRIDOR_Z }, { x: room.x, z: room.z });
   }
   if (floor === 1) glassLine(node, back + .2, 3.6, -3.45, true);
-  if (floor < 3) glassLine(node, back + .2, 3.6, BUILDING.split, true);
-  if (floor === 2) {
+  if (ROOMS.some((room) => room.floor === floor && room.id !== 'executive')) glassLine(node, back + .2, 3.6, BUILDING.split, true);
+  if (ROOMS.some((room) => room.floor === floor && roomKind(room.id) === 'office')) {
     for (const z of DESK_Z.map((v) => v + 2.1)) guide(guides, { x: -9.8, z }, { x: 1.85, z });
     guide(guides, { x: 1.85, z: -5.2 }, { x: 1.85, z: 2.9 });
   }
@@ -264,7 +264,7 @@ function conference(node) {
   plant(node, 12.15, -8.45, 1.65); lamp(node, 4.4, -8.35);
 }
 function furnish(node, floor) {
-  if (floor === 2) {
+  if (ROOMS.some((room) => room.floor === floor && roomKind(room.id) === 'office')) {
     for (const station of DESKS) desk(node, station.x, station.z);
     conference(node);
     plant(node, 2.4, -8.6, 1.6); bookshelf(node, -4.6, -9.12, 3.9);
@@ -272,14 +272,12 @@ function furnish(node, floor) {
     return;
   }
   if (floor === 1) {
-    // Separate archive shelving and lounge, both opening onto the corridor.
-    for (const x of [-8.8, -5.1]) {
-      bookshelf(node, x, -8.9, 2.8);
-      for (const z of [-5.7, -2.4]) {
-        box(node, colors.charcoal, [2.5, .12, 1.1], [x, .5, z]);
-        for (const dx of [-.7, .65]) box(node, 0xb99968, [1.05, .8, .85], [x + dx, .96, z]);
-      }
-    }
+    // Waiting room: desks for reviewing next steps, seating and a noticeboard.
+    bookshelf(node, -7.1, -9.12, 5.5);
+    sofa(node, -7.1, -6.3, 4.6, 0, 0x657789);
+    rounded(node, colors.oak, 3.5, .13, 1.3, -7.1, .55, -3.8, .25);
+    for (const x of [-8.6, -5.6]) chair(node, x, -1.7, Math.PI, 0x657789);
+    plant(node, -9.7, -.5, 1.2);
     rounded(node, 0x354a4b, 5.8, .025, 8.4, .1, .047, -3.8, .3);
     sofa(node, .1, -6.6, 4.5, 0, 0x557a6e);
     rounded(node, colors.walnut, 2.7, .13, 1.35, .1, .55, -3.8, .25);

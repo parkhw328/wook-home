@@ -1,7 +1,7 @@
 import * as T from './vendor/three/three.module.js';
 import { gesturePose } from './office-gestures.mjs';
 import { buildFloor, applyFloorTheme, createPerson, createLiftPlatform } from './office-models.mjs';
-import { ROOMS, FLOOR_HEIGHT, CORRIDOR_Z, LIFT_X, BUILDING, MEETING_CENTER, roomById, worldPoint, occupantRoom, occupantPosition, routeBetween, pathToDoor } from './rooms.mjs';
+import { ROOMS, FLOORS, roomKind, FLOOR_HEIGHT, CORRIDOR_Z, LIFT_X, BUILDING, MEETING_CENTER, roomById, worldPoint, occupantRoom, occupantPosition, routeBetween, pathToDoor } from './rooms.mjs';
 
 const vec = (point) => new T.Vector3(point.x, point.y, point.z);
 
@@ -9,7 +9,7 @@ const vec = (point) => new T.Vector3(point.x, point.y, point.z);
 export function officeCameraFrame(aspect, floor = 0) {
   const base = floor ? (floor - 1) * FLOOR_HEIGHT : 0;
   const low = floor ? base - .45 : -.35;
-  const high = floor ? base + BUILDING.wallHeight + .25 : 2 * FLOOR_HEIGHT + BUILDING.wallHeight + .25;
+  const high = floor ? base + BUILDING.wallHeight + .25 : (Math.max(...FLOORS.map((item) => item.id)) - 1) * FLOOR_HEIGHT + BUILDING.wallHeight + .25;
   const target = new T.Vector3(-.1, (low + high) / 2, (BUILDING.back + BUILDING.front) / 2);
   const offset = new T.Vector3(26, floor ? 25 : 23, 44);
   const forward = offset.clone().normalize();
@@ -85,7 +85,7 @@ export class OfficeScene {
       this.keyLight = light;
       const fill = new T.DirectionalLight(0x86b6f0, 1.2); fill.position.set(8, 9, -7); this.scene.add(fill);
       this.fillLight = fill;
-      this.floors = [1, 2, 3].map((floor) => buildFloor(this.scene, floor));
+      this.floors = FLOORS.toSorted((a, b) => a.id - b.id).map((floor) => buildFloor(this.scene, floor.id));
       this.actorRoot = new T.Group(); this.scene.add(this.actorRoot);
       this.commander = createPerson(this.actorRoot, 0, true); this.commander.position.copy(vec(worldPoint(roomById('corridor-2'))));
       this.cabin = createLiftPlatform(this.scene);
@@ -102,6 +102,20 @@ export class OfficeScene {
       root.dataset.rendering = 'ready'; root.querySelector('#scene-fallback').hidden = true;
       this.renderer.setAnimationLoop((time) => this.frame(time));
     } catch { this.fail(); }
+  }
+  rebuildFloors() {
+    if (!this.scene) return;
+    this.finishWalk();
+    for (const floor of this.floors || []) {
+      this.scene.remove(floor);
+      floor.traverse((node) => { node.geometry?.dispose(); if (node.material) for (const material of [node.material].flat()) material.dispose(); });
+    }
+    this.floors = FLOORS.toSorted((a, b) => a.id - b.id).map((floor) => buildFloor(this.scene, floor.id));
+    for (const item of this.people.values()) { this.actorRoot.remove(item.model); item.leader?.remove(); }
+    this.people.clear();
+    this.setTheme(document.documentElement.dataset.theme);
+    this.setPaths(this.pathsVisible);
+    this.focusFloor(this.view);
   }
   fail() {
     this.finishWalk(); this.renderer?.setAnimationLoop(null); this.root.dataset.rendering = 'unavailable';
@@ -205,7 +219,7 @@ export class OfficeScene {
       Object.assign(item, { seat, status: occupant.status, source: occupant.source, id: occupant.id, pose: occupant.sceneActivity?.pose || (occupant.status === 'working' ? 'typing' : 'still') });
     }
     for (const [key, item] of this.people) if (!keep.has(key)) { this.actorRoot.remove(item.model); item.leader?.remove(); this.people.delete(key); }
-    if (this.floors?.[2]?.userData.presentation) this.floors[2].userData.presentation.visible = occupants.some((actor) => actor.sceneActivity?.pose === 'presenting');
+    if (this.floors?.at(-1)?.userData.presentation) this.floors.at(-1).userData.presentation.visible = occupants.some((actor) => actor.sceneActivity?.pose === 'presenting');
   }
   movePerson(item, room, home) {
     const unchanged = item.room === room && ['x', 'y', 'z'].every((axis) => item.home[axis] === home[axis]);
@@ -269,7 +283,7 @@ export class OfficeScene {
           if (distance <= speed) { model.position.copy(next); transfer.at += 1; } else model.position.addScaledVector(direction.normalize(), speed);
           if (direction.x || direction.z) model.rotation.y = Math.atan2(direction.x, direction.z); walking = true;
         }
-      } else if (['working', 'idle'].includes(item.status) && item.seat < 4 && item.room === 'office') {
+      } else if (['working', 'idle'].includes(item.status) && item.seat < 4 && roomKind(item.room) === 'office') {
         // A short corridor walk is a spatial animation, never a fabricated work event.
         const phase = (this.elapsed + item.index * 16) % 64;
         if (phase < 18) {
@@ -293,8 +307,8 @@ export class OfficeScene {
       if (label && !label.hidden) personLabels.push({ item, label, ...anchor });
       else if (item.leader) item.leader.hidden = true;
     }
-    for (const room of ROOMS) this.placeLabel(this.root.querySelector(`.room-hotspot[data-room="${room.id}"]`), new T.Vector3(room.id === 'office' ? -4.2 : room.id === 'executive' ? -4.7 : (room.left + room.right) / 2, (room.floor - 1) * FLOOR_HEIGHT + 3.75, this.view ? BUILDING.back + 1.4 : 1.6), !this.view || room.floor === this.view);
-    for (let floor = 1; floor <= 3; floor += 1) this.placeLabel(this.root.querySelector(`[data-floor-label="${floor}"]`), new T.Vector3(BUILDING.left + .1, (floor - 1) * FLOOR_HEIGHT + .55, BUILDING.front), !this.view || floor === this.view);
+    for (const room of ROOMS) this.placeLabel(this.root.querySelector(`.room-hotspot[data-room="${room.id}"]`), new T.Vector3(roomKind(room.id) === 'office' ? -4.2 : room.id === 'executive' ? -4.7 : (room.left + room.right) / 2, (room.floor - 1) * FLOOR_HEIGHT + 3.75, this.view ? BUILDING.back + 1.4 : 1.6), !this.view || room.floor === this.view);
+    for (let floor = 1; floor <= FLOORS.length; floor += 1) this.placeLabel(this.root.querySelector(`[data-floor-label="${floor}"]`), new T.Vector3(BUILDING.left + .1, (floor - 1) * FLOOR_HEIGHT + .55, BUILDING.front), !this.view || floor === this.view);
     this.placeLabel(this.root.querySelector('#commander-marker'), this.commander.position.clone().add(new T.Vector3(0, 1.8, 0)), this.commander.visible);
     this.layoutPersonLabels(personLabels);
     this.renderer.render(this.scene, this.camera);

@@ -57,11 +57,15 @@ export function activityRoomMarkup(room, actors, selectedId) {
 }
 
 export function activitySummaryMarkup(actors) {
-  const meetings = actors.filter((actor) => actor.sceneActivity?.room === 'meeting').length;
+  const meetings = new Map();
+  for (const actor of actors.filter((item) => item.sceneActivity?.room === 'meeting')) {
+    const room = occupantRoom(actor);
+    if (room !== 'warehouse') meetings.set(room, (meetings.get(room) || 0) + 1);
+  }
   const presentations = actors.filter((actor) => actor.sceneActivity?.room === 'executive').length;
-  if (!meetings && !presentations) return '';
+  if (!meetings.size && !presentations) return '';
   return '<span>협업과 발표</span>'
-    + (meetings ? `<button type="button" class="button button-small" data-room="meeting">최근 협업 · ${meetings}명</button>` : '')
+    + [...meetings].map(([room, count]) => `<button type="button" class="button button-small" data-room="${esc(room)}">최근 협업 · ${count}명</button>`).join('')
     + (presentations ? `<button type="button" class="button button-small" data-room="executive">질문·발표 · ${presentations}명</button>` : '')
     + '<a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/Activity" target="_blank" rel="noopener noreferrer">동작 안내 ↗</a>';
 }
