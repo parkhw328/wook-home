@@ -1,6 +1,6 @@
 import { DialogLayer } from './dialog-layer.mjs';
 
-export function initializePasswordDialog(document, { request, notify = () => {} }) {
+export function initializePasswordDialog(document, { request, notify = () => {}, beforeOpen = () => {} }) {
   const trigger = document.querySelector('#password-button');
   const dialog = document.createElement('dialog');
   dialog.id = 'password-dialog';
@@ -21,6 +21,7 @@ export function initializePasswordDialog(document, { request, notify = () => {} 
   let pending = false;
   const layer = new DialogLayer(dialog, { onClose: () => { form.reset(); feedback.textContent = ''; } });
   trigger.addEventListener('click', () => {
+    beforeOpen();
     feedback.textContent = pending ? '비밀번호를 저장하는 중입니다…' : '';
     layer.open();
   });

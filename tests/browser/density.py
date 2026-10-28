@@ -42,6 +42,70 @@ def login(page):
     expect(page.locator('#app-version')).to_have_text('v' + VERSION)
 
 
+def open_account(page):
+    expect(page.locator('#account-menu-panel')).to_be_hidden()
+    page.locator('#account-menu-button').click()
+    expect(page.locator('#account-menu-button')).to_have_attribute('aria-expanded','true')
+    expect(page.locator('#password-button')).to_be_visible()
+    expect(page.locator('#logout-button')).to_be_visible()
+
+
+def open_password(page):
+    open_account(page)
+    page.locator('#password-button').click()
+    expect(page.locator('#account-menu-panel')).to_be_hidden()
+    expect(page.locator('#password-dialog')).to_be_visible()
+
+
+def check_sidebar(page, label):
+    trigger=page.locator('#account-menu-button')
+    panel=page.locator('#account-menu-panel')
+    expect(panel).to_be_hidden()
+    expect(trigger).to_have_attribute('aria-expanded','false')
+    trigger.focus(); page.keyboard.press('Enter')
+    expect(panel).to_be_visible()
+    audit(page,label+'-account-menu'); capture(page,label,'account-menu')
+    assert panel.evaluate('(e)=>{const r=e.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight}')
+    page.keyboard.press('Tab'); expect(page.locator('#password-button')).to_be_focused()
+    page.keyboard.press('Tab'); expect(page.locator('#logout-button')).to_be_focused()
+    page.keyboard.press('Escape'); expect(panel).to_be_hidden(); expect(trigger).to_be_focused()
+    page.keyboard.press('Space'); expect(panel).to_be_visible()
+    page.locator('#page-title').click(); expect(panel).to_be_hidden()
+    open_account(page)
+    # The regular state refresh must not dismiss a focused account action.
+    with page.expect_response(lambda response: response.url.endswith('/api/state') and response.status==200):
+        page.locator('#password-button').focus()
+    expect(panel).to_be_visible(); expect(page.locator('#password-button')).to_be_focused()
+    page.keyboard.press('Tab'); page.keyboard.press('Tab')
+    expect(page.locator('#brand-link')).to_be_focused(); expect(panel).to_be_hidden()
+    open_account(page)
+    page.evaluate("()=>location.hash='tasks'")
+    expect(page.locator('#view-tasks')).to_be_visible(); expect(panel).to_be_hidden()
+    page.locator('nav.main-nav a[href="#office"]').click()
+    page.locator('#sidebar-programs').evaluate('(e)=>e.open=true')
+    blog=page.locator('.blog-card h3')
+    expect(blog).to_have_text('StackQueue Blog')
+    assert blog.evaluate('(e)=>{const r=document.createRange();r.selectNodeContents(e);return r.getClientRects().length===1&&e.scrollWidth<=e.clientWidth&&parseFloat(getComputedStyle(e).fontSize)>=18}')
+    expect(page.locator('.sidebar .help-link, .sidebar .footer-help')).to_have_count(0)
+    help_link=page.locator('.sidebar-footer a').first
+    version_link=page.locator('#version-link')
+    expect(help_link).to_have_text('도움말 ↗')
+    expect(page.locator('#app-version')).to_have_text('v'+VERSION)
+    targets=[(help_link,'https://github.com/parkhw328/wook-home/wiki/UI'),
+             (version_link,f'https://github.com/parkhw328/wook-home/blob/v{VERSION}/CHANGELOG.md')]
+    # Inspect the navigation target without fetching external content.
+    handler=lambda route:route.fulfill(status=200,content_type='text/html',body='<title>Link target</title>')
+    page.context.route('https://github.com/**',handler)
+    for link,url in targets:
+        expect(link).to_have_attribute('href',url)
+        expect(link).to_have_attribute('rel','noopener noreferrer')
+        assert link.evaluate('(e)=>e.getBoundingClientRect().height>=44')
+        with page.expect_popup() as popup:
+            link.click()
+        target=popup.value; target.wait_for_url(url); target.close()
+    page.context.unroute('https://github.com/**',handler)
+
+
 def close(page):
     if page.locator('[role=tooltip]:visible').count():
         page.keyboard.press('Escape')
@@ -86,12 +150,13 @@ def check(page, label):
     page.locator('#office-fullscreen').click()
     expect(page.locator('#office-fullscreen')).to_have_attribute('aria-pressed','false')
 
-    page.locator('#password-button').click()
+    check_sidebar(page,label)
+    open_password(page)
     audit(page,label+'-password-dialog'); capture(page,label,'password')
     page.locator('#account-password-form [name="currentPassword"]').fill('synthetic input')
     close(page)
-    expect(page.locator('#password-button')).to_be_focused()
-    page.locator('#password-button').click()
+    expect(page.locator('#account-menu-button')).to_be_focused()
+    open_password(page)
     expect(page.locator('#account-password-form [name="currentPassword"]')).to_have_value('')
     page.mouse.click(2,2); expect(page.locator('#password-dialog')).not_to_be_visible()
 
@@ -166,7 +231,7 @@ def password_flow(browser):
     page=browser.new_page(viewport={'width':390,'height':844},reduced_motion='reduce')
     login(page)
     other=browser.new_context(); other_page=other.new_page(); login(other_page)
-    page.locator('#password-button').click()
+    open_password(page)
     form=page.locator('#account-password-form')
     form.locator('[name=currentPassword]').fill(PASSWORD)
     form.locator('[name=newPassword]').fill('1234567')
@@ -187,13 +252,14 @@ def password_flow(browser):
     assert other.request.get(BASE+'/api/state').status == 401
     expect(form.locator('[name=newPassword]')).to_have_value('')
     close(page)
+    open_account(page)
     page.locator('#logout-button').click()
     expect(page.locator('#login-form')).to_be_visible()
     page.locator('#password').fill(PASSWORD); page.locator('#login-form button').click()
     expect(page.locator('#login-feedback')).to_contain_text('확인해')
     page.locator('#password').fill('Test-8ch'); page.locator('#login-form button').click()
     page.wait_for_url(BASE+'/')
-    page.locator('#password-button').click()
+    open_password(page)
     held=[]; page.route('**/api/auth/password', lambda route: held.append(route))
     form.locator('[name=currentPassword]').fill('Test-8ch')
     form.locator('[name=newPassword]').fill(PASSWORD)
@@ -217,6 +283,11 @@ with sync_playwright() as p:
     # Touch navigation reveals the name while still entering the room on one tap.
     page=browser.new_page(viewport={'width':390,'height':844},has_touch=True,is_mobile=True,reduced_motion='reduce')
     login(page)
+    page.locator('#account-menu-button').tap()
+    expect(page.locator('#account-menu-panel')).to_be_visible()
+    page.locator('#password-button').tap()
+    expect(page.locator('#password-dialog')).to_be_visible()
+    close(page); expect(page.locator('#account-menu-button')).to_be_focused()
     page.locator('#room-navigation [data-room="office"]').tap()
     expect(page.locator('#room-navigation-tooltip')).to_contain_text('고객 포털')
     audit(page,'touch-tooltip')

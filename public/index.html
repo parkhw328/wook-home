@@ -39,7 +39,15 @@
         <div class="workspace-identity">
           <section class="sidebar-user" aria-labelledby="sidebar-user-heading">
             <h2 id="sidebar-user-heading" class="sidebar-section-title">현재 사용자</h2>
-            <div class="sidebar-bottom"><span class="commander-avatar" aria-hidden="true">C</span><div><strong>admin</strong><span>Commander · 관리자</span></div></div>
+            <div class="account-menu" id="account-menu">
+              <button class="account-trigger" id="account-menu-button" type="button" aria-label="admin 계정 메뉴" aria-expanded="false" aria-controls="account-menu-panel">
+                <span class="commander-avatar" aria-hidden="true">C</span><span class="account-copy"><strong>admin</strong><span>Commander · 관리자</span></span><svg class="account-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+              </button>
+              <div class="account-actions" id="account-menu-panel" hidden>
+                <button class="button button-small" id="password-button" type="button" aria-haspopup="dialog">비밀번호 변경</button>
+                <button class="button button-small" id="logout-button" type="button">로그아웃</button>
+              </div>
+            </div>
             <span class="connection-pill" id="connection-status" role="status"><i aria-hidden="true"></i>로컬 서버 연결 중</span>
           </section>
           <a class="brand" href="#office" id="brand-link" aria-label="StackQueue Office"><span class="brand-icon" aria-hidden="true">SQ<span></span></span><span class="brand-copy"><span data-office-name>StackQueue Office</span></span></a>
@@ -51,16 +59,17 @@
           <a href="#search" class="nav-link" data-view="search"><span data-icon="message"></span>자료 검색</a>
           <a href="#handoff" class="nav-link" data-view="handoff"><span data-icon="handoff"></span>작업 인계</a>
           <a href="#connection-settings" class="nav-link" data-open-connection-settings><span data-icon="activity"></span>연결 설정</a>
-          <a href="https://github.com/parkhw328/wook-home/wiki" class="nav-link help-link" target="_blank" rel="noopener noreferrer"><span data-icon="message"></span>도움말<span class="external-arrow" aria-hidden="true">↗</span></a>
         </nav>
-        <div class="account-actions"><button class="button button-small" id="password-button" type="button" aria-haspopup="dialog">비밀번호 변경</button><button class="button button-small" id="logout-button" type="button">로그아웃</button></div>
         <label class="theme-control" for="theme-choice">화면 테마<select id="theme-choice" data-theme-choice><option value="system">기기 설정</option><option value="light">라이트</option><option value="dark">다크</option></select></label>
         <details class="sidebar-programs" id="sidebar-programs" open>
           <summary id="program-heading">프로그램 · 블로그</summary>
           <div class="program-grid" id="program-list" aria-labelledby="program-heading"></div>
         </details>
         <div class="sidebar-meta">
-          <footer class="sidebar-footer" aria-labelledby="sidebar-info-heading"><h2 id="sidebar-info-heading" class="sidebar-section-title">도움말 · 버전</h2><a class="inline-link footer-help" href="https://github.com/parkhw328/wook-home/wiki/UI" target="_blank" rel="noopener noreferrer">화면 사용법 ↗</a><div class="sidebar-version"><span>앱 버전</span><span id="app-version">확인 중</span></div></footer>
+          <footer class="sidebar-footer" aria-label="도움말과 버전">
+            <a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/UI" target="_blank" rel="noopener noreferrer" aria-label="도움말 · 사용설명서 (새 탭)">도움말 <span aria-hidden="true">↗</span></a>
+            <a class="inline-link" id="version-link" href="https://github.com/parkhw328/wook-home/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer" aria-label="버전 변경 이력 (새 탭)"><span id="app-version">확인 중</span> <span aria-hidden="true">↗</span></a>
+          </footer>
         </div>
       </aside>
 

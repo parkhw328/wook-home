@@ -9,6 +9,7 @@ import { officeOccupants as observedOccupants } from './office-activity.mjs';
 import { OfficeWorkspace } from './workspace.mjs';
 import { DialogLayer } from './dialog-layer.mjs';
 import { initializePasswordDialog } from './password-dialog.mjs';
+import { initializeAccountMenu } from './account-menu.mjs';
 import { CliConversationDialog } from './cli-dialog.mjs';
 import { occupantRoom, roomKind } from './rooms.mjs';
 import {
@@ -23,7 +24,8 @@ import {
 
 const $ = (selector, root = document) => root.querySelector(selector);
 initializeIdentityTooltip(document);
-initializePasswordDialog(document, { request: apiRequest, notify: toast });
+const accountMenu = initializeAccountMenu(document);
+initializePasswordDialog(document, { request: apiRequest, notify: toast, beforeOpen: () => accountMenu.close({ restoreFocus: true }) });
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const ICONS = {
   office: '<path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 9h1m4 0h1m-6 3h1m4 0h1"/>',
@@ -156,6 +158,9 @@ function renderStats() {
   $('#paused-notice').hidden = !state.office.paused;
   $('#office-meta').textContent = state.office.paused ? '업무 일시 중지' : '로컬 사무실';
   $('#app-version').textContent = state.office.version ? `v${state.office.version}` : '개발 중';
+  const release = /^\d+\.\d+\.\d+$/.test(state.office.version) ? `v${state.office.version}` : 'main';
+  $('#version-link').href = `https://github.com/parkhw328/wook-home/blob/${release}/CHANGELOG.md`;
+  $('#version-link').setAttribute('aria-label', `${$('#app-version').textContent} 버전 변경 이력 (새 탭)`);
   const name = officeName(state.office);
   $$('[data-office-name]').forEach((node) => { node.textContent = name; node.title = name; });
   $('#brand-link').setAttribute('aria-label', `${name} 사무실`);
