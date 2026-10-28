@@ -149,3 +149,9 @@ python tests/browser/session-identity.py
 자동 테스트는 `npm test`에 포함된다. 브라우저 검증은 같은 앞·뒤 글자의 세 세션, 자동 등록·별칭·수동 등록·해제·초안, 기본 ID 숨김과 마우스 올림·키보드 초점·터치 확인, 두 테마·5개 화면 폭·실제 200% 확대를 검사하며 결과는 Git 제외 `artifacts/session-registration/`에 저장한다. [검증 범위](session-registration-validation.md).
 
 ID 전용 브라우저 검증은 터치와 자동 갱신, 전체화면·감지·현황·검색에서 전체 ID 확인과 닫기를 검사한다. 검색 응답은 합성 자료로 대체하며 실제 보관함이나 사용자 자료에 접근하지 않는다.
+
+## 관리자 인증 (0.2.0)
+
+실행 진입점은 `server/auth.js`의 인증 저장소를 생성해 HTTP 서버에 주입합니다. `DATA_DIR/admin-auth.json`에는 scrypt(N=32768, r=8, p=1)의 솔트와 해시만 저장하고 초기 비밀번호 파일은 최초 변경 시 제거합니다. 두 파일은 0600 권한이며 Git·이미지에서 제외됩니다. HttpOnly·SameSite=Strict 쿠키, 8시간 세션과 동일 출처 검사를 사용합니다. 메모리 세션은 재시작·로그아웃·비밀번호 변경으로 폐기합니다. HTTP 서버 팩토리의 인증 미주입은 기존 격리 테스트 전용이며 운영 진입점에는 해제 옵션이 없습니다.
+
+`node --test tests/server/auth.test.js`는 초기 발급·API 차단·최초 변경 강제·만료·재시작·로그아웃·이전 세션 폐기·반복 실패 제한을 검증합니다. [로그인 사용 안내](wiki/Login.md).

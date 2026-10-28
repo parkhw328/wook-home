@@ -44,7 +44,7 @@ async function bodyOf(request, limit = 32768) {
   catch { throw new ApiError(400, 'INVALID_JSON', '올바른 JSON을 입력해 주세요.'); }
 }
 
-export function createHttpServer(office, { publicDir = resolve('public'), bridgeFile, commandsDir, searchDirectory, clock, allowedHosts = [] } = {}) {
+export function createHttpServer(office, { publicDir = resolve('public'), bridgeFile, commandsDir, searchDirectory, clock, auth = null, allowedHosts = [] } = {}) {
   const hosts = new Set(allowedHosts.map((value) => {
     const host = typeof value === 'string' ? value.toLowerCase() : '';
     // Exact host:port entries, never URLs, wildcards or caller-supplied overrides.
@@ -70,6 +70,18 @@ export function createHttpServer(office, { publicDir = resolve('public'), bridge
       const protectedRequest = path.startsWith('/api/') || !['GET', 'HEAD'].includes(method);
       if (protectedRequest && (request.headers['sec-fetch-site'] === 'cross-site' || (request.headers.origin && request.headers.origin !== `http://${host}`))) throw new ApiError(403, 'ORIGIN_REJECTED', '사무실 화면에서 다시 요청해 주세요.');
       if (method === 'GET' && path === '/api/health') return json(response, 200, { status: 'ok', version: VERSION });
+      if (auth) {
+        if (method === 'GET' && path === '/api/auth/session') return json(response, 200, { user: auth.user(request) });
+        if (method === 'POST' && ['/api/auth/login', '/api/auth/password'].includes(path)) {
+          const result = await auth[path.endsWith('/login') ? 'login' : 'changePassword'](request, await bodyOf(request, 4096));
+          return json(response, 200, { user: result.user }, { 'Set-Cookie': result.cookie });
+        }
+        if (method === 'POST' && path === '/api/auth/logout') return json(response, 200, { ok: true }, { 'Set-Cookie': auth.logout(request) });
+        if (path.startsWith('/api/')) auth.require(request);
+        if (['/', '/index.html'].includes(path) && (!auth.user(request) || auth.user(request).mustChangePassword)) {
+          response.writeHead(303, { ...headers, Location: '/login.html' }); response.end(); return;
+        }
+      }
       if (method === 'GET' && path === '/api/bridge/settings') return json(response, 200, settings.snapshot());
       if (method === 'PUT' && path === '/api/bridge/settings') return json(response, 200, settings.configure(await bodyOf(request, 4096)));
       if (method === 'GET' && path === '/api/search/status') return json(response, 200, await search.status());

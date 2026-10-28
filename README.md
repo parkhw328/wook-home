@@ -65,3 +65,5 @@ docker compose up -d   # 다시 실행한 뒤 화면에서 업무 재개
 - [변경 이력](CHANGELOG.md) · [버전·릴리스 관리](docs/releases.md)
 - [요구사항](rules/requirements.md) · [프로젝트 규칙](rules/rules.md)
 - [개발·테스트 안내](docs/development.md) · [API 계약](docs/api.md)
+
+첫 실행은 `admin`으로 로그인하고 초기 비밀번호를 변경하세요. 초기 비밀번호 위치와 업데이트 방법은 [로그인 안내](docs/wiki/Login.md)를 참고하세요.

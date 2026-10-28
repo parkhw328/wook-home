@@ -28,6 +28,7 @@ export async function apiRequest(path, { method = 'GET', body, signal } = {}) {
       throw new ApiError('서버 응답을 읽지 못했습니다. 연결 상태를 확인해 주세요.');
     }
     if (!response.ok) {
+      if (typeof window !== 'undefined' && ['LOGIN_REQUIRED', 'PASSWORD_CHANGE_REQUIRED'].includes(value.error?.code)) window.location.replace('/login.html');
       throw new ApiError(value.error?.message || '요청을 처리하지 못했습니다.', value.error?.code, response.status);
     }
     return value;

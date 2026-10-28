@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>로그인 · StackQueue Office</title>
+  <script src="/theme.js"></script>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/fonts.css"><link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/readability.css"><link rel="stylesheet" href="/actions.css"><link rel="stylesheet" href="/themes.css"><link rel="stylesheet" href="/login.css">
+  <script type="module" src="/login.mjs"></script>
+</head>
+<body class="login-page">
+  <main class="login-card">
+    <a class="login-brand" href="/">SQ <span>StackQueue Office</span></a>
+    <p class="eyebrow">YOUR TEAM, YOUR WORKSPACE</p>
+    <h1 id="login-title">사무실에 오신 것을<br>환영합니다.</h1>
+    <p id="login-description">관리자 계정으로 로그인하고 오늘의 작업을 이어가세요.</p>
+    <form id="login-form">
+      <label for="username">계정</label><input id="username" name="username" value="admin" autocomplete="username" required maxlength="80">
+      <label for="password">비밀번호</label><input id="password" name="password" type="password" autocomplete="current-password" required maxlength="256">
+      <button class="button button-primary" type="submit">로그인</button>
+    </form>
+    <form id="password-form" hidden>
+      <label for="current-password">현재 비밀번호</label><input id="current-password" name="currentPassword" type="password" autocomplete="current-password" required maxlength="256">
+      <label for="new-password">새 비밀번호 · 12자 이상</label><input id="new-password" name="newPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256" required>
+      <label for="confirm-password">새 비밀번호 확인</label><input id="confirm-password" type="password" autocomplete="new-password" minlength="12" maxlength="256" required>
+      <button class="button button-primary" type="submit">비밀번호 저장 · 입장</button>
+    </form>
+    <p id="login-feedback" role="status"></p>
+    <p class="field-help" id="initial-help">첫 로그인 비밀번호는 서버의 admin-initial-password.txt에 있습니다. 처음 로그인하면 나만의 비밀번호로 변경합니다.</p>
+    <a id="back-to-office" class="inline-link" href="/" hidden>사무실로 돌아가기</a>
+    <footer><span id="login-version"></span><label>화면 테마<select data-theme-choice><option value="system">기기 설정</option><option value="light">라이트</option><option value="dark">다크</option></select></label></footer>
+  </main>
+</body>
+</html>

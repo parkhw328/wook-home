@@ -1,12 +1,15 @@
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createAuth } from './auth.js';
 import { createStore } from './store.js';
 import { createOffice } from './office.js';
 import { createHttpServer } from './http.js';
 
+const auth = await createAuth(process.env.DATA_DIR || resolve('data'));
 const store = createStore(process.env.DATA_DIR || resolve('data'));
 const office = createOffice(store, { name: process.env.OFFICE_NAME || 'StackQueue Office' });
 const server = createHttpServer(office, {
+  auth,
   allowedHosts: (process.env.OFFICE_ALLOWED_HOSTS || '').split(',').map((host) => host.trim()).filter(Boolean),
   publicDir: fileURLToPath(new URL('../public/', import.meta.url)),
   bridgeFile: process.env.CODEX_BRIDGE_FILE || resolve('data/bridge/codex.json'),

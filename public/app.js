@@ -954,3 +954,9 @@ setInterval(() => {
   void refresh();
   for (const delivery of commandDeliveries.values()) if (delivery.shouldPoll()) void delivery.check();
 }, 2500);
+
+$('#logout-button').addEventListener('click', async (event) => {
+  event.target.disabled = true;
+  try { await apiRequest('/auth/logout', { method: 'POST', body: {} }); location.replace('/login.html'); }
+  catch (error) { toast(error.message); event.target.disabled = false; }
+});

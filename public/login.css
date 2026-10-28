@@ -1,0 +1,15 @@
+.login-page { min-height: 100svh; display: grid; place-items: center; padding: 1.25rem; background: var(--bg); }
+.login-card { width: min(100%, 30rem); padding: clamp(1.25rem, 4vw, 2.5rem); background: var(--surface); border: 1px solid var(--border); border-radius: 1.25rem; border-top: 4px solid var(--accent); }
+.login-brand { display: flex; align-items: center; gap: .75rem; font-weight: 800; margin-bottom: 2rem; color: var(--text); text-decoration: none; }
+.login-brand span { font-size: var(--font-control); }
+.login-card h1 { font-size: 1.75rem; line-height: 1.5; margin: .5rem 0; }
+.login-card p { color: var(--muted); }
+.login-card form { display: grid; gap: .65rem; margin-top: 1.5rem; }
+.login-card form[hidden], .login-card [hidden] { display: none; }
+.login-card label { font-size: var(--font-control); }
+.login-card input, .login-card select { min-width: 0; width: 100%; min-height: 44px; font-size: var(--font-control); }
+.login-card button { margin-top: .75rem; }
+#login-feedback { color: var(--text); min-height: 1.75rem; overflow-wrap: anywhere; }
+.login-card footer { border-top: 1px solid var(--border); margin-top: 1.5rem; padding-top: 1rem; display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; justify-content: space-between; font-size: var(--font-caption); }
+.login-card footer label { display: flex; align-items: center; gap: .5rem; }
+.login-card footer select { width: auto; }
