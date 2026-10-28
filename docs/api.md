@@ -7,12 +7,12 @@
 - 성공: 조회는 아래 객체, 생성은 HTTP 201과 생성된 객체, 변경은 HTTP 200과 변경된 객체.
 - 오류: `{ "error": { "code": "VALIDATION_ERROR", "message": "사용자 안내" } }`.
 - 요청 본문은 application/json. API 키·토큰을 보내거나 저장하는 기능은 없다.
-- `GET /api/health`: `{ "status": "ok", "version": "0.2.1" }`.
+- `GET /api/health`: `{ "status": "ok", "version": "0.2.2" }`.
 - `GET /api/state`: 아래 전체 상태. GUI는 2~3초마다 재조회하며 연결 실패는 별도 표시한다.
 
 ```json
 {
-  "office": { "name": "StackQueue Office", "paused": false, "mode": "local", "version": "0.2.1" },
+  "office": { "name": "StackQueue Office", "paused": false, "mode": "local", "version": "0.2.2" },
   "providers": [],
   "agents": [],
   "releasedAgents": [],

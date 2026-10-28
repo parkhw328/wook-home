@@ -285,7 +285,7 @@ function renderPrograms() {
   const signature = JSON.stringify(programs);
   if (signature === programsSignature) return;
   programsSignature = signature;
-  const summaries = { wShell: 'SSH 접속 · 파일 전송', wPost: 'API 요청 · 응답 확인', wText: '문서 편집 · 차이 비교', 'StackQueue Blog': '네이버 블로그' };
+  const summaries = { wShell: 'SSH 접속 · 파일 전송', wPost: 'API 요청·응답', wText: '문서 편집·비교', 'StackQueue Blog': '네이버 블로그' };
   const icons = { wShell: '/program-icons/wshell.png', wPost: '/program-icons/wpost.png', wText: '/program-icons/wtext.png' };
   $('#program-list').innerHTML = programs.map((program) => {
     const isBlog = program.name === 'StackQueue Blog';

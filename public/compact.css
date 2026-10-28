@@ -26,6 +26,7 @@ main, body:has(#view-office:not([hidden])) main { max-width: none; padding: 1rem
 .sidebar .nav-link { min-height: 44px; padding: .5rem .75rem; }
 .sidebar-programs { margin-top: .75rem; }
 .sidebar-programs .program-card { padding-block: .5rem; gap: .5rem; }
+.sidebar-programs .program-summary { white-space: nowrap; }
 .sidebar-meta { padding-top: .75rem; }
 .sidebar-footer { padding-top: .5rem; }
 .account-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .375rem; margin-top: .5rem; }
@@ -34,25 +35,30 @@ main, body:has(#view-office:not([hidden])) main { max-width: none; padding: 1rem
 .sidebar > .theme-control select { flex: 1; }
 
 /* The map sizes to its content instead of stretching the whole page. */
-#office-workspace .floor-workspace { grid-template-columns: minmax(0, 1fr) minmax(320px, 26%); gap: var(--space-gap); }
+#office-workspace .floor-workspace { grid-template-columns: minmax(0, 1fr) minmax(320px, 26%); gap: var(--space-gap); align-items: stretch; }
 #office-workspace .floor-panel { height: auto; min-height: 0; max-height: none; }
-#office-workspace .scene-header { padding: .625rem .75rem; gap: .5rem; }
+#office-workspace .scene-header { padding: .75rem; gap: .75rem; }
 #office-workspace .scene-header .panel-heading { flex-basis: 100%; }
-#office-workspace .scene-toolbar { width: 100%; }
-#office-workspace .scene-controls { gap: .25rem; }
+#office-workspace .scene-toolbar { width: 100%; justify-content: space-between; gap: .75rem 1.25rem; }
+#office-workspace .scene-toolbar > .motion-toggle { margin-inline-start: auto; flex: none; }
+#office-workspace .scene-controls { flex: 1 1 24rem; gap: .375rem; }
 #office-workspace .scene-controls button { padding: .5rem; }
 #office-workspace .scene-controls .zoom-button { width: 44px; padding-inline: 0; }
 #office-workspace .scene-controls output { min-width: 44px; }
-#office-workspace .floor-scroll { flex: none; height: clamp(300px, 29vw, 480px); min-height: 0; }
+#office-workspace .floor-scroll { flex: 1 0 auto; height: clamp(300px, 29vw, 480px); min-height: 0; }
 #office-workspace .office-scene { width: 100%; height: 100%; min-height: 0; min-width: 0; }
 #office-workspace .scene-floor-card { display: none; }
 #office-workspace .map-toolbar { padding: .375rem .625rem 0; }
 #office-workspace .map-toolbar .room-navigation { gap: .375rem; }
+#office-workspace .room-nav-button:first-child { margin-inline-start: auto; }
+#office-workspace .room-nav-button:last-child { margin-inline-end: auto; }
 #office-workspace .room-navigation .room-nav-button { display: inline-flex; gap: .375rem; align-items: center; justify-content: center; padding: .5rem; min-width: 44px; min-height: 44px; }
 #office-workspace .room-navigation .room-nav-button span { font-size: var(--font-control); line-height: 1; }
 .room-nav-button svg { flex: none; width: 22px; height: 22px; }
 #office-workspace .floor-footer { padding: .375rem .75rem .5rem; gap: .75rem; }
 #office-workspace .scene-legend { gap: .75rem; }
+#office-workspace .office-directory { align-self: stretch; }
+#office-workspace .room-panel { flex: 1; }
 #office-workspace .room-panel-header { padding: .75rem; }
 #office-workspace .room-panel-header .eyebrow { margin-bottom: .125rem; }
 #office-workspace .room-panel-header > p:last-child { margin-top: .25rem; }
@@ -61,7 +67,7 @@ main, body:has(#view-office:not([hidden])) main { max-width: none; padding: 1rem
 #office-workspace .room-welcome, #office-workspace .room-empty { padding: .5rem 0; }
 #office-workspace .room-welcome > span, #office-workspace .room-key-hint { display: none; }
 #office-workspace .room-entry { padding: .5rem; margin-bottom: .375rem; }
-#office-workspace .room-stats { gap: .375rem; padding: .5rem .75rem; }
+#office-workspace .room-stats { gap: .375rem; padding: .5rem .75rem; margin-top: auto; }
 #office-workspace .room-stats .stat-card .stat-label { font-size: var(--font-caption); }
 #office-workspace #leave-room { margin: .5rem .75rem .75rem; }
 #office-workspace .workbench { margin-top: var(--space-gap); }
@@ -76,16 +82,24 @@ main, body:has(#view-office:not([hidden])) main { max-width: none; padding: 1rem
 .room-navigation-tooltip[hidden] { display: none; }
 
 /* A direct settings route uses the full content area while retaining drafts. */
-body[data-view="connection-settings"] :is(#office-workspace, .team-section, .sessions-panel, .provider-panel, .commander-panel, .office-management > summary) { display: none; }
+body[data-view="connection-settings"] :is(#office-workspace, .team-section, .sessions-panel, .provider-panel, .office-overview, .mode-note, .office-management > summary) { display: none; }
 body[data-view="connection-settings"] .office-management { border: 0; padding: 0; margin: 0; background: transparent; }
 body[data-view="connection-settings"] :is(.office-layout, .office-main) { display: block; padding: 0; }
 body[data-view]:not([data-view="office"]) #hire-button { display: none; }
 
+/* Daily work remains visible outside the collapsible management section. */
+.office-overview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-gap); margin-top: var(--space-gap); }
+.office-overview > .panel { margin: 0; min-width: 0; display: flex; flex-direction: column; }
+.office-overview :is(#inbox-list, .event-list) { min-height: 0; max-height: 18rem; overflow-y: auto; }
+.office-overview .inbox-footer { margin-top: auto; }
+.office-overview .panel-intro { padding-bottom: .5rem; }
+body.office-expanded .office-overview { display: none; }
+
 /* Staff, discovery and connection settings. */
 .office-management { margin-top: var(--space-gap); }
 .office-management > summary { padding: .75rem 1rem; }
-.office-layout { gap: var(--space-gap); }
-.office-main, .commander-panel { gap: var(--space-gap); }
+.office-management .office-layout { display: block; }
+.office-main { gap: var(--space-gap); }
 .agent-grid, .provider-list, .discovery-list { gap: .625rem; }
 .agent-card, .provider-item, .discovery-card { padding: .75rem; }
 .section-heading { margin-bottom: .625rem; }
@@ -192,10 +206,14 @@ dialog.dialog-layer .button { white-space: normal; }
 @media (max-width: 1250px) {
   #office-workspace .floor-workspace { grid-template-columns: minmax(0, 1fr); }
   #office-workspace .office-directory { display: contents; }
-  #office-workspace .room-panel { display: flex; }
+  #office-workspace .room-panel { display: flex; flex: none; }
   #office-workspace #room-content { max-height: none; overflow: visible; }
   #office-workspace .room-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .work-history .history-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 1100px) {
+  .office-overview { grid-template-columns: minmax(0, 1fr); }
+  .office-overview :is(#inbox-list, .event-list) { max-height: none; overflow: visible; }
 }
 @media (max-width: 900px) {
   .sidebar { gap: .5rem; }
