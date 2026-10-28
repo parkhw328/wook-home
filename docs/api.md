@@ -7,12 +7,12 @@
 - 성공: 조회는 아래 객체, 생성은 HTTP 201과 생성된 객체, 변경은 HTTP 200과 변경된 객체.
 - 오류: `{ "error": { "code": "VALIDATION_ERROR", "message": "사용자 안내" } }`.
 - 요청 본문은 application/json. API 키·토큰을 보내거나 저장하는 기능은 없다.
-- `GET /api/health`: `{ "status": "ok", "version": "0.2.0" }`.
+- `GET /api/health`: `{ "status": "ok", "version": "0.2.1" }`.
 - `GET /api/state`: 아래 전체 상태. GUI는 2~3초마다 재조회하며 연결 실패는 별도 표시한다.
 
 ```json
 {
-  "office": { "name": "StackQueue Office", "paused": false, "mode": "local", "version": "0.2.0" },
+  "office": { "name": "StackQueue Office", "paused": false, "mode": "local", "version": "0.2.1" },
   "providers": [],
   "agents": [],
   "releasedAgents": [],
@@ -132,7 +132,7 @@
 
 - `GET /api/auth/session`: `{ user: null | { username, mustChangePassword, expiresAt } }`.
 - `POST /api/auth/login`: `{ username, password }`. HttpOnly·SameSite=Strict 쿠키를 발급하며 8시간 후 만료됩니다.
-- `POST /api/auth/password`: `{ currentPassword, newPassword }`. 12~256자, 기존과 다른 비밀번호. 모든 세션을 폐기하고 현재 화면에 새 쿠키를 발급합니다.
+- `POST /api/auth/password`: `{ currentPassword, newPassword }`. 8~256자, 기존과 다른 비밀번호. 모든 세션을 폐기하고 현재 화면에 새 쿠키를 발급합니다.
 - `POST /api/auth/logout`: 현재 쿠키 세션 폐기. 계정 데이터·세션 토큰·비밀번호는 업무 상태나 인계에 포함하지 않습니다.
 - `GET /api/state`: `projects: [{ id, name, source: "folder" | "manual", floor }]`를 추가합니다. 직원의 `observedProjectId`를 우선하고 `assignedProjectId`는 수동 배정입니다. 새 업무는 배정 당시 `projectId`를 보존합니다. 원문 폴더 경로는 저장·노출하지 않습니다.
 - `PUT /api/agents/:id/archive`: 기존 입력에 선택적 `projectName`을 추가합니다. 대기 메모와 배정을 같은 버전 검사·트랜잭션에서 저장합니다. 기존 archive/workArchive 키는 호환성을 위해 유지합니다.

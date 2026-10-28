@@ -1,3 +1,4 @@
+import { roomNavigationMarkup, initializeRoomTooltip } from './room-navigation.mjs';
 import { WorkHistory } from './history.mjs';
 import { staffIdentity } from './session-identity.mjs';
 import { projectSummary } from './staff-settings.mjs';
@@ -21,7 +22,7 @@ export class OfficeWorkspace {
     this.motion = true;
     this.moving = false;
     this.find = (selector) => root.querySelector(selector);
-    this.find('#room-navigation').innerHTML = ROOMS.toSorted((a, b) => b.floor - a.floor).map((room) => `<button type="button" class="room-nav-button" data-room="${room.id}" aria-pressed="false"><span>${room.floor}F</span>${room.name}</button>`).join('') + '<button type="button" class="room-nav-button" data-floor="0" aria-pressed="false">전체 건물</button>';
+    this.find('#room-navigation').innerHTML = roomNavigationMarkup(ROOMS);
     this.find('#room-hotspots').innerHTML = ROOMS.map((room) => `<button type="button" class="room-hotspot room-${room.id}" data-room="${room.id}" aria-label="${room.floor}층 ${room.name} 입장"><span>${room.number}</span><strong>${room.name}</strong><span class="room-count" data-room-count="${room.id}">0</span></button>`).join('');
     this.scene = new OfficeScene(this.find('#office-scene'));
     this.historyRoot = document.createElement('section');
@@ -64,6 +65,7 @@ export class OfficeWorkspace {
       if (button.dataset.workspaceSession) void this.selectSession(button.dataset.workspaceSession);
       if (button.dataset.reportAction) this.onTaskAction(button.dataset.reportAction, button.dataset.id);
     });
+    initializeRoomTooltip(this.find('#room-navigation'));
     this.find('#room-navigation').addEventListener('keydown', (event) => {
       const buttons = [...this.find('#room-navigation').querySelectorAll('button')];
       const index = buttons.indexOf(event.target);
@@ -102,10 +104,12 @@ export class OfficeWorkspace {
     const signature = JSON.stringify(projects);
     if (this.projectSignature === signature) return;
     this.projectSignature = signature;
+    const focusedRoom = this.find('#room-navigation').contains(document.activeElement) ? document.activeElement.dataset.room : null;
     configureProjectFloors(projects);
     this.scene.rebuildFloors();
-    this.find('#room-navigation').innerHTML = ROOMS.toSorted((a, b) => b.floor - a.floor).map((room) => `<button type="button" class="room-nav-button" data-room="${room.id}" aria-pressed="false"><span>${room.floor}F</span>${esc(room.projectName ? `${room.projectName} · ${room.name}` : room.name)}</button>`).join('') + '<button type="button" class="room-nav-button" data-floor="0" aria-pressed="false">전체 건물</button>';
+    this.find('#room-navigation').innerHTML = roomNavigationMarkup(ROOMS);
     this.find('#room-hotspots').innerHTML = ROOMS.map((room) => `<button type="button" class="room-hotspot" data-room="${room.id}" aria-label="${room.floor}층 ${esc(room.projectName || '')} ${room.name} 입장"><span>${room.number}</span><strong>${room.name}</strong><span class="room-count" data-room-count="${room.id}">0</span></button>`).join('');
+    if (focusedRoom) [...this.find('#room-navigation').querySelectorAll('[data-room]')].find((button) => button.dataset.room === focusedRoom)?.focus({ preventScroll: true });
     this.root.querySelectorAll('[data-floor-label]').forEach((node) => node.remove());
     this.find('#office-scene').insertAdjacentHTML('beforeend', FLOORS.map((floor) => `<span class="floor-label" data-floor-label="${floor.id}">${floor.id}F</span>`).join(''));
     this.focusFloor(roomById(this.room).floor);
@@ -217,7 +221,7 @@ export class OfficeWorkspace {
     if (isHall(this.room)) {
       content = '<div class="room-welcome"><span aria-hidden="true">↳</span><strong>같은 건물에서, 함께하는 일.</strong><p>층을 둘러보고 동료의 방을 선택하세요. Commander가 엘리베이터와 복도를 따라 찾아갑니다.</p><p class="room-key-hint">Tab · 방 선택<br>Enter · 입장 / Esc · 퇴실</p></div>';
     } else if (kind === 'office') {
-      content = `<div class="room-section-label">등록 직원 <span>${officeAgents.length}</span></div>` + (officeAgents.map((agent) => `<button class="room-entry" type="button" data-agent="${esc(agent.id)}"><span class="entry-symbol">${esc(Array.from(agent.name)[0])}</span><span><strong>${esc(agent.name)}</strong>${staffIdentity(agent, true)}<small>${esc(agent.role)} · ${statusLabel(agent.status)}</small><small>${esc(projectSummary(agent, this.state.localSessions))}</small></span><span aria-hidden="true">↗</span></button>`).join('') || '<p class="room-empty">현재 사무실에 연결된 직원이 없습니다. 직원 · 연결 관리에서 미등록 세션을 확인하세요.</p>');
+      content = `<div class="room-section-label">등록 직원 <span>${officeAgents.length}</span></div>` + (officeAgents.map((agent) => `<button class="room-entry" type="button" data-agent="${esc(agent.id)}"><span class="entry-symbol">${esc(Array.from(agent.name)[0])}</span><span><strong>${esc(agent.name)}</strong>${staffIdentity(agent, true)}<small>${esc(agent.role)} · ${statusLabel(agent.status)}</small><small>${esc(projectSummary(agent, this.state.localSessions))}</small></span><span aria-hidden="true">↗</span></button>`).join('') || '<p class="room-empty">연결된 직원이 없습니다. 직원 · 연결 관리에서 등록하세요.</p>');
       content += '<button type="button" class="button button-primary room-assign" data-room-assign>업무 지시</button>';
     } else if (this.room === 'lounge') {
       const idle = actors.filter((actor) => occupantRoom(actor) === 'lounge');
@@ -269,7 +273,7 @@ export class OfficeWorkspace {
     this.find('#workbench-detail').hidden = !valid || this.detailHidden;
     this.find('#workbench-reopen').hidden = !valid || !this.detailHidden;
     if (!valid || this.detailHidden) {
-      this.find('#workbench-empty-text').textContent = this.detailHidden && valid ? '업무보고를 닫았습니다. 작성한 답변은 유지됩니다.' : this.moving ? '목적지로 이동하고 있습니다. CLI 대화는 이동 중에도 목록에서 바로 열 수 있습니다.' : '업무를 선택하면 이곳에서 보고와 답변을 확인합니다. CLI 대화는 직원이나 세션을 누르면 별도 대화창으로 열립니다.';
+      this.find('#workbench-empty-text').textContent = this.detailHidden && valid ? '업무보고를 닫았습니다. 작성한 답변은 유지됩니다.' : this.moving ? '목적지로 이동하고 있습니다. CLI 대화는 이동 중에도 목록에서 바로 열 수 있습니다.' : '업무를 선택해 보고·답변을 확인하세요. CLI 대화는 동료를 눌러 엽니다.';
       return;
     }
     this.find('#workbench-title').textContent = task.title;

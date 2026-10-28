@@ -33,7 +33,7 @@ def login(page):
     page.locator('#password').fill(PASSWORD)
     page.locator('#login-form button').click()
     page.wait_for_url(BASE + '/')
-    expect(page.locator('#app-version')).to_have_text('v0.2.0')
+    expect(page.locator('#app-version')).to_have_text('v' + json.loads(Path('package.json').read_text())['version'])
     expect(page.locator('#room-heading')).to_have_text('사무실')
 
 

@@ -83,7 +83,7 @@ export async function createAuth(directory, { clock = Date.now } = {}) {
     async changePassword(request, input) {
       if (!user(request)) throw new ApiError(401, 'LOGIN_REQUIRED', '다시 로그인해 주세요.');
       const next = input?.newPassword;
-      if (typeof next !== 'string' || next.length < 12 || next.length > 256 || next === input.currentPassword) throw new ApiError(400, 'PASSWORD_POLICY', '기존과 다른 비밀번호를 12~256자로 입력해 주세요.');
+      if (typeof next !== 'string' || next.length < 8 || next.length > 256 || next === input.currentPassword) throw new ApiError(400, 'PASSWORD_POLICY', '기존과 다른 비밀번호를 8~256자로 입력해 주세요.');
       const previousHash = account.hash;
       if (!await verify(request, input.currentPassword)) throw invalid();
       const salt = randomBytes(16).toString('hex');

@@ -53,7 +53,7 @@
           <a href="#connection-settings" class="nav-link" data-open-connection-settings><span data-icon="activity"></span>연결 설정</a>
           <a href="https://github.com/parkhw328/wook-home/wiki" class="nav-link help-link" target="_blank" rel="noopener noreferrer"><span data-icon="message"></span>도움말<span class="external-arrow" aria-hidden="true">↗</span></a>
         </nav>
-        <div class="account-actions"><a class="inline-link" href="/login.html#password">비밀번호 변경</a><button class="button button-small" id="logout-button" type="button">로그아웃</button></div>
+        <div class="account-actions"><button class="button button-small" id="password-button" type="button" aria-haspopup="dialog">비밀번호 변경</button><button class="button button-small" id="logout-button" type="button">로그아웃</button></div>
         <label class="theme-control" for="theme-choice">화면 테마<select id="theme-choice" data-theme-choice><option value="system">기기 설정</option><option value="light">라이트</option><option value="dark">다크</option></select></label>
         <details class="sidebar-programs" id="sidebar-programs" open>
           <summary id="program-heading">프로그램 · 블로그</summary>
@@ -79,9 +79,10 @@
                   <div class="scene-toolbar">
                     <div class="scene-controls" role="group" aria-label="사무실 보기 조절">
                       <button type="button" class="scene-control zoom-button" data-scene-action="out" aria-label="사무실 축소">−</button><output id="office-zoom" aria-label="사무실 확대율">100%</output><button type="button" class="scene-control zoom-button" data-scene-action="in" aria-label="사무실 확대">+</button>
-                      <button type="button" class="scene-control" data-scene-action="fit">화면 맞춤</button>
-                      <button type="button" class="scene-control" data-scene-action="paths" aria-pressed="true">동선 표시</button>
-                      <button type="button" class="scene-control" data-scene-action="work">업무 패널 ↓</button>
+                      <button type="button" class="scene-control" data-scene-action="fit" aria-label="화면 맞춤">맞춤</button>
+                      <button type="button" class="scene-control" data-scene-action="paths" aria-pressed="true" aria-label="동선 표시">동선</button>
+                      <button class="motion-toggle" id="motion-toggle" type="button" aria-pressed="true" aria-label="캐릭터 움직임">움직임 켜짐</button>
+                      <button type="button" class="scene-control" data-scene-action="work" aria-label="업무 패널로 이동">업무 ↓</button>
                       <button type="button" class="scene-control fullscreen-button" id="office-fullscreen" data-scene-action="fullscreen" aria-pressed="false"><span>전체화면</span> ⛶</button>
                       <label class="theme-control scene-theme-control" for="scene-theme-choice">화면 테마<select id="scene-theme-choice" data-theme-choice><option value="system">기기 설정</option><option value="light">라이트</option><option value="dark">다크</option></select></label>
                     </div>
@@ -101,7 +102,6 @@
                   </div>
                   <div class="map-toolbar">
                     <nav id="room-navigation" class="room-navigation" aria-label="방 선택과 전체 건물 보기"></nav>
-                    <button class="motion-toggle" id="motion-toggle" type="button" aria-pressed="true" aria-label="캐릭터 움직임">움직임 켜짐</button>
                   </div>
                   <div class="floor-footer" tabindex="0" aria-label="현재 위치와 동선 설명">
                     <p id="room-location" role="status">현재 위치 · 2층 복도</p>
@@ -112,10 +112,10 @@
                 <aside class="office-directory" aria-label="방 설명과 업무 목록">
                 <aside class="panel room-panel" id="room-panel" aria-labelledby="room-heading"><div class="room-panel-header"><p class="eyebrow" id="room-number">WELCOME / 1F</p><h2 id="room-heading" tabindex="-1">복도</h2><p id="room-description"></p></div><div id="room-content" class="room-content"></div><section class="stat-grid room-stats" aria-label="사무실 현황" id="stat-grid">
             <p class="stat-scope">사무실 전체 현황 · 눌러서 상세 보기</p>
-            <button type="button" class="stat-card" data-office-stat="agents" aria-haspopup="dialog"><span class="stat-label">함께하는 직원</span><strong id="stat-agents">—<small>명</small></strong><span class="stat-arrow" aria-hidden="true">↗</span></button>
-            <button type="button" class="stat-card" data-office-stat="working" aria-haspopup="dialog"><span class="stat-label">진행 중인 업무</span><strong id="stat-working">—<small>건</small></strong><span class="stat-arrow" aria-hidden="true">↗</span></button>
-            <button type="button" class="stat-card" data-office-stat="waiting" aria-haspopup="dialog"><span class="stat-label">응답·승인 대기</span><strong id="stat-waiting">—<small>건</small></strong><span class="stat-arrow" aria-hidden="true">↗</span></button>
-            <button type="button" class="stat-card" data-office-stat="completed" aria-haspopup="dialog"><span class="stat-label">완료한 업무</span><strong id="stat-completed">—<small>건</small></strong><span class="stat-arrow" aria-hidden="true">↗</span></button>
+            <button type="button" class="stat-card" data-office-stat="agents" aria-haspopup="dialog"><span class="stat-label">직원</span><strong id="stat-agents">—<small>명</small></strong><span class="stat-arrow" aria-hidden="true">↗</span></button>
+            <button type="button" class="stat-card" data-office-stat="working" aria-haspopup="dialog"><span class="stat-label">진행 업무</span><strong id="stat-working">—<small>건</small></strong><span class="stat-arrow" aria-hidden="true">↗</span></button>
+            <button type="button" class="stat-card" data-office-stat="waiting" aria-haspopup="dialog"><span class="stat-label">응답·승인</span><strong id="stat-waiting">—<small>건</small></strong><span class="stat-arrow" aria-hidden="true">↗</span></button>
+            <button type="button" class="stat-card" data-office-stat="completed" aria-haspopup="dialog"><span class="stat-label">완료 업무</span><strong id="stat-completed">—<small>건</small></strong><span class="stat-arrow" aria-hidden="true">↗</span></button>
           </section><button type="button" id="leave-room" class="leave-room" data-leave-room disabled>← 복도로 나오기 <kbd>Esc</kbd></button></aside>
                 </aside>
               </div>

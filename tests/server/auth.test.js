@@ -32,10 +32,17 @@ test('admin login gates APIs, changes bootstrap password, expires and invalidate
   assert.match(login.headers.get('set-cookie'), /HttpOnly; SameSite=Strict/);
   cookie = login.headers.get('set-cookie').split(';')[0];
   assert.equal((await call('/api/state')).status, 403);
-  assert.equal((await call('/api/auth/password', { currentPassword: initial, newPassword: 'short' })).status, 400);
-  const password = 'test-only-new-password-739!';
+  assert.equal((await call('/api/auth/password', { currentPassword: initial, newPassword: '1234567' })).status, 400);
+  const password = 'Test-8ch'; // Exactly eight characters must be accepted.
+  assert.equal((await call('/api/auth/password', { currentPassword: initial, newPassword: initial })).status, 400);
+  assert.equal((await call('/api/auth/password', { currentPassword: initial, newPassword: 'x'.repeat(257) })).status, 400);
+  assert.equal((await call('/api/auth/password', { currentPassword: 'wrong-current', newPassword: password })).status, 401);
+  const otherLogin = await call('/api/auth/login', { username: 'admin', password: initial }, { Cookie: '' });
+  const otherCookie = otherLogin.headers.get('set-cookie').split(';')[0];
   const changed = await call('/api/auth/password', { currentPassword: initial, newPassword: password });
   assert.equal(changed.status, 200);
+  assert.equal((await call('/api/state', undefined, { Cookie: otherCookie })).status, 401);
+  assert.ok(!readFileSync(join(dir, 'admin-auth.json'), 'utf8').includes(password));
   assert.equal((await call('/api/state')).status, 401);
   cookie = changed.headers.get('set-cookie').split(';')[0];
   assert.equal((await call('/api/state')).status, 200);

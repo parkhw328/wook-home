@@ -36,7 +36,7 @@ export function configureProjectFloors(projects = []) {
     ...originalRooms.find((room) => room.id === kind), kind,
     id: project.floor === 2 ? kind : `${kind}-${project.id}`,
     floor: project.floor, number: `${project.floor}0${index + 1}`, projectId: project.id, projectName: project.name,
-    description: `${project.name} 전용 층 · ${project.source === 'folder' ? '관찰한 작업 폴더' : '사용자 배정 프로젝트'}. ${kind === 'office' ? '이 프로젝트의 직원과 업무만 확인합니다.' : '이 프로젝트의 협업 대화를 확인합니다.'}`,
+    description: `${project.name} 전용 층 · ${project.source === 'folder' ? '관찰한 작업 폴더' : '사용자 배정 프로젝트'}.`,
   })));
   ROOMS = Object.freeze([...work, ...shared]);
   FLOORS = Object.freeze([{ id: top, title: '대표이사실 · 공용', description: '질문 · 보고 · 승인' },

@@ -8,6 +8,7 @@ import { initializeIdentityTooltip } from './identity-tooltip.mjs';
 import { officeOccupants as observedOccupants } from './office-activity.mjs';
 import { OfficeWorkspace } from './workspace.mjs';
 import { DialogLayer } from './dialog-layer.mjs';
+import { initializePasswordDialog } from './password-dialog.mjs';
 import { CliConversationDialog } from './cli-dialog.mjs';
 import { occupantRoom, roomKind } from './rooms.mjs';
 import {
@@ -22,6 +23,7 @@ import {
 
 const $ = (selector, root = document) => root.querySelector(selector);
 initializeIdentityTooltip(document);
+initializePasswordDialog(document, { request: apiRequest, notify: toast });
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const ICONS = {
   office: '<path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 9h1m4 0h1m-6 3h1m4 0h1"/>',
@@ -351,9 +353,12 @@ const VIEW_COPY = {
 function navigate() {
   const view = location.hash.slice(1);
   currentView = Object.hasOwn(VIEW_COPY, view) ? view : 'office';
-  const [label, eyebrow, title, description] = VIEW_COPY[currentView];
+  document.body.dataset.view = view === 'connection-settings' ? view : currentView;
+  const [label, eyebrow, , description] = view === 'connection-settings'
+    ? ['연결 관리', '', '', '감지한 세션과 연결 상태를 확인하고 사용할 기능을 설정하세요.']
+    : VIEW_COPY[currentView];
   $('#page-eyebrow').textContent = eyebrow;
-  $('#page-title').textContent = title;
+  $('#page-title').textContent = label;
   $('#page-description').textContent = description;
   document.title = `${officeName(state.office)} · ${label}`;
   $$('.view').forEach((node) => { node.hidden = node.id !== `view-${currentView}`; });

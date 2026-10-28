@@ -159,3 +159,19 @@ ID 전용 브라우저 검증은 터치와 자동 갱신, 전체화면·감지·
 ## 0.2.0 통합 검증
 
 로그인·프로젝트 층·대기실·히스토리는 [검증 기록](office-update-validation.md)의 합성 서버와 브라우저 절차로 확인합니다. `node tests/browser/office-update-preview.mjs` 실행 후 `python tests/browser/office-update.py`로 두 테마·5개 화면 폭·실제 200% 확대를 검사합니다.
+
+## 화면 밀도·계정 변경 검증
+
+합성 데이터만 사용하는 브라우저 검증 서버를 별도 터미널에서 실행합니다. Python Playwright와 Chromium이 필요합니다. 포트는 운영 서버와 분리하며 실제 계정·DB·CLI를 사용하지 않습니다.
+
+```bash
+node tests/browser/density-preview.mjs
+```
+
+다른 터미널에서 다음을 실행합니다. 기본 18089 포트를 바꿀 때는 두 명령에 같은 `DENSITY_TEST_PORT`를 지정합니다.
+
+```bash
+python3 tests/browser/density.py
+```
+
+두 테마·320/390/768/1366/1920px·Chromium 200% 확대에서 화면·상세창과 가독성을 확인합니다. 방 이름 툴팁, 키보드·터치, 비밀번호 7/8자 경계·변경·다른 로그인 해제·늦은 저장 응답도 검증합니다. 결과와 합성 화면은 Git에서 제외한 `artifacts/density/`에 생성합니다. 전체 단위·통합 검증은 `npm test`입니다.
