@@ -146,6 +146,7 @@ function updateControls() {
   renderSessionCommand();
   renderStaffSettings();
   workspace.update(state, connected, motionEnabled, pending);
+  renderCharacters();
 }
 
 function renderStats() {
@@ -181,7 +182,7 @@ function renderCharacters() {
     used[room] = (used[room] || 0) + 1;
     return used[room] <= (kind === 'office' ? 8 : ['meeting', 'executive'].includes(kind) ? 4 : 2);
   }).slice(0, 16);
-  const signature = JSON.stringify([displayed.map(({ id, source, status, name, sessionStatus, sceneActivity, workArchive, connection, observedProjectId, assignedProjectId }) => ({ observedProjectId, assignedProjectId, id, source, status, name, sessionStatus, sceneActivity, workArchive, sessionId: connection?.sessionId, entryId: connection?.entryId })), connected, state.office.paused, state.projects]);
+  const signature = JSON.stringify([displayed.map(({ id, source, status, name, sessionStatus, sessionLifecycle, sceneActivity, workArchive, connection, observedProjectId, assignedProjectId }) => ({ observedProjectId, assignedProjectId, id, source, status, name, sessionStatus, sessionLifecycle, sceneActivity, workArchive, sessionId: connection?.sessionId, entryId: connection?.entryId })), connected, state.office.paused, workspace.projectSignature]);
   $('#office-scene').classList.toggle('motion-disabled', !motionEnabled);
   $('#scene-empty').hidden = occupants.length > 0;
   $('#office-meta').textContent = `${state.localSessions?.sessions?.length || 0} CLI · ${state.agents.length} 직원${occupants.length > displayed.length ? ` · 화면 ${displayed.length}명 표시` : ''}`;
@@ -201,7 +202,6 @@ function renderCharacters() {
 }
 
 function renderAgents() {
-  renderCharacters();
   const list = $('#agent-list');
   const markup = state.agents.length ? state.agents.map((agent) => `<div class="staff-card-group"><button type="button" class="agent-card" data-agent="${esc(agent.id)}">${avatar(agent)}<span class="agent-info"><strong>${esc(agent.name)}</strong>${staffIdentity(agent, true)}<small>${esc(agent.role)}</small><small class="staff-project">${esc(projectSummary(agent, state.localSessions))}</small>${agent.executionPreference ? `<small>${esc(preferenceSummary(agent))}</small>` : ''}</span>${badge(agent.status)}</button><button type="button" class="button button-small" data-edit-agent="${esc(agent.id)}" aria-label="${esc(agent.name)} 별칭과 직원 설정">별칭 · 직원 설정</button></div>`).join('')
     : emptyState('첫 동료를 기다리고 있어요', '감지한 CLI·웹을 연결하거나 체험 직원을 채용해 보세요.', 'people');
@@ -935,8 +935,8 @@ function updateMotionPreference() {
   $('#motion-toggle').textContent = motionEnabled ? '움직임 켜짐' : '움직임 꺼짐';
   $('#motion-toggle').disabled = motionPreference.matches;
   $('#motion-toggle').title = motionPreference.matches ? '시스템의 동작 줄이기 설정을 따릅니다.' : '캐릭터의 장식 움직임을 켜거나 끕니다.';
-  renderCharacters();
   workspace.update(state, connected, motionEnabled, pending);
+  renderCharacters();
 }
 $('#motion-toggle').addEventListener('click', () => {
   motionEnabled = !motionEnabled;

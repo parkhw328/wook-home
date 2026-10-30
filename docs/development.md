@@ -63,6 +63,19 @@ Linux 프로세스 감지기는 `scripts/lib/linux-processes.mjs`다. `/proc/<pi
 
 테마 동작은 `node --test tests/ui/theme.test.mjs tests/ui/office-scene.test.mjs`로 저장·복원, 기기 설정, 탭 동기화, 저장소 차단과 장면 상태 보존을 확인한다. 화면 변경 시 두 테마에서 실제 브라우저의 최종 계산 색상·글꼴과 320·390·768·1366·1920px 배치, 대화상자·전체화면·확대 상태도 점검한다.
 
+## 활성 프로젝트 층 검증
+
+`activeOfficeProjects`는 저장된 프로젝트 목록에서 활성 등록 직원이 있는 프로젝트만 표시 대상으로 고른다. `configureProjectFloors`는 이 목록을 공용 층 사이에 연속 배치한다. 프로젝트·직원·업무 DB를 삭제하거나 저장된 프로젝트 식별자를 변경하지 않는다.
+
+```bash
+node --test tests/ui/project-floors.test.mjs tests/ui/project-floor-refresh.test.mjs
+node tests/browser/project-floors-preview.mjs
+# 별도 터미널. Python Playwright와 Chromium이 설치된 검증 환경에서 실행합니다.
+python3 tests/browser/project-floors.py
+```
+
+미리보기는 127.0.0.1:18089의 임시 메모리 사무실이며 실제 DB·호스트 연결기를 읽지 않는다. `FLOOR_TEST_PORT`로 포트를 바꿀 수 있다. 브라우저 테스트는 합성 API 응답의 세션 연결을 바꾸며 화면의 자동 갱신을 검증한다. 기존 로그인·보관 기록 흐름은 `office-update-preview.mjs`와 `office-update.py`로 확인한다. 범위와 결과는 [프로젝트 층 검증](project-floor-lifecycle-validation.md)을 참고한다.
+
 ## 문서와 협업
 
 작업 전에 rules의 두 문서를 읽는다. [협업 현황](collaboration.md)의 파일 소유 범위와 [API 계약](api.md)을 따른다. 감지와 연결 진단의 상세 계약은 [감지 API](discovery-api.md), [연결 점검 API](connections-api.md)에 기록한다. JavaScript는 ES modules, 들여쓰기는 두 칸을 사용하며 `.editorconfig`를 적용한다. 별도 formatter/linter는 아직 도입하지 않았다.

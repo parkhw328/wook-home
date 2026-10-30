@@ -1,5 +1,10 @@
-import test from 'node:test';
+import test, { beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { configureProjectFloors } from '../../public/rooms.mjs';
+
+// Explicit occupied layout for the existing room, route and activity scenarios.
+beforeEach(() => configureProjectFloors([{ id: null, name: 'Test project', source: 'manual', floor: 2 }]));
+afterEach(() => configureProjectFloors());
 import { buildFloor, applyFloorTheme } from '../../public/office-models.mjs';
 import { OfficeScene, officeCameraFrame, arrangePersonLabels } from '../../public/office-3d.mjs';
 import { routeBetween, BUILDING, FLOOR_HEIGHT, CORRIDOR_Z, LIFT_X, occupantRoom } from '../../public/rooms.mjs';

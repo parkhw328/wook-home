@@ -34,7 +34,7 @@ def login(page):
     page.locator('#login-form button').click()
     page.wait_for_url(BASE + '/')
     expect(page.locator('#app-version')).to_have_text('v' + json.loads(Path('package.json').read_text())['version'])
-    expect(page.locator('#room-heading')).to_have_text('사무실')
+    expect(page.locator('#room-heading')).to_have_text('대기실')
 
 
 def check(page, label, navigate=True):
@@ -42,12 +42,10 @@ def check(page, label, navigate=True):
     if navigate: login(page)
     page.wait_for_timeout(300)
     audit(page)
-    expect(page.locator('#floor-view-title')).to_contain_text('고객 포털')
-    page.locator('#room-navigation [data-room^="office-"]').click()
-    expect(page.locator('#floor-view-title')).to_contain_text('분석 도구')
-    expect(page.locator('#room-description')).to_contain_text('분석 도구 전용 층')
+    expect(page.locator('#floor-view-title')).to_contain_text('라운지')
+    expect(page.locator('#room-navigation [data-room^="office"]')).to_have_count(0)
     page.locator('#room-navigation [data-floor="0"]').click()
-    expect(page.locator('#floor-view-title')).to_contain_text('4개 층')
+    expect(page.locator('#floor-view-title')).to_contain_text('2개 층')
     page.locator('#room-navigation [data-room="warehouse"]').click()
     expect(page.locator('#room-heading')).to_have_text('대기실')
     page.locator('#room-content [data-archive-agent]').first.click()
@@ -76,7 +74,7 @@ def check(page, label, navigate=True):
     audit(page)
     if '1366' in label or '320' in label:
         page.screenshot(path=str(OUT / f'{label}-history.png'),full_page=True)
-    page.locator('#room-navigation [data-room="office"]').click()
+    page.locator('#room-navigation [data-room="warehouse"]').click()
     page.locator('[data-scene-action="fullscreen"]').click()
     page.wait_for_timeout(300)
     audit(page)

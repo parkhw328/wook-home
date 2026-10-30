@@ -1,6 +1,30 @@
-import { occupantRoom } from './rooms.mjs';
+import { occupantRoom, projectForAgent } from './rooms.mjs';
 import { orderedLocalSessions, observedSessionStatus, escapeHtml as esc } from './model.mjs';
 import { staffIdentity } from './session-identity.mjs';
+
+export function activeOfficeProjects(state, connected = true) {
+  if (!connected) return [];
+  const active = new Set();
+  for (const agent of state.agents) {
+    if (agent.workArchive?.stored) continue;
+    const connection = agent.connection;
+    let present = false;
+    if (connection?.status === 'connected') {
+      if (connection.source === 'cli' && connection.kind === 'session') {
+        present = state.localSessions?.status === 'connected'
+          && state.localSessions.sessions.some((session) => session.id === connection.sessionId && session.lifecycle === 'live');
+      } else {
+        present = (connection.source === 'cli' && connection.kind === 'process')
+          || (connection.source === 'web' && connection.kind === 'conversation');
+      }
+    } else if (!connection && agent.provider === 'demo' && !state.office.paused) {
+      present = state.tasks.some((task) => task.agentId === agent.id && ['working', 'waiting_input', 'waiting_approval'].includes(task.status));
+    }
+    if (present) active.add(projectForAgent(agent));
+  }
+  // The full catalog remains available for assignments and offline history.
+  return (state.projects || []).filter((project) => active.has(project.id));
+}
 
 export function sceneActivity(activity, connected = true, now = Date.now()) {
   if (!connected || !activity || !['collaborating', 'question', 'approval'].includes(activity.kind)) return null;

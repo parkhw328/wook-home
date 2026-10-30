@@ -1,5 +1,10 @@
-import test from 'node:test';
+import test, { beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { configureProjectFloors } from '../../public/rooms.mjs';
+
+// Explicit occupied layout for the existing room, route and activity scenarios.
+beforeEach(() => configureProjectFloors([{ id: null, name: 'Test project', source: 'manual', floor: 2 }]));
+afterEach(() => configureProjectFloors());
 import { officeOccupants, sceneActivity, sessionRoom, activityRoomMarkup, activitySummaryMarkup } from '../../public/office-activity.mjs';
 import { gesturePose } from '../../public/office-gestures.mjs';
 

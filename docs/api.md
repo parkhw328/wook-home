@@ -135,6 +135,7 @@
 - `POST /api/auth/password`: `{ currentPassword, newPassword }`. 8~256자, 기존과 다른 비밀번호. 모든 세션을 폐기하고 현재 화면에 새 쿠키를 발급합니다.
 - `POST /api/auth/logout`: 현재 쿠키 세션 폐기. 계정 데이터·세션 토큰·비밀번호는 업무 상태나 인계에 포함하지 않습니다.
 - `GET /api/state`: `projects: [{ id, name, source: "folder" | "manual", floor }]`를 추가합니다. 직원의 `observedProjectId`를 우선하고 `assignedProjectId`는 수동 배정입니다. 새 업무는 배정 당시 `projectId`를 보존합니다. 원문 폴더 경로는 저장·노출하지 않습니다.
+- 0.2.4부터 `projects`는 지난 프로젝트를 포함한 저장 목록으로 유지하며 현재 표시되는 층 목록으로 해석하지 않습니다. `floor`는 저장된 배치 순서이고 화면은 등록 직원의 활성 연결이 확인된 프로젝트만 2층부터 연속 배치합니다. 업무층을 숨겨도 API의 프로젝트·직원·업무 기록은 삭제하지 않습니다.
 - `PUT /api/agents/:id/archive`: 기존 입력에 선택적 `projectName`을 추가합니다. 대기 메모와 배정을 같은 버전 검사·트랜잭션에서 저장합니다. 기존 archive/workArchive 키는 호환성을 위해 유지합니다.
 - `POST /api/history/query`: `{ query?, kind?: "" | "task" | "cli" | "event", projectId?, offset? }`. `total, offset, limit: 20, projects, collection, limited, skipped, records`를 반환합니다. 이미 보관한 모든 로컬 프로젝트 기록을 명시적으로 조회하며 수집을 켜지 않습니다. 업무 상태는 완료·실패·취소·중단을 그대로 유지합니다.
 - `GET /api/history/sessions/:hash`: 해당 로컬 CLI 보관 대화의 읽기 전용 상세. 기존 자료 검색의 현재 프로젝트 제한은 그대로 유지하며 이 히스토리 경로만 이전 프로젝트의 CLI 사본도 제공합니다. 웹 기록은 기존 자료 검색에서 조회합니다.

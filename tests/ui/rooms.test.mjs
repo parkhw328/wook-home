@@ -1,5 +1,10 @@
-import test from 'node:test';
+import test, { beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { configureProjectFloors } from '../../public/rooms.mjs';
+
+// Explicit occupied layout for the existing room, route and activity scenarios.
+beforeEach(() => configureProjectFloors([{ id: null, name: 'Test project', source: 'manual', floor: 2 }]));
+afterEach(() => configureProjectFloors());
 import { ROOMS, HALL, routeBetween, roomTasks, taskRoom, worldPoint, isHall, roomById, hallForFloor, CORRIDOR_Z, LIFT_X, DESKS, occupantPosition, pathToDoor } from '../../public/rooms.mjs';
 import { ConversationReader, conversationMarkup, filterMessages } from '../../public/conversation.mjs';
 import { OfficeWorkspace } from '../../public/workspace.mjs';

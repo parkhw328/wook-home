@@ -6,7 +6,7 @@ import { ROOMS, FLOORS, configureProjectFloors, FLOOR_HEIGHT, projectRoom, proje
 import { OfficeScene } from './office-3d.mjs';
 import { OfficeViewControls } from './office-view.mjs';
 import { conversationMarkup } from './conversation.mjs';
-import { officeOccupants, activityRoomMarkup, activitySummaryMarkup } from './office-activity.mjs';
+import { activeOfficeProjects, officeOccupants, activityRoomMarkup, activitySummaryMarkup } from './office-activity.mjs';
 import { escapeHtml as esc, statusLabel, statusClass, displayTime, observedSessionStatus, sessionStatusLabel, taskUnavailableReason } from './model.mjs';
 
 export class OfficeWorkspace {
@@ -14,7 +14,7 @@ export class OfficeWorkspace {
     this.root = root;
     this.onTaskAction = onTaskAction;
     this.onSession = onSession;
-    this.room = 'office';
+    this.room = 'warehouse';
     this.selection = null;
     this.answerDrafts = new Map();
     this.detailRevision = 0;
@@ -35,7 +35,7 @@ export class OfficeWorkspace {
     this.activityStrip.hidden = true;
     this.find('.floor-panel .scene-header').after(this.activityStrip);
     this.viewControls = new OfficeViewControls(root, this.scene);
-    this.focusFloor(2);
+    this.focusFloor(1);
     this.find('#terminal-search').addEventListener('input', () => this.renderConversation(true));
     this.find('#terminal-role').addEventListener('change', () => this.renderConversation(true));
     this.find('#terminal-latest').addEventListener('click', () => { const log = this.find('#terminal-log'); log.scrollTop = log.scrollHeight; });
@@ -91,29 +91,57 @@ export class OfficeWorkspace {
 
   update(state, connected, motion, pending = false) {
     this.state = state;
-    this.syncProjects(state.projects || []);
     this.connected = connected;
     this.motion = motion;
     this.pending = pending;
     this.scene.setMotion(motion);
+    const initial = connected && !this.initialStateReceived;
+    if (connected) this.initialStateReceived = true;
+    this.syncProjects(activeOfficeProjects(state, connected), initial);
     this.renderRoom();
     this.renderSelection();
   }
 
-  syncProjects(projects) {
+  syncProjects(projects, initial = false) {
     const signature = JSON.stringify(projects);
     if (this.projectSignature === signature) return;
     this.projectSignature = signature;
-    const focusedRoom = this.find('#room-navigation').contains(document.activeElement) ? document.activeElement.dataset.room : null;
+    const nav = this.find('#room-navigation');
+    const focused = nav.contains(document.activeElement) ? { ...document.activeElement.dataset } : null;
+    const visit = this.nextVisit || this.currentVisit;
+    const previous = roomById(visit?.id || this.room);
+    const floorRoom = ROOMS.find((room) => room.floor === previous.floor);
+    const overview = this.scene.view === 0;
+    const zoom = this.scene.zoom;
+    this.layoutRevision = (this.layoutRevision || 0) + 1;
     configureProjectFloors(projects);
+    let room = ROOMS.find((room) => room.id === previous.id);
+    if (initial && !this.hasEntered) room = ROOMS.find((room) => room.kind === 'office') || room;
+    if (isHall(previous.id)) {
+      const nextFloorRoom = ROOMS.find((room) => room.id === floorRoom?.id);
+      if (nextFloorRoom) room = hallForFloor(nextFloorRoom.floor);
+    }
+    this.room = room?.id || 'warehouse';
+    if (visit?.selection) this.selection = visit.selection;
+    this.moving = false;
+    this.currentVisit = null;
+    this.nextVisit?.resolve?.();
+    this.nextVisit = null;
+    this.find('#room-panel').setAttribute('aria-busy', 'false');
     this.scene.rebuildFloors();
-    this.find('#room-navigation').innerHTML = roomNavigationMarkup(ROOMS);
+    nav.innerHTML = roomNavigationMarkup(ROOMS);
     this.find('#room-hotspots').innerHTML = ROOMS.map((room) => `<button type="button" class="room-hotspot" data-room="${room.id}" aria-label="${room.floor}층 ${esc(room.projectName || '')} ${room.name} 입장"><span>${room.number}</span><strong>${room.name}</strong><span class="room-count" data-room-count="${room.id}">0</span></button>`).join('');
-    if (focusedRoom) [...this.find('#room-navigation').querySelectorAll('[data-room]')].find((button) => button.dataset.room === focusedRoom)?.focus({ preventScroll: true });
+    if (focused) {
+      const buttons = [...nav.querySelectorAll('button')];
+      (buttons.find((button) => focused.room ? button.dataset.room === focused.room : button.dataset.floor === focused.floor)
+        || buttons.find((button) => button.dataset.room === this.room))?.focus({ preventScroll: true });
+    }
     this.root.querySelectorAll('[data-floor-label]').forEach((node) => node.remove());
     this.find('#office-scene').insertAdjacentHTML('beforeend', FLOORS.map((floor) => `<span class="floor-label" data-floor-label="${floor.id}">${floor.id}F</span>`).join(''));
-    this.focusFloor(roomById(this.room).floor);
-    if (this.scene.commander && !this.moving) {
+    this.focusFloor(overview ? 0 : roomById(this.room).floor);
+    this.scene.setZoom(zoom);
+    this.viewControls.refresh();
+    if (this.scene.commander) {
       const room = roomById(this.room);
       this.scene.commander.position.set(room.x, (room.floor - 1) * FLOOR_HEIGHT, room.z);
     }
@@ -127,13 +155,14 @@ export class OfficeWorkspace {
       button.classList.toggle('is-current', active); button.setAttribute('aria-pressed', String(active));
     }
     const level = FLOORS.find((item) => item.id === floor);
-    this.find('#floor-view-title').textContent = level ? `${floor}F · ${level.title}` : `${FLOORS.length}개 층 · 프로젝트별 업무 공간`;
+    this.find('#floor-view-title').textContent = level ? `${floor}F · ${level.title}` : `${FLOORS.length}개 층 · ${FLOORS.length > 2 ? '프로젝트별 업무 공간' : '공용 공간'}`;
     this.find('#scene-floor-number').textContent = floor ? `${floor}F` : 'ALL';
     this.find('#scene-floor-name').textContent = level?.title || '하나의 오피스';
-    this.find('#scene-floor-detail').textContent = level?.description || '하단의 프로젝트와 방을 선택하세요';
+    this.find('#scene-floor-detail').textContent = level?.description || '하단에서 방을 선택하세요';
   }
 
   async enter(id, selection = null) {
+    this.hasEntered = true;
     this.detailRevision = (this.detailRevision || 0) + 1;
     const room = roomById(id);
     if (selection || room.id !== this.room) this.detailHidden = false;
@@ -145,6 +174,8 @@ export class OfficeWorkspace {
     }
     if (room.id !== this.room) {
       this.moving = true;
+      this.currentVisit = { id: room.id, selection };
+      const layoutRevision = this.layoutRevision;
       this.selection = null;
       this.renderSelection();
       const betweenFloors = roomById(this.room).floor !== room.floor;
@@ -153,8 +184,10 @@ export class OfficeWorkspace {
       this.find('#room-panel').setAttribute('aria-busy', 'true');
       if (betweenFloors) this.focusFloor(0);
       await this.scene.moveCommander(routeBetween(this.room, room.id));
+      if (layoutRevision !== this.layoutRevision) return;
       this.room = room.id;
       this.moving = false;
+      this.currentVisit = null;
       this.find('#room-panel').setAttribute('aria-busy', 'false');
       this.focusFloor(room.floor);
     }
@@ -228,7 +261,8 @@ export class OfficeWorkspace {
       content = idle.length ? idle.map((agent) => `<button type="button" class="room-entry" data-agent="${esc(agent.id)}"><span class="entry-symbol">${esc(Array.from(agent.name)[0])}</span><span><strong>${esc(agent.name)}</strong>${staffIdentity(agent, true)}<small>새 업무 대기</small><small>${esc(projectSummary(agent, this.state.localSessions))}</small></span></button>`).join('') : '<p class="room-empty">지금은 업무를 기다리는 직원이 없습니다.<br>소파에서 잠시 쉬어 가세요.</p>';
     } else if (this.room === 'warehouse') {
       const stored = actors.filter((actor) => occupantRoom(actor) === 'warehouse');
-      content = '<p class="field-help">세션 생존·연결 확인이 필요한 직원과 직접 보관한 업무를 구분합니다. 살아 있는 직원은 턴 종료 후에도 사무실에 남습니다. 보관 메모는 이 PC에 저장되며 대화 원문은 자료 검색에서 별도로 확인하세요.</p>'
+      content = (ROOMS.some((room) => room.kind === 'office') ? '' : '<p class="field-help">현재 확인된 활성 프로젝트가 없어 업무층을 표시하지 않습니다. 직원의 연결이 확인되면 해당 프로젝트 층이 나타납니다. 지난 업무는 다과실의 작업 히스토리에서 확인하세요.</p>')
+        + '<p class="field-help">세션 생존·연결 확인이 필요한 직원과 직접 보관한 업무를 구분합니다. 살아 있는 직원은 턴 종료 후에도 사무실에 남습니다. 보관 메모는 이 PC에 저장되며 대화 원문은 자료 검색에서 별도로 확인하세요.</p>'
         + (stored.map((actor) => `<div class="room-news"><strong>${esc(actor.name)}</strong>${staffIdentity(actor)}<p>${actor.workArchive?.stored ? '대기실 보관 중' : ['idle'].includes(actor.sessionStatus || actor.status) ? '세션 생존 확인 필요 · 아직 보관하지 않음' : '활동·연결 확인 필요 · 아직 보관하지 않음'}</p><p>${esc(actor.workArchive?.note || '다음 행동 메모 없음')}</p><div class="detail-actions">${actor.source === 'agent' ? `<button type="button" class="button" data-stat-agent="${esc(actor.id)}">업무 · 연결 관리</button><button type="button" class="button" data-archive-agent="${esc(actor.id)}">보관 · 복귀 · 메모</button>` : `<button type="button" class="button" data-workspace-session="${esc(actor.id)}">대화 보기</button><button type="button" class="button" data-archive-session="${esc(actor.id)}">업무 보관</button>`}</div></div>`).join('') || '<p class="room-empty">보관하거나 연결을 확인할 업무가 없습니다.</p>')
         + '<div class="detail-actions"><button type="button" class="button" data-workbench-connections>보관할 업무 선택</button><button type="button" class="button" data-released-agents>직원 등록 해제 기록</button><a class="button" href="#search">이전 대화 검색</a><a class="button" href="#connection-settings" data-open-connection-settings>연결 설정</a></div>';
     } else if (this.room === 'pantry') {

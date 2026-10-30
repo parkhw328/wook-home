@@ -65,7 +65,7 @@ export function arrangePersonLabels(items, width, height) {
 
 export class OfficeScene {
   constructor(root) {
-    this.root = root; this.motion = true; this.view = 2; this.zoom = 1; this.pathsVisible = true; this.people = new Map(); this.lastTime = 0; this.elapsed = 0;
+    this.root = root; this.motion = true; this.view = 1; this.zoom = 1; this.pathsVisible = true; this.people = new Map(); this.lastTime = 0; this.elapsed = 0;
     this.labels = root.querySelector('#room-hotspots');
     try {
       this.renderer = new T.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
@@ -87,18 +87,18 @@ export class OfficeScene {
       this.fillLight = fill;
       this.floors = FLOORS.toSorted((a, b) => a.id - b.id).map((floor) => buildFloor(this.scene, floor.id));
       this.actorRoot = new T.Group(); this.scene.add(this.actorRoot);
-      this.commander = createPerson(this.actorRoot, 0, true); this.commander.position.copy(vec(worldPoint(roomById('corridor-2'))));
+      this.commander = createPerson(this.actorRoot, 0, true); this.commander.position.copy(vec(worldPoint(roomById('warehouse'))));
       this.cabin = createLiftPlatform(this.scene);
       this.routeMaterial = new T.MeshBasicMaterial({ color: 0x9bebe1 });
       this.setTheme(document.documentElement.dataset.theme);
       window.addEventListener('office-theme-change', (event) => this.setTheme(event.detail.theme));
       this.camera = new T.OrthographicCamera(-10, 10, 8, -8, .1, 150);
-      const frame = officeCameraFrame(2, 2);
+      const frame = officeCameraFrame(2, 1);
       this.target = frame.target; this.eye = frame.eye; this.size = frame.size;
       this.camera.position.copy(this.eye); this.camera.lookAt(this.target);
       this.resize = new ResizeObserver(() => this.resizeScene()); this.resize.observe(root); this.resizeScene();
       this.renderer.domElement.addEventListener('webglcontextlost', (event) => { event.preventDefault(); this.fail(); });
-      this.focusFloor(2);
+      this.focusFloor(1);
       root.dataset.rendering = 'ready'; root.querySelector('#scene-fallback').hidden = true;
       this.renderer.setAnimationLoop((time) => this.frame(time));
     } catch { this.fail(); }

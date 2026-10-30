@@ -7,12 +7,9 @@ export const DESK_X = Object.freeze([-8.5, -4.5, -.5]);
 export const DESK_Z = Object.freeze([-7.3, -3.3, .7]);
 export const DESKS = Object.freeze(DESK_Z.flatMap((z) => DESK_X.map((x) => Object.freeze({ x, z, width: 2.7, depth: 1.25 }))));
 export const MEETING_CENTER = Object.freeze({ x: 8.4, z: -3 });
-export let FLOORS = Object.freeze([
-  { id: 3, title: '대표이사실', description: '질문 · 발표 · 업무보고' },
-  { id: 2, title: '워크스페이스', description: '사무실 · 유리 회의실' },
-  { id: 1, title: '라운지', description: '대기실 · 휴게실 · 다과실' },
-]);
-export let ROOMS = Object.freeze([
+export let FLOORS = Object.freeze([]);
+export let ROOMS = Object.freeze([]);
+const originalRooms = Object.freeze([
   { id: 'office', name: '사무실', number: '201', floor: 2, subtitle: '업무 · CLI 세션', description: '동료의 책상에서 업무를 맡기고, CLI 대화를 이어서 확인하세요.', x: 1.85, z: 2.9, doorZ: 3.6, left: -10.5, right: 3.55 },
   { id: 'meeting', name: '회의실', number: '202', floor: 2, subtitle: '세션 협업 · 논의', description: '협업한 동료와 세션을 확인하고 관련 대화를 살펴보세요.', x: 8.5, z: 2.9, doorZ: 3.6, left: 3.75, right: 13.05 },
   { id: 'executive', name: '대표이사실', number: '301', floor: 3, subtitle: '질문 · 발표 · 승인', description: 'Commander에게 하는 질문과 발표를 확인하고, 업무 결과를 검토하세요.', x: 1.85, z: 2.9, doorZ: 3.6, left: -10.5, right: 13.05 },
@@ -20,29 +17,29 @@ export let ROOMS = Object.freeze([
   { id: 'warehouse', name: '대기실', number: '103', floor: 1, subtitle: '다음 작업 · 메모 · 재연결', description: '보관한 업무와 연결 확인이 필요한 동료를 관리하세요. 복귀는 실제 세션 재개나 지시 재전송이 아닙니다.', x: -6.8, z: 2.9, doorZ: 3.6, left: -10.5, right: -3.55 },
   { id: 'pantry', name: '다과실', number: '102', floor: 1, subtitle: '오프라인 작업 히스토리', description: '저장한 업무와 지난 CLI 대화를 돌아보세요. 연결이 꺼져 있어도 보관한 기록을 읽을 수 있습니다.', x: 8.5, z: 2.9, doorZ: 3.6, left: 3.75, right: 13.05 },
 ]);
-const originalRooms = ROOMS;
-const originalFloors = FLOORS;
 export const roomKind = (id) => roomById(id).kind || id;
 export const projectForAgent = (agent) => agent?.observedProjectId || agent?.assignedProjectId || null;
 export function projectRoom(kind, projectId) {
   return ROOMS.find((room) => (room.kind || room.id) === kind && room.projectId === projectId)?.id
-    || (ROOMS.some((room) => room.projectId) ? 'warehouse' : kind);
+    || 'warehouse';
 }
 export function configureProjectFloors(projects = []) {
-  if (!projects.length) { ROOMS = originalRooms; FLOORS = originalFloors; return; }
-  const top = Math.max(...projects.map((item) => item.floor)) + 1;
+  // Stored floor numbers retain project order, not empty physical floors.
+  const visible = projects.toSorted((a, b) => a.floor - b.floor).map((project, index) => ({ ...project, displayFloor: index + 2 }));
+  const top = visible.length + 2;
   const shared = originalRooms.filter((room) => !['office', 'meeting'].includes(room.id)).map((room) => room.id === 'executive' ? { ...room, floor: top, number: `${top}01` } : room);
-  const work = projects.flatMap((project) => ['office', 'meeting'].map((kind, index) => ({
+  const work = visible.flatMap((project) => ['office', 'meeting'].map((kind, index) => ({
     ...originalRooms.find((room) => room.id === kind), kind,
     id: project.floor === 2 ? kind : `${kind}-${project.id}`,
-    floor: project.floor, number: `${project.floor}0${index + 1}`, projectId: project.id, projectName: project.name,
+    floor: project.displayFloor, number: `${project.displayFloor}0${index + 1}`, projectId: project.id, projectName: project.name,
     description: `${project.name} 전용 층 · ${project.source === 'folder' ? '관찰한 작업 폴더' : '사용자 배정 프로젝트'}.`,
   })));
   ROOMS = Object.freeze([...work, ...shared]);
   FLOORS = Object.freeze([{ id: top, title: '대표이사실 · 공용', description: '질문 · 보고 · 승인' },
-    ...projects.toSorted((a, b) => b.floor - a.floor).map((item) => ({ id: item.floor, title: item.name, description: '프로젝트 전용 · 사무실 · 회의실' })),
+    ...visible.toReversed().map((item) => ({ id: item.displayFloor, title: item.name, description: '프로젝트 전용 · 사무실 · 회의실' })),
     { id: 1, title: '라운지 · 공용', description: '대기실 · 휴게실 · 작업 히스토리' }]);
 }
+configureProjectFloors();
 
 export function hallForFloor(floor = 1) {
   const level = FLOORS.some((item) => item.id === Number(floor)) ? Number(floor) : 1;
@@ -79,7 +76,9 @@ export function roomTasks(roomId, tasks, agents = []) {
 }
 export function occupantRoom(occupant) {
   const office = projectRoom('office', projectForAgent(occupant));
-  if (occupant.workArchive?.stored || occupant.status === 'disconnected' || ['missing', 'ended', 'not_connected'].includes(occupant.connection?.status)) return 'warehouse';
+  if (occupant.workArchive?.stored || occupant.status === 'disconnected'
+    || (occupant.connection && occupant.connection.status !== 'connected')
+    || (occupant.connection?.source === 'web' && occupant.connection.kind === 'page')) return 'warehouse';
   if (['meeting', 'executive'].includes(occupant.sceneActivity?.room)) return occupant.sceneActivity.room === 'meeting' ? projectRoom('meeting', projectForAgent(occupant)) : 'executive';
   if (occupant.sessionLifecycle === 'live') return office;
   // A saved turn is not evidence that a CLI is still occupying a desk.
