@@ -26,6 +26,8 @@
 
 2026-10-30에는 활성 프로젝트 층 수정 커밋 `2274224`에 `v0.2.4` 태그를 게시하고 기존 로컬 Docker에 반영했다. [검증·데이터 보존 기록](project-floor-lifecycle-validation.md)을 참고한다.
 
+같은 날 지시 모달 확대 커밋 `8e68182`에 `v0.2.5` 태그를 게시하고 기존 로컬 Docker를 갱신했다. 계정과 업무 데이터를 유지했으며 [화면·배포 검증 기록](command-dialog-validation.md)에 결과를 기록했다.
+
 ## Release 본문 템플릿
 
 ```markdown
