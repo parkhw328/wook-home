@@ -35,6 +35,28 @@ dialog.dialog-layer > .dialog-layer-header {
 .dialog-layer-busy { padding: 12px; margin-bottom: 16px; border-radius: 8px; background: var(--surface-alt); font-size: var(--font-small); line-height: 1.75; }
 dialog.cli-conversation-dialog { width: min(1120px, calc(100% - var(--dialog-gap) * 2)); height: min(960px, calc(100dvh - var(--dialog-gap) * 2)); }
 dialog.search-dialog { width: min(980px, calc(100% - var(--dialog-gap) * 2)); }
+dialog.command-dialog {
+  width: min(1200px, calc(100% - var(--dialog-gap) * 2));
+  height: min(900px, calc(100dvh - var(--dialog-gap) * 2));
+}
+.command-layout { display: grid; gap: 1.5rem; min-height: 100%; align-items: start; }
+.command-layout > .command-section { min-width: 0; margin: 0; padding: 0; border: 0; }
+.command-context { min-width: 0; padding-top: 1.5rem; border-top: 1px solid var(--line); }
+.command-context > :first-child { margin-top: 0; }
+.command-context > :last-child { margin-bottom: 0; }
+.command-dialog .command-input { flex: 1; }
+.command-dialog .command-input textarea { flex: 1; min-height: 16rem; height: clamp(16rem, 34dvh, 26rem); }
+.command-dialog #new-task-form { min-height: 100%; }
+.command-dialog .form-actions {
+  padding-block: .75rem;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+@media (min-width: 1000px) {
+  .command-layout { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+  .command-context { padding: 0 0 0 1.5rem; border-top: 0; border-left: 1px solid var(--line); }
+  .command-context .detail-facts { grid-template-columns: minmax(0, 1fr); }
+}
 .cli-dialog-options { margin-top: 16px; }
 .cli-dialog-options > summary { cursor: pointer; min-height: 44px; padding-block: 10px; font-size: var(--font-control); font-weight: 600; }
 .cli-dialog-log { height: clamp(240px, 46dvh, 600px); }
