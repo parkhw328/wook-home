@@ -5,7 +5,6 @@ function changeMode(required) {
   $('#password-form').hidden = false;
   $('#login-title').textContent = required ? '첫 비밀번호를 설정하세요.' : '비밀번호 변경';
   $('#login-description').textContent = '변경하면 다른 화면의 로그인도 해제됩니다. 기존과 다른 비밀번호를 8자 이상 입력하세요.';
-  $('#initial-help').hidden = !required;
   $('#back-to-office').hidden = required;
   $('#current-password').focus();
 }
