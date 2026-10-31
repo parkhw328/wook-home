@@ -65,15 +65,16 @@
 ## 로컬 Codex 관찰
 
 - `localSessions`는 호스트의 읽기 전용 연결 프로그램이 생성한 상태를 보여준다. `status`는 connected / disconnected / not_connected, `updatedAt`은 마지막 상태 수집 시각, `workspace`는 선택한 작업 폴더의 이름이다.
+- 각 `sessions[]`의 `workspace`·`workspaceKey`는 해당 세션의 작업 폴더 표시 이름·SHA-256 해시다. 현재 적재 세션은 연결된 Codex의 여러 프로젝트를 포함하며, 같은 이름의 폴더도 해시가 다르면 별도 층이다. 세션별 필드가 없는 구버전은 최상위 프로젝트를 사용한다. 명시한 메타데이터가 잘못된 경우 해당 프로젝트를 추측하지 않는다. 선택한 작업 폴더 밖의 세션은 `outsideWorkspace: true`, `canControl: false`이고 대화 API는 `unavailable` / `outside_workspace`로 응답한다.
 - `sessions`: `{ id, name, provider: "openai", status, lifecycle, lastActivityAt }` 배열. ID는 전체 Codex 세션 UUID, 이름은 `Codex · 전체 UUID`다. 직원의 별칭은 별도 `agent.name`으로 저장한다. 사용자 대화 제목·내용·인증 정보·절대 경로는 전달하지 않는다.
 - 세션 상태: working(최근 활동 기록), idle(턴 종료 기록), interrupted(중단 기록), unknown(확인 필요), disconnected(연결 프로그램 갱신 중단).
 - 5초마다 수집한다. 연결 프로그램의 스냅샷이 20초 이상 갱신되지 않으면 disconnected, working 기록이 120초 이상 오래되면 unknown으로 표시한다. 활동 시각만으로 프로세스 생존이나 프로젝트 완료를 판정하지 않는다. 별도 `lifecycle`은 공식 현재 적재 목록을 근거로 `live` / `not_loaded` / `unknown`을 표시하며 연결이 오래되면 `unknown`으로 바꾼다.
-- 살아 있는 현재 프로젝트 세션은 직원으로 등록해 직원 수에 포함한다. 미등록 기록은 직원·업무 집계에서 제외한다. 원문 관찰 세션과 로컬 해시 등록 기록은 인계 JSON에 넣지 않는다. [직원 자동 등록 계약](staff-connections-api.md)을 따른다. 사무실 pause는 새 지시 접수를 막지만 이미 전달된 지시나 호스트 CLI를 중단하지 않는다.
+- 연결된 Codex의 살아 있는 세션은 프로젝트별로 직원으로 등록해 직원 수에 포함한다. 미등록 기록은 직원·업무 집계에서 제외한다. 원문 관찰 세션과 로컬 해시 등록 기록은 인계 JSON에 넣지 않는다. [직원 자동 등록 계약](staff-connections-api.md)을 따른다. 사무실 pause는 새 지시 접수를 막지만 이미 전달된 지시나 호스트 CLI를 중단하지 않는다.
 - Docker는 상태 JSON 폴더를 읽기 전용으로, 지시 폴더를 별도 읽기·쓰기로 연결한다. 상세 실행법은 [CLI 연결 안내](wiki/CLI.md)를 따른다.
 
 ## CLI 프로세스 추가·종료
 
-- `localSessions.processes`: `{ status, platform, scope, updatedAt, items, events }`. `status`는 connected / unavailable / unsupported / disconnected다. `platform`은 win32 / linux / unknown, `scope`는 각각 login_session / same_user / this_pc다. 플랫폼 정보가 없는 이전 연결기도 받는다. 같은 Windows 로그인 세션 또는 Linux 연결 프로그램과 같은 유효 UID의 지원 CLI 실행을 약 5초마다 확인하며, 현재 프로젝트의 저장 대화 목록인 `sessions`와 분리한다. 계정 이름과 UID는 전달하지 않는다.
+- `localSessions.processes`: `{ status, platform, scope, updatedAt, items, events }`. `status`는 connected / unavailable / unsupported / disconnected다. `platform`은 win32 / linux / unknown, `scope`는 각각 login_session / same_user / this_pc다. 플랫폼 정보가 없는 이전 연결기도 받는다. 같은 Windows 로그인 세션 또는 Linux 연결 프로그램과 같은 유효 UID의 지원 CLI 실행을 약 5초마다 확인하며, 프로젝트별 생존 세션과 선택한 작업 폴더의 저장 기록을 담는 `sessions`와 분리한다. 계정 이름과 UID는 전달하지 않는다.
 - `items`: `{ id, pid, provider, name, status, startedAt, firstSeenAt, lastSeenAt, endedAt }`. ID는 PID·시작 시각에서 만든 `cli-` 접두사 식별자이며 UUID가 아니다. provider는 openai / claude / gemini, 상태는 running / exited / unknown이다. 첫 대화 이전도 감지한다. 종료 시각은 프로세스 부재를 확인한 시각이며 업무 완료를 의미하지 않는다.
 - `events`: `{ id, type: "detected" | "exited", processId, at }`. 중복 관찰은 같은 이벤트를 반복 생성하지 않는다. 최대 50개, 최근 10분만 보관한다. 실행 중 최대 64개와 최근 종료 최대 24개를 제공한다.
 - 프로세스 목록 조회에 실패하면 이전 실행을 unknown으로 표시하고 마지막 성공 시각을 유지한다. 20초 이상 갱신이 멈추면 disconnected다. 미지원 OS는 unsupported이며 저장 대화 관찰은 계속 가능하다.

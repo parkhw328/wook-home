@@ -12,7 +12,8 @@ test('bridge starts before any saved session, owns its output and stops without 
   const sessions = join(root, 'sessions');
   const output = join(root, 'bridge');
   const script = fileURLToPath(new URL('../../scripts/codex-bridge.mjs', import.meta.url));
-  const child = spawn(process.execPath, [script, '--workspace', root, '--sessions-dir', sessions, '--output-dir', output], { stdio: 'ignore', windowsHide: true });
+  const child = spawn(process.execPath, [script, '--workspace', root, '--sessions-dir', sessions, '--output-dir', output,
+    '--codex-bin', join(root, 'missing-codex')], { stdio: 'ignore', windowsHide: true });
   const exited = new Promise((done, reject) => { child.once('exit', done); child.once('error', reject); });
   t.after(async () => {
     if (child.exitCode === null) child.kill();

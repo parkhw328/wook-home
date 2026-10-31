@@ -54,14 +54,16 @@ export function createStaffConnections({ office, discovery, observer }) {
   }
 
   function remember(agentId, entry) {
-    office.observeProject(agentId, entry.source === 'cli' && entry.kind === 'session' ? observer?.snapshot() : null);
+    office.observeProject(agentId, entry.source === 'cli' && entry.kind === 'session' ? entry : null);
     links.set(agentId, { id: entry.id, source: entry.source, kind: entry.kind, ...(entry.sessionId ? { sessionId: entry.sessionId } : {}) });
   }
 
   function reconcile(snapshot) {
     for (const entry of snapshot.entries) {
       if (entry.source !== 'cli' || entry.kind !== 'session' || entry.lifecycle !== 'live'
-        || observationStatus(entry, snapshot) !== 'connected' || ownerOf(entry.id)) continue;
+        || observationStatus(entry, snapshot) !== 'connected') continue;
+      const linked = ownerOf(entry.id);
+      if (linked) { office.observeProject(linked, entry); continue; }
       const key = registrationKey(entry);
       const owner = office.sessionRegistration(key);
       if (owner === null) continue; // Explicitly detached/released by the user.
@@ -75,7 +77,7 @@ export function createStaffConnections({ office, discovery, observer }) {
       if (office.snapshot().agents.some((agent) => agent.provider === entry.provider && agent.connectionPreference?.kind === 'session'
         && !links.has(agent.id) && !office.hasSessionRegistration(agent.id))) continue;
       try {
-        const agent = office.hire({ name: 'Codex 직원', role: '현재 프로젝트 세션', provider: entry.provider },
+        const agent = office.hire({ name: 'Codex 직원', role: '연결된 프로젝트 세션', provider: entry.provider },
           { source: 'cli', kind: 'session' }, null, key);
         remember(agent.id, entry);
       } catch (error) {
@@ -174,7 +176,7 @@ export function createStaffConnections({ office, discovery, observer }) {
       office.editAgent(id, body, { execution: local?.execution,
         canConfigureExecution: agent.connection?.status === 'connected' && agent.connection.source === 'cli'
           && agent.connection.kind === 'session' && local?.control?.enabled === true
-          && local.sessions.some((session) => session.id === agent.connection.sessionId) });
+          && local.sessions.some((session) => session.id === agent.connection.sessionId && session.canControl !== false) });
       return currentAgent(id);
     },
     connect(id, body) {

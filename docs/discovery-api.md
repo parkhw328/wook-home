@@ -10,6 +10,7 @@
 - `sources.processes`: 호스트 CLI 프로세스 센서의 `status`, `updatedAt`, `platform`(win32/linux/unknown), 표시용 `scope`. Linux 같은 사용자 또는 Windows 로그인 세션 범위를 표시하며 사용자 이름·UID는 내보내지 않는다. 이전 연결기의 플랫폼 정보가 없으면 `unknown`과 `이 PC`로 유지한다.
 - `sources.browsers`: `id`(무작위 프로필 별칭), `status`(connected/disconnected), `updatedAt`, `truncated`.
 - `entries`: 공급자, 이름, `source`(cli/web), `kind`(process/session/conversation/page), `status`, `scope`, 갱신/활동 시각, `tabCount`, `canControl`. CLI 프로세스는 프로젝트 대화 UUID와 연결하지 않는다. 웹 항목에는 원본 URL이나 대화 식별자를 반환하지 않는다.
+- CLI 세션의 `scope`는 해당 세션의 프로젝트 이름이며 확인된 `workspace`·`workspaceKey`를 함께 제공한다. 최상위 `sources.cli.workspace`는 공개 대화·지시 전송에 선택한 작업 폴더다. 다른 프로젝트의 살아 있는 세션도 등록할 수 있지만 `canControl: false`로 유지한다.
 - `counts`: `cli`(관찰 기록 수), `cliProcesses`(현재 running 수), `webTabs`(연결된 열린 탭 합계), `webConversations`(대화별 중복 제거 수), `webPages`(서비스·새 대화 화면 수).
 
 웹 `status`는 open/disconnected이며 실제 AI 작업 상태가 아니다. CLI 프로세스의 running/exited/unknown과 Codex 기록 상태는 [기존 API](api.md)를 따른다. `canControl`은 웹·프로세스에 항상 false다.

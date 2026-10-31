@@ -1,9 +1,9 @@
-import { createHash } from 'node:crypto';
 import { open, readdir, stat } from 'node:fs/promises';
-import { basename, join, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { collectConversation } from './codex-conversations.mjs';
 import { collectActivity, connectActivities } from './codex-activity.mjs';
 import { modelId, effortId } from '../../server/execution-options.js';
+import { workspaceIdentity } from './workspace-identity.mjs';
 
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const windowBytes = 1024 * 1024;
@@ -100,5 +100,16 @@ export async function collectSessions({ sessionsDir, workspace, clock = Date.now
     if (session && !sessions.some((item) => item.id === session.id)) sessions.push(session);
     if (sessions.length === 24) break;
   }
-  return { schemaVersion: 1, generatedAt: new Date(current).toISOString(), workspace: basename(resolve(workspace)), workspaceKey: createHash('sha256').update(pathKey(workspace)).digest('hex'), activities: { enabled: true }, sessions: connectActivities(sessions) };
+  return { schemaVersion: 1, generatedAt: new Date(current).toISOString(), ...workspaceIdentity(workspace), activities: { enabled: true }, sessions: connectActivities(sessions) };
+}
+
+export function mergeLoadedSessions(observed, loaded) {
+  const loadedIds = new Set(loaded.ids);
+  const saved = observed.sessions.map((session) => ({ ...session, workspace: observed.workspace, workspaceKey: observed.workspaceKey,
+    lifecycle: loaded.status !== 'ready' || loadedIds.has(session.id) ? 'unknown' : 'not_loaded' }));
+  const current = (loaded.sessions || []).map((session) => ({
+    ...saved.find((item) => item.id === session.id && item.workspaceKey === session.workspaceKey), ...session,
+    ...(session.workspaceKey !== observed.workspaceKey ? { canControl: false } : {}),
+  }));
+  return { ...observed, sessions: [...current, ...saved.filter((session) => !current.some((item) => item.id === session.id))].slice(0, 24) };
 }

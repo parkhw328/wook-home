@@ -1,8 +1,9 @@
 import { spawn } from 'node:child_process';
 import { Duplex } from 'node:stream';
-import { resolve } from 'node:path';
+import { isAbsolute } from 'node:path';
 import WebSocket from 'ws';
 import { readExecutionOptions, supportsExecutionOptions } from '../../server/execution-options.js';
+import { workspaceIdentity } from './workspace-identity.mjs';
 
 // The official proxy carries WebSocket bytes, not newline-delimited JSON.
 // Use the installed CLI to locate its control socket on either host platform.
@@ -109,20 +110,19 @@ export async function collectLoadedSessions(options, connect = connectCodex) {
       if (result.nextCursor == null) {
         if (!options.workspace) return { status: 'ready', ids: [...ids] };
         const sessions = [];
-        const pathKey = (path) => process.platform === 'win32' ? resolve(path).toLowerCase() : resolve(path);
         const deadline = Date.now() + 4500;
         const candidates = [...ids].slice(0, 128);
         for (let offset = 0; offset < candidates.length && sessions.length < 24 && Date.now() < deadline; offset += 8) {
           const results = await Promise.allSettled(candidates.slice(offset, offset + 8).map(async (id) => {
             const value = await client.request('thread/read', { threadId: id, includeTurns: false });
             const thread = value?.thread;
-            // Modern paginated/empty threads need no rollout log. Check exact
-            // workspace metadata first; never retain previews, paths or turns.
-            if (thread?.id !== id || typeof thread.cwd !== 'string' || pathKey(thread.cwd) !== pathKey(options.workspace)
+            // Every loaded project is visible. Export only its display name
+            // and opaque identity; never retain previews, paths or turns.
+            if (thread?.id !== id || typeof thread.cwd !== 'string' || !isAbsolute(thread.cwd) || /[\x00-\x1f]/.test(thread.cwd)
               || !Number.isSafeInteger(thread.updatedAt) || !Number.isFinite(new Date(thread.updatedAt * 1000).getTime())
               || thread.status?.type === 'notLoaded') return null;
             return { id, lifecycle: 'live', status: thread.status?.type === 'active' ? 'working' : thread.status?.type === 'idle' ? 'idle' : 'unknown',
-              lastActivityAt: new Date(thread.updatedAt * 1000).toISOString() };
+              lastActivityAt: new Date(thread.updatedAt * 1000).toISOString(), ...workspaceIdentity(thread.cwd) };
           }));
           for (const result of results) if (result.status === 'fulfilled' && result.value) sessions.push(result.value);
         }

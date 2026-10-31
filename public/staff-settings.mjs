@@ -8,9 +8,10 @@ export function projectSummary(agent, local) {
 }
 
 export function observedProject(agent, local) {
-  if (agent.connection?.source !== 'cli' || agent.connection.kind !== 'session'
-    || !local?.sessions?.some((session) => session.id === agent.connection.sessionId)) return '';
-  return agent.connection.scope || local.workspace || '';
+  if (agent.connection?.source !== 'cli' || agent.connection.kind !== 'session') return '';
+  const session = local?.sessions?.find((item) => item.id === agent.connection.sessionId);
+  if (!session) return '';
+  return agent.connection.scope || session.workspace || (session.outsideWorkspace ? '' : local.workspace) || '';
 }
 
 export function projectField(agent = {}, agents = [], local, prefix = 'edit') {

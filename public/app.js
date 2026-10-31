@@ -222,18 +222,18 @@ function renderSessions() {
   const label = !connected ? '서버 연결 끊김' : local?.status === 'connected' ? '관찰 연결됨' : local?.status === 'disconnected' ? '관찰 연결 끊김' : '관찰 연결 대기';
   $('#sessions-connection').textContent = label;
   $('#sessions-scope').textContent = local?.workspace
-    ? `작업 폴더: ${local.workspace} · ${observing ? '약 5초마다 갱신' : '갱신 연결 대기'}`
+    ? `연결된 프로젝트의 세션 · ${observing ? '약 5초마다 갱신' : '갱신 연결 대기'}`
     : '관찰 연결 후 작업 폴더가 표시됩니다.';
   const sessions = unassignedLocalSessions(state);
-  const signature = JSON.stringify([label, local?.control?.enabled, sessions.map(({ id, name, status, lifecycle }) => ({ id, name, status, lifecycle }))]);
+  const signature = JSON.stringify([label, local?.control?.enabled, sessions.map(({ id, name, status, lifecycle, workspace }) => ({ id, name, status, lifecycle, workspace }))]);
   const focused = document.activeElement?.closest('#session-list') ? { session: document.activeElement.dataset.session, entry: document.activeElement.dataset.connectEntry } : null;
   if (signature !== sessionsSignature) {
     sessionsSignature = signature;
     $('#session-list').innerHTML = sessions.length ? sessions.map((session) => {
     const status = observedSessionStatus(local, session, connected);
-    return `<article class="unregistered-session"><button type="button" class="session-card" aria-haspopup="dialog" data-session="${esc(session.id)}"><span class="session-symbol" aria-hidden="true">&gt;_</span><span class="session-info"><strong>미등록 Codex</strong>${identityMarkup(session.id, 'session-id', true)}<small>${esc(lifecycleLabel(session, observing))}</small></span><span class="status ${statusClass(status)}">${sessionStatusLabel(status)}</span></button><button type="button" class="button button-primary" data-connect-entry="cli:${esc(session.id)}" ${!observing ? 'disabled' : ''}>직원 등록 · 별칭 지정</button></article>`;
+    return `<article class="unregistered-session"><button type="button" class="session-card" aria-haspopup="dialog" data-session="${esc(session.id)}"><span class="session-symbol" aria-hidden="true">&gt;_</span><span class="session-info"><strong>미등록 Codex</strong>${identityMarkup(session.id, 'session-id', true)}<small>${esc(session.workspace || (session.outsideWorkspace ? '프로젝트 확인 필요' : local.workspace))}</small><small>${esc(lifecycleLabel(session, observing))}</small></span><span class="status ${statusClass(status)}">${sessionStatusLabel(status)}</span></button><button type="button" class="button button-primary" data-connect-entry="cli:${esc(session.id)}" ${!observing ? 'disabled' : ''}>직원 등록 · 별칭 지정</button></article>`;
     }).join('') : observing
-      ? emptyState('등록을 기다리는 세션이 없습니다', '생존이 확인된 현재 프로젝트 세션은 직원 목록에 자동 등록됩니다.', 'activity')
+      ? emptyState('등록을 기다리는 세션이 없습니다', '생존이 확인된 프로젝트별 세션은 직원 목록에 자동 등록됩니다.', 'activity')
       : emptyState('로컬 CLI의 상태를 연결하세요', '선택한 작업 공간의 Codex 세션을 연결하세요. 왼쪽 연결 설정에서 공개 대화 읽기를 켜고 저장하세요.', 'activity');
     if (focused?.session) $$('[data-session]', $('#session-list')).find((node) => node.dataset.session === focused.session)?.focus({ preventScroll: true });
     if (focused?.entry) $$('[data-connect-entry]', $('#session-list')).find((node) => node.dataset.connectEntry === focused.entry)?.focus({ preventScroll: true });
@@ -569,7 +569,7 @@ function openSession(id) {
   if (!session) return;
   const status = observedSessionStatus(state.localSessions, session, connected);
   openModal(sessionAlias(state, session), 'LOCAL CLI · SESSION', commandLayout(id, `<div class="info-box">${icon('activity')}<span>연결 설정에서 지시 전송을 켜면 기존 Codex 세션에 지시할 수 있습니다. 세션을 클릭하면 대화기록 모달에서 공개 응답을 확인할 수 있습니다. 승인·중단은 원래 CLI에서 처리하세요.</span></div><button type="button" class="button button-small" data-session="${esc(id)}">대화기록 보기 ↗</button>
-    ${identityMarkup(session.id)}<dl class="detail-facts session-facts"><div><dt>관찰된 상태</dt><dd id="observed-status">${sessionStatusLabel(status)}</dd></div><div><dt>마지막 활동</dt><dd id="observed-last-event">${displayTime(session.lastActivityAt)}</dd></div><div><dt>연결 상태</dt><dd id="observed-connection">${state.localSessions.status === 'connected' && connected ? '관찰 연결됨' : '관찰 연결 끊김'}</dd></div><div><dt>작업 공간</dt><dd>${esc(state.localSessions.workspace || '현재 작업 공간')}</dd></div></dl>
+    ${identityMarkup(session.id)}<dl class="detail-facts session-facts"><div><dt>관찰된 상태</dt><dd id="observed-status">${sessionStatusLabel(status)}</dd></div><div><dt>마지막 활동</dt><dd id="observed-last-event">${displayTime(session.lastActivityAt)}</dd></div><div><dt>연결 상태</dt><dd id="observed-connection">${state.localSessions.status === 'connected' && connected ? '관찰 연결됨' : '관찰 연결 끊김'}</dd></div><div><dt>작업 공간</dt><dd>${esc(session.workspace || (session.outsideWorkspace ? '프로젝트 확인 필요' : state.localSessions.workspace) || '현재 작업 공간')}</dd></div></dl>
     <p class="field-help">사무실 중지는 외부 CLI를 멈추지 않습니다. <a class="inline-link" href="https://github.com/parkhw328/wook-home/wiki/CLI" target="_blank" rel="noopener noreferrer">상태·연결 도움말 ↗</a></p>
     `), { type: 'session', id });
   renderSessionCommand();
@@ -641,11 +641,14 @@ function renderStaffSettings() {
     const draft = formDrafts.get(draftKey(form));
     const selection = model.dataset.initialized ? { model: model.value, reasoningEffort: $('#staff-effort', form).value }
       : draft && Object.hasOwn(draft, 'model') ? { model: draft.model, reasoningEffort: draft.reasoningEffort } : agent.executionPreference || {};
-    const eligible = connected && agent.connection?.source === 'cli' && agent.connection.kind === 'session' && agent.connection.status === 'connected';
+    const session = state.localSessions?.sessions.find((item) => item.id === agent.connection?.sessionId);
+    const eligible = connected && agent.connection?.source === 'cli' && agent.connection.kind === 'session'
+      && agent.connection.status === 'connected' && session?.canControl !== false;
     updateExecutionFields(form, eligible ? state.localSessions?.execution : null, selection, pending, 'staff');
     model.dataset.initialized = 'true';
     $('#staff-execution-help', form).textContent = '저장하면 이 직원의 다음 지시에 기본값으로 사용합니다. 저장만으로 지시를 보내거나 실행 중인 모델·권한을 바꾸지 않습니다.'
-      + (!eligible ? ' Codex 대화를 다시 연결하면 지원 모델을 선택할 수 있습니다.' : ' 실제 모델 적용 여부는 지시 접수 화면에서 확인합니다.');
+      + (session?.outsideWorkspace ? ' 이 프로젝트는 상태만 관찰하므로 모델 설정은 원래 CLI에서 변경하세요.'
+        : !eligible ? ' Codex 대화를 다시 연결하면 지원 모델을 선택할 수 있습니다.' : ' 실제 모델 적용 여부는 지시 접수 화면에서 확인합니다.');
     const changed = (selection.model || '') !== (agent.executionPreference?.model || '') || (selection.reasoningEffort || '') !== (agent.executionPreference?.reasoningEffort || '');
     const warning = executionSelectionReason(eligible ? state.localSessions?.execution : null, selection);
     $('#staff-selection-warning', form).textContent = warning ? `${warning}${changed ? '' : ' 저장된 기본값은 유지되며 프로젝트·이름·역할은 수정할 수 있습니다.'}` : '';

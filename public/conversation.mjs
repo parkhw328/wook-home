@@ -2,6 +2,7 @@ import { escapeHtml as esc, displayTime } from './model.mjs';
 
 export function conversationReadError(data) {
   if (data?.status !== 'unavailable') return '';
+  if (data.reason === 'outside_workspace') return '이 프로젝트의 세션은 상태만 관찰합니다. 공개 대화 읽기는 연결 설정에 표시된 작업 폴더로 한정됩니다.';
   return data.reason === 'permission_denied'
     ? '대화는 수집 중이지만 사무실 서버에 기록을 읽을 권한이 없습니다. 연결 설정의 실행 안내에서 명령을 복사해 연결 프로그램만 다시 실행하세요. 작업이 끝날 때까지 기다릴 필요는 없습니다.'
     : data.reason === 'missing_record' ? '대화 기록 파일이 아직 전달되지 않았습니다. 연결 프로그램의 수집 상태를 확인하고 다시 불러와 주세요.' : '';

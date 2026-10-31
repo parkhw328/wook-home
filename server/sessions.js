@@ -5,6 +5,7 @@ import { readCliTools } from './cli-tools.js';
 import { readSessionActivity } from './session-activity.js';
 import { readSettingsAck } from './bridge-settings.js';
 import { modelId, effortId, readExecutionOptions } from './execution-options.js';
+import { readWorkspaceIdentity } from './projects.js';
 
 const empty = (status = 'not_connected') => ({ status, updatedAt: null, workspace: '', sessions: [], control: { enabled: false, reason: 'disconnected' }, processes: readCliProcesses(null, false), cliTools: readCliTools(null, false) });
 const states = new Set(['working', 'idle', 'interrupted', 'unknown']);
@@ -28,6 +29,7 @@ export function createSessionObserver({ file, clock = Date.now } = {}) {
         const age = clock() - Date.parse(data.generatedAt);
         const connected = data.stopped !== true && age >= -5000 && age <= 20000;
         const sessions = [];
+        const selectedWorkspace = readWorkspaceIdentity(data);
         const seen = new Set();
         for (const session of data.sessions) {
           if (!session || !uuid.test(session.id) || seen.has(session.id) || !states.has(session.status) || !validTime(session.lastActivityAt)) continue;
@@ -35,10 +37,15 @@ export function createSessionObserver({ file, clock = Date.now } = {}) {
           const activityAge = clock() - Date.parse(session.lastActivityAt);
           const status = !connected ? 'disconnected' : activityAge < -5000 || (session.status === 'working' && activityAge > 120000) ? 'unknown' : session.status;
           const activity = readSessionActivity(session, data.sessions, connected, clock());
+          const hasWorkspace = Object.hasOwn(session, 'workspace') || Object.hasOwn(session, 'workspaceKey');
+          const workspace = hasWorkspace ? readWorkspaceIdentity(session) : selectedWorkspace;
+          const outsideWorkspace = hasWorkspace && (!workspace.workspaceKey || workspace.workspaceKey !== selectedWorkspace.workspaceKey);
           sessions.push({
             id: session.id, name: `Codex · ${session.id}`, provider: 'openai',
             lifecycle: connected && ['live', 'not_loaded'].includes(session.lifecycle) ? session.lifecycle : 'unknown',
             status, lastActivityAt: new Date(session.lastActivityAt).toISOString(),
+            ...workspace,
+            ...(outsideWorkspace ? { canControl: false, outsideWorkspace: true } : session.canControl === false ? { canControl: false } : {}),
             ...(modelId(session.model) ? { model: session.model } : {}),
             ...(effortId(session.reasoningEffort) ? { reasoningEffort: session.reasoningEffort } : {}),
             ...(activity ? { activity } : {}),
@@ -63,6 +70,7 @@ export function createSessionObserver({ file, clock = Date.now } = {}) {
       const state = this.snapshot();
       const result = { sessionId: id, status: 'disabled', messages: [], updatedAt: null, truncated: false, limit: 60 };
       if (!uuid.test(id) || !state.sessions.some((session) => session.id === id)) return { ...result, status: 'unavailable' };
+      if (state.sessions.find((session) => session.id === id).outsideWorkspace) return { ...result, status: 'unavailable', reason: 'outside_workspace' };
       if (!state.conversations?.enabled) return result;
       let descriptor;
       try {

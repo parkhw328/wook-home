@@ -86,7 +86,7 @@ export function createCommandPump({ directory, bridgeId, getSessions, send, shou
           await save({ ...receipt, status: 'expired', code: 'REQUEST_EXPIRED' });
         } else if (typeof content !== 'string' || !content.trim() || content.length > 4000 || content.includes('\0')) {
           await save({ ...receipt, status: 'failed', code: 'CLI_REJECTED' });
-        } else if (!(await getSessions()).some((session) => session.id === request.sessionId)) {
+        } else if (!(await getSessions()).some((session) => session.id === request.sessionId && session.canControl !== false)) {
           await save({ ...receipt, status: 'failed', code: 'SESSION_UNAVAILABLE' });
         } else {
           await save({ ...receipt, status: 'sending' });

@@ -4,7 +4,7 @@ import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { collectSessions } from './lib/codex-observer.mjs';
+import { collectSessions, mergeLoadedSessions } from './lib/codex-observer.mjs';
 import { publishConversations } from './lib/codex-conversations.mjs';
 import { sharedGroup } from './lib/bridge-files.mjs';
 import { createCommandPump, findCodex, sendToCodex, supportsQueue } from './lib/codex-commands.mjs';
@@ -85,11 +85,7 @@ async function main() {
     const collect = async (includeConversations = settings.options.conversations) => {
       const [observed, loaded] = await Promise.all([collectSessions({ sessionsDir, workspace, includeConversations }),
         cli ? collectLoadedSessions(controlOptions()) : { status: 'unavailable', ids: [] }]);
-      const loadedIds = new Set(loaded.ids);
-      observed.sessions.forEach((session) => { session.lifecycle = loaded.status !== 'ready' ? 'unknown' : loadedIds.has(session.id) ? 'live' : 'not_loaded'; });
-      const current = (loaded.sessions || []).map((session) => ({ ...observed.sessions.find((item) => item.id === session.id), ...session }));
-      observed.sessions = [...current, ...observed.sessions.filter((session) => !current.some((item) => item.id === session.id))].slice(0, 24);
-      return observed;
+      return mergeLoadedSessions(observed, loaded);
     };
     const lifecycle = createCliLifecycle();
     let history = null;

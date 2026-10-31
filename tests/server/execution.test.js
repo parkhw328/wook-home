@@ -4,6 +4,7 @@ import { WebSocketServer } from 'ws';
 import { collectExecutionOptions, collectLoadedSessions, sendConfiguredCommand } from '../../scripts/lib/codex-control.mjs';
 import { readExecutionOptions } from '../../server/execution-options.js';
 import { summarizeRecords } from '../../scripts/lib/codex-observer.mjs';
+import { workspaceIdentity } from '../../scripts/lib/workspace-identity.mjs';
 
 const sessionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const commandId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
@@ -27,7 +28,7 @@ test('invalid, partial, looping, and failed liveness queries discard all IDs rat
   }
 });
 
-test('live metadata discovers empty and paginated threads only in the exact selected workspace', async (t) => {
+test('live metadata discovers every loaded project without exporting paths or conversations', async (t) => {
   const f = await fixture(t, (message) => {
     if (message.method === 'thread/loaded/list') return { result: { data: [sessionId, commandId], nextCursor: null } };
     if (message.method === 'thread/read') return { result: { thread: {
@@ -36,10 +37,20 @@ test('live metadata discovers empty and paginated threads only in the exact sele
     } } };
   });
   const result = await collectLoadedSessions({ ...f.options, workspace: '/selected-project' });
-  assert.deepEqual(result.sessions, [{ id: sessionId, lifecycle: 'live', status: 'idle', lastActivityAt: new Date(1793059200 * 1000).toISOString() }]);
-  assert.doesNotMatch(JSON.stringify(result.sessions), /private|cwd|preview|other-project|turns/);
+  assert.deepEqual(result.sessions, [sessionId, commandId].map((id, index) => ({ id, lifecycle: 'live', status: 'idle',
+    lastActivityAt: new Date(1793059200 * 1000).toISOString(), ...workspaceIdentity(index ? '/other-project' : '/selected-project') })));
+  assert.notEqual(result.sessions[0].workspaceKey, result.sessions[1].workspaceKey);
+  assert.doesNotMatch(JSON.stringify(result.sessions), /private|cwd|preview|\/other-project|\/selected-project|turns/);
   assert.ok(f.calls.filter((call) => call.method === 'thread/read').every((call) => call.params.includeTurns === false));
   assert.ok(f.calls.every((call) => ['initialize', 'initialized', 'thread/loaded/list', 'thread/read'].includes(call.method)));
+});
+
+test('loaded metadata with missing, relative or invalid working folders never invents a project', async (t) => {
+  for (const cwd of [undefined, '', 'relative-project', '/private\nfolder']) {
+    const f = await fixture(t, (message) => message.method === 'thread/loaded/list'
+      ? { result: { data: [sessionId] } } : { result: { thread: { id: sessionId, cwd, updatedAt: 1793059200, status: { type: 'idle' } } } });
+    assert.deepEqual((await collectLoadedSessions({ ...f.options, workspace: '/selected-project' })).sessions, []);
+  }
 });
 
 async function fixture(t, handler = () => undefined) {

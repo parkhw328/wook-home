@@ -48,7 +48,8 @@ export function createDiscovery({ observer, clock = Date.now }) {
       const entries = cli.sessions.map((session) => ({
         id: `cli:${session.id}`, name: session.name, provider: session.provider, source: 'cli', kind: 'session',
         status: session.status, lifecycle: session.lifecycle || 'unknown',
-        lastActivityAt: session.lastActivityAt, scope: cli.workspace, sessionId: session.id,
+        lastActivityAt: session.lastActivityAt, scope: session.workspace || (session.outsideWorkspace ? '' : cli.workspace), sessionId: session.id,
+        ...(session.workspaceKey ? { workspace: session.workspace, workspaceKey: session.workspaceKey } : {}),
         tabCount: 0, canControl: cli.control?.enabled === true && session.canControl !== false,
       }));
       for (const item of cli.processes?.items || []) {

@@ -88,6 +88,19 @@ test('command API rejects stale bridges, unobserved sessions, paused offices and
   assert.deepEqual(readdirSync(f.directory), []);
 });
 
+test('a session from another project cannot acquire command permission through discovery or a pending request', async (t) => {
+  const f = await fixture(t);
+  const request = { id: randomUUID(), content: 'must not leave the selected workspace' };
+  assert.equal((await f.submit(request)).status, 202);
+  f.snapshot.workspaceKey = 'a'.repeat(64);
+  Object.assign(f.snapshot.sessions[0], { workspace: 'other-project', workspaceKey: 'b'.repeat(64), canControl: false });
+  f.publish();
+  assert.equal((await f.submit({ ...request, id: randomUUID() })).status, 409);
+  const pump = createCommandPump({ ...f, getSessions: async () => f.snapshot.sessions, send: async () => assert.fail('must not send') });
+  await pump();
+  assert.equal(readCommand(join(f.directory, `${request.id}.json`)).code, 'SESSION_UNAVAILABLE');
+});
+
 test('atomic command receipts preserve the HTTP server owner and private permissions on Linux', { skip: process.platform !== 'linux' }, async (t) => {
   const f = await fixture(t);
   const request = { id: randomUUID(), content: 'private ownership check' };
